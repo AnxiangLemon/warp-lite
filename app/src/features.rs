@@ -22,7 +22,7 @@ fn enabled_features() -> HashSet<FeatureFlag> {
         flags.extend(RELEASE_FLAGS);
     }
 
-    flags.extend([
+    let compile_time_flags: &[FeatureFlag] = &[
         #[cfg(feature = "autoupdate")]
         FeatureFlag::Autoupdate,
         #[cfg(feature = "changelog")]
@@ -515,7 +515,8 @@ fn enabled_features() -> HashSet<FeatureFlag> {
         FeatureFlag::OscHyperlinks,
         #[cfg(feature = "terminal_lifecycle_recovery")]
         FeatureFlag::TerminalLifecycleRecovery,
-    ]);
+    ];
+    flags.extend(compile_time_flags);
 
     flags
 }

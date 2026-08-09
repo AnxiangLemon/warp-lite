@@ -1,3 +1,20 @@
+## Warp Lite fork
+
+这是基于 `warpdotdev/warp` 上游源码的本地 fork，不是重新实现的终端 UI。
+
+当前上游基线：`b076027d`。
+
+`warp-lite` 使用独立的 Lite crate root 和 Lite root view，使用 `--no-default-features` 构建。Lite 构建不会编译完整 Warp 的 `ai/auth/billing/cloud/drive/mcp/notebooks/agent/collaboration` 启动模块：
+
+```powershell
+$env:RUSTUP_TOOLCHAIN = "1.92.0-x86_64-pc-windows-msvc"
+cargo run --bin warp-lite --no-default-features --features "local_tty,warp_lite"
+```
+
+Lite UI 只包含本地 shell、Tabs、Groups、Split Pane、Session Restore 和 Local Settings。Shell 使用本地进程管道，支持 PowerShell、CMD、Git Bash；WSL 仅在本机存在时启动。会话保存到本地 `WarpLite/session.json`，不读取 Warp 登录凭据。Warp/Oz endpoint 固定到 `127.0.0.1:9`，telemetry、crash reporting、autoupdate 配置均为 `None`。
+
+上游完整实现保留在 `app/src/lib_full.rs`，Lite 逻辑集中在 `app/src/lib.rs`、`app/src/lite.rs`、`app/src/bin/lite.rs` 和 `WarpServerConfig::local_only()` / `OzConfig::local_only()`。
+
 <a href="https://www.warp.dev">
     <img width="1024" alt="Warp Agentic Development Environment product preview" src="https://github.com/user-attachments/assets/9976b2da-2edd-4604-a36c-8fd53719c6d4" />
 </a>

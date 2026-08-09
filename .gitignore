@@ -70,3 +70,6 @@ __pycache__/
 # Project notes
 .note/
 .claude/scheduled_tasks.lock
+
+# Removed prototype backup
+/_prototype-backup/
