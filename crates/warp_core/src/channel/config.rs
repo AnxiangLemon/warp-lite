@@ -64,7 +64,7 @@ impl WarpServerConfig {
         }
     }
 
-    /// Configuration used by local-only forks. Shared client code can still
+    /// Configuration for local-only builds. Shared client code can still
     /// initialize, but accidental external requests fail against loopback.
     pub fn local_only() -> Self {
         Self {

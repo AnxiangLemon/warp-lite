@@ -54,8 +54,7 @@ use crate::cloud_object::model::generic_string_model::CloudStringObject;
 use crate::cloud_object::{
     CloudObject, CloudObjectMetadata, ObjectIdType, RevisionAndLastEditor, ServerCreationInfo,
 };
-use crate::drive::folders::CloudFolder;
-use crate::notebooks::CloudNotebook;
+use crate::cloud_object::{CloudFolder, CloudNotebook};
 use crate::server::experiments::ServerExperiment;
 use crate::server::ids::SyncId;
 use crate::suggestions::ignored_suggestions_model::SuggestionType;

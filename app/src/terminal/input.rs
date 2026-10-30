@@ -1,20 +1,48 @@
+#[cfg(not(feature = "warp_lite"))]
 mod agent;
+#[cfg(feature = "warp_lite")]
+#[path = "input/agent_lite.rs"]
+mod agent;
+#[cfg(feature = "warp_lite")]
+mod ai_fields_lite;
+#[cfg(feature = "warp_lite")]
+mod inline_menus_lite;
 pub mod buffer_model;
 mod classic;
 mod cli_agent;
 mod cloud_mode_v2_history_menu;
 mod common;
+#[cfg(not(feature = "warp_lite"))]
+pub mod conversations;
+#[cfg(feature = "warp_lite")]
+#[path = "input/conversations_lite.rs"]
 pub mod conversations;
 pub mod decorations;
 pub(crate) mod handoff_compose;
 pub mod inline_history;
 pub mod inline_menu;
 pub mod message_bar;
+#[cfg(not(feature = "warp_lite"))]
 pub mod models;
+#[cfg(feature = "warp_lite")]
+#[path = "input/models_lite.rs"]
+pub mod models;
+#[cfg(not(feature = "warp_lite"))]
 pub mod plans;
+#[cfg(feature = "warp_lite")]
+#[path = "input/plans_lite.rs"]
+pub mod plans;
+#[cfg(not(feature = "warp_lite"))]
+pub mod profiles;
+#[cfg(feature = "warp_lite")]
+#[path = "input/profiles_lite.rs"]
 pub mod profiles;
 pub mod prompts;
 pub mod repos;
+#[cfg(not(feature = "warp_lite"))]
+pub mod rewind;
+#[cfg(feature = "warp_lite")]
+#[path = "input/rewind_lite.rs"]
 pub mod rewind;
 pub mod skills;
 pub mod slash_command_model;
@@ -24,6 +52,10 @@ pub mod suggestions_mode_model;
 mod terminal;
 mod terminal_message_bar;
 mod universal;
+#[cfg(not(feature = "warp_lite"))]
+pub mod user_query;
+#[cfg(feature = "warp_lite")]
+#[path = "input/user_query_lite.rs"]
 pub mod user_query;
 
 use std::any::Any;
@@ -189,7 +221,7 @@ use crate::ai::connected_self_hosted_workers::{
 };
 #[cfg(not(target_family = "wasm"))]
 use crate::ai::conversation_export::export_conversation_markdown;
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
+use crate::ai::{AIDocumentId, AIDocumentVersion};
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
 use crate::ai::harness_availability::HarnessAvailabilityModel;
 use crate::ai::llms::{LLMPreferences, LLMPreferencesEvent};
@@ -275,6 +307,7 @@ use crate::suggestions::ignored_suggestions_model::{
     IgnoredSuggestionsModel, IgnoredSuggestionsModelEvent, SuggestionType,
 };
 use crate::terminal::CLIAgent;
+#[cfg(not(feature = "warp_lite"))]
 use crate::terminal::buy_credits_banner::{BuyCreditsBanner, BuyCreditsBannerEvent};
 #[cfg(not(target_family = "wasm"))]
 use crate::terminal::cli_agent_sessions::plugin_manager::PluginModalKind;
@@ -498,7 +531,7 @@ const TERMINAL_INPUT_PREFIX: &str = "!";
 const CLOUD_HANDOFF_INPUT_PREFIX: &str = "&";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum InputPrefixMode {
+pub(crate) enum InputPrefixMode {
     None,
     Shell,
     CloudHandoff,
@@ -1584,6 +1617,7 @@ pub struct Input {
     command_x_ray_description: Option<Arc<Description>>,
     last_parsed_tokens: Option<decorations::ParsedTokensSnapshot>,
     debounce_input_background_tx: Sender<InputBackgroundJobOptions>,
+    #[cfg(not(feature = "warp_lite"))]
     debounce_ai_query_prediction_tx: Sender<()>,
     /// If true, will submit the command in the editor to the shell upon receiving the
     /// precmd message.
@@ -1668,59 +1702,79 @@ pub struct Input {
     conn: Option<Arc<Mutex<SqliteConnection>>>,
 
     /// Cached hint text to ensure it remains stable during shell initialization hooks
+    #[cfg(not(feature = "warp_lite"))]
     cached_agent_mode_hint_text: Option<&'static str>,
 
+    #[cfg(not(feature = "warp_lite"))]
     predict_am_queries_future_handle: Option<SpawnedFutureHandle>,
 
+    #[cfg(not(feature = "warp_lite"))]
     attachment_chips: Vec<AttachmentChip>,
 
+    #[cfg(not(feature = "warp_lite"))]
     is_processing_attached_images: bool,
 
     universal_developer_input_button_bar: ViewHandle<UniversalDeveloperInputButtonBar>,
 
     terminal_input_message_bar: ViewHandle<TerminalInputMessageBar>,
 
+    #[cfg(not(feature = "warp_lite"))]
     agent_input_footer: ViewHandle<AgentInputFooter>,
+    #[cfg(not(feature = "warp_lite"))]
     prompt_suggestions_view: ViewHandle<PromptSuggestionsView>,
+    #[cfg(not(feature = "warp_lite"))]
     handoff_compose_state: ModelHandle<HandoffComposeState>,
 
     inline_slash_commands_view: ViewHandle<InlineSlashCommandView>,
+    #[cfg(not(feature = "warp_lite"))]
     cloud_mode_v2_slash_commands_view: Option<ViewHandle<CloudModeV2SlashCommandView>>,
     slash_command_data_source: ModelHandle<GuiSlashCommandDataSource>,
+    #[cfg(not(feature = "warp_lite"))]
     cloud_mode_composer_slash_command_data_source: Option<ModelHandle<GuiSlashCommandDataSource>>,
 
     /// Inline conversation menu for selecting AI conversations.
+    #[cfg(not(feature = "warp_lite"))]
     inline_conversation_menu_view: ViewHandle<InlineConversationMenuView>,
 
     /// Inline plan menu for selecting among multiple plans.
+    #[cfg(not(feature = "warp_lite"))]
     inline_plan_menu_view: ViewHandle<InlinePlanMenuView>,
 
     /// Inline repos switcher menu.
+    #[cfg(not(feature = "warp_lite"))]
     inline_repos_menu_view: ViewHandle<InlineReposMenuView>,
 
     /// Inline model selector for choosing the Agent base model.
+    #[cfg(not(feature = "warp_lite"))]
     inline_model_selector_view: ViewHandle<InlineModelSelectorView>,
     /// Inline profile selector for choosing the active execution profile.
+    #[cfg(not(feature = "warp_lite"))]
     inline_profile_selector_view: ViewHandle<InlineProfileSelectorView>,
 
     /// Inline skill selector for /open-skill command.
+    #[cfg(not(feature = "warp_lite"))]
     inline_skill_selector_view: ViewHandle<InlineSkillSelectorView>,
 
     /// Whether the skill selector should invoke (true) or open (false) the skill.
+    #[cfg(not(feature = "warp_lite"))]
     skill_selector_should_invoke: bool,
 
     /// Inline prompts menu for /prompts command.
+    #[cfg(not(feature = "warp_lite"))]
     inline_prompts_menu_view: ViewHandle<InlinePromptsMenuView>,
 
     /// Inline menu for selecting a query point when forking a conversation.
+    #[cfg(not(feature = "warp_lite"))]
     user_query_menu_view: ViewHandle<UserQueryMenuView>,
 
     /// Inline menu for selecting a rewind point in a conversation.
+    #[cfg(not(feature = "warp_lite"))]
     rewind_menu_view: ViewHandle<RewindMenuView>,
 
     /// Inline history menu for up-arrow with conversations and commands.
     inline_history_menu_view: ViewHandle<InlineHistoryMenuView>,
 
+    #[cfg(not(feature = "warp_lite"))]
     pub(super) cloud_mode_v2_history_menu_view: Option<ViewHandle<CloudModeV2HistoryMenuView>>,
 
     inline_terminal_menu_positioner: ModelHandle<InlineMenuPositioner>,
@@ -1738,14 +1792,21 @@ pub struct Input {
     /// Weak handle to this input view for drop target data
     weak_view_handle: WeakViewHandle<Input>,
 
+    #[cfg(not(feature = "warp_lite"))]
     buy_credits_banner: ViewHandle<BuyCreditsBanner>,
+    #[cfg(not(feature = "warp_lite"))]
     agent_status_view: ViewHandle<BlocklistAIStatusBar>,
     /// Optional queued-prompts panel rendered between `agent_status_view` and the input editor.
     /// Constructed in [`Input::new`] when [`FeatureFlag::QueueSlashCommand`] is enabled.
+    #[cfg(not(feature = "warp_lite"))]
     queued_prompts_panel: Option<ViewHandle<QueuedPromptsPanelView>>,
+    #[cfg(not(feature = "warp_lite"))]
     agent_view_controller: ModelHandle<AgentViewController>,
+    #[cfg(not(feature = "warp_lite"))]
     agent_shortcut_view_model: ModelHandle<AgentShortcutViewModel>,
+    #[cfg(not(feature = "warp_lite"))]
     ambient_agent_view_state: Option<AmbientAgentViewState>,
+    #[cfg(not(feature = "warp_lite"))]
     ephemeral_message_model: ModelHandle<EphemeralMessageModel>,
 
     /// When a command is executed from a prompt chip (e.g. `cd` from the directory dropdown),
@@ -1754,6 +1815,7 @@ pub struct Input {
     input_contents_before_prompt_chip_command: Option<String>,
 }
 
+#[cfg(not(feature = "warp_lite"))]
 struct AmbientAgentViewState {
     view_model: ModelHandle<AmbientAgentViewModel>,
     #[allow(dead_code)]
@@ -1763,12 +1825,14 @@ struct AmbientAgentViewState {
     auth_secret_ftux_view: Option<ViewHandle<AuthSecretFtuxView>>,
 }
 
+#[cfg(not(feature = "warp_lite"))]
 impl AmbientAgentViewState {
     fn view_model(&self) -> &ModelHandle<AmbientAgentViewModel> {
         &self.view_model
     }
 }
 
+#[cfg(not(feature = "warp_lite"))]
 #[derive(Clone)]
 struct AttachmentChip {
     file_name: String,
@@ -2244,6 +2308,7 @@ impl Input {
     /// transitions and surfaces snapshot-upload failures. Shared by [`Self::new`] and
     /// [`Self::attach_ambient_agent_view_model`] so the upfront (construction) and late
     /// (`SessionJoined`) paths wire up identical behavior.
+    #[cfg(not(feature = "warp_lite"))]
     fn subscribe_to_ambient_agent_view_model(
         view_model: &ModelHandle<AmbientAgentViewModel>,
         ctx: &mut ViewContext<Self>,
@@ -2294,6 +2359,7 @@ impl Input {
     /// Builds the cloud-mode harness selector for an ambient agent view model. Shared by
     /// [`Self::new`] and [`Self::attach_ambient_agent_view_model`] so construction and late
     /// attach produce the same selector wiring.
+    #[cfg(not(feature = "warp_lite"))]
     fn build_harness_selector(
         view_model: ModelHandle<AmbientAgentViewModel>,
         menu_positioning_provider: Arc<dyn MenuPositioningProvider>,
@@ -2325,6 +2391,7 @@ impl Input {
     /// (a viewer of an existing run does not choose a host). Shared by
     /// [`Self::attach_ambient_agent_view_model`], which is the single wiring point for both the
     /// eager (`Input::new`) and lazy (`SessionJoined`) paths.
+    #[cfg(not(feature = "warp_lite"))]
     fn build_host_selector(
         view_model: ModelHandle<AmbientAgentViewModel>,
         menu_positioning_provider: Arc<dyn MenuPositioningProvider>,
@@ -2406,6 +2473,7 @@ impl Input {
     /// Builds the cloud-mode auth-secret selector and its FTUX view for an ambient agent view
     /// model. Composer-only. Shared by [`Self::attach_ambient_agent_view_model`], which is the
     /// single wiring point for both the eager (`Input::new`) and lazy (`SessionJoined`) paths.
+    #[cfg(not(feature = "warp_lite"))]
     fn build_auth_secret_selector(
         view_model: ModelHandle<AmbientAgentViewModel>,
         menu_positioning_provider: Arc<dyn MenuPositioningProvider>,
@@ -2494,6 +2562,7 @@ impl Input {
     /// link that turns out to be a cloud run). Idempotent: a no-op when already wired. Builds the
     /// composer-only sub-views (host / auth-secret / FTUX selectors) only for a non-viewer, since
     /// a viewer of an existing run does not compose a new run.
+    #[cfg(not(feature = "warp_lite"))]
     pub(crate) fn attach_ambient_agent_view_model(
         &mut self,
         view_model: ModelHandle<AmbientAgentViewModel>,
@@ -2513,6 +2582,7 @@ impl Input {
         // construction, so it must be given the model now to render the environment chip.
         let footer_model = view_model.clone();
         let footer_menu_positioning = self.menu_positioning_provider.clone();
+        #[cfg(not(feature = "warp_lite"))]
         self.agent_input_footer.update(ctx, |footer, ctx| {
             footer.set_ambient_agent_view_model(footer_model, footer_menu_positioning, ctx);
         });
@@ -2520,6 +2590,7 @@ impl Input {
         // on this link-join path, so without this it can't render the cloud-mode setup /
         // follow-up progress (`render_cloud_mode_setup_status`) while a follow-up VM spins up.
         let status_bar_model = view_model.clone();
+        #[cfg(not(feature = "warp_lite"))]
         self.agent_status_view.update(ctx, |status_bar, ctx| {
             status_bar.set_ambient_agent_view_model(status_bar_model, ctx);
         });
@@ -2530,6 +2601,7 @@ impl Input {
             .update(ctx, |data_source, ctx| {
                 data_source.set_ambient_agent_view_model(slash_model, ctx);
             });
+        #[cfg(not(feature = "warp_lite"))]
         if let Some(cloud_mode_composer_slash_command_data_source) =
             self.cloud_mode_composer_slash_command_data_source.clone()
         {
@@ -2538,18 +2610,21 @@ impl Input {
                 data_source.set_ambient_agent_view_model(composer_slash_model, ctx);
             });
         }
-        // The /model picker's data source lists a different model set for cloud panes (it suppresses
-        // custom-endpoint models), so keep it in sync for the link-join viewer.
-        let model_selector_model = view_model.clone();
-        self.inline_model_selector_view.update(ctx, |view, ctx| {
-            view.set_ambient_agent_view_model(model_selector_model, ctx);
-        });
-        // The /skills selector hides skills on a disconnected cloud follow-up composer (skills run
-        // locally and must not be shown when a follow-up should start a new cloud VM instead).
-        let skill_selector_model = view_model.clone();
-        self.inline_skill_selector_view.update(ctx, |view, ctx| {
-            view.set_ambient_agent_view_model(skill_selector_model, ctx);
-        });
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            // The /model picker's data source lists a different model set for cloud panes (it suppresses
+            // custom-endpoint models), so keep it in sync for the link-join viewer.
+            let model_selector_model = view_model.clone();
+            self.inline_model_selector_view.update(ctx, |view, ctx| {
+                view.set_ambient_agent_view_model(model_selector_model, ctx);
+            });
+            // The /skills selector hides skills on a disconnected cloud follow-up composer (skills run
+            // locally and must not be shown when a follow-up should start a new cloud VM instead).
+            let skill_selector_model = view_model.clone();
+            self.inline_skill_selector_view.update(ctx, |view, ctx| {
+                view.set_ambient_agent_view_model(skill_selector_model, ctx);
+            });
+        }
         // NOTE: This method is the SINGLE point that wires a (lazily- or eagerly-created) ambient
         // view model into the input tree. Both `Input::new` (eager/composer) and the shared-session
         // viewer's `SessionJoined` path (lazy) funnel through here, so any component that captures
@@ -2628,6 +2703,7 @@ impl Input {
         agent_view_controller: ModelHandle<AgentViewController>,
         ambient_agent_view_model: Option<ModelHandle<AmbientAgentViewModel>>,
         active_session: ModelHandle<ActiveSession>,
+        #[cfg(not(feature = "warp_lite"))]
         ephemeral_message_model: ModelHandle<EphemeralMessageModel>,
         ctx: &mut ViewContext<Self>,
     ) -> Self {
@@ -2642,7 +2718,10 @@ impl Input {
         };
 
         let is_shared_session_viewer = model.lock().shared_session_status().is_viewer();
+        // Local handoff state for child views (footer, editor decorator). Stored on `Input`
+        // only in full builds until `agent_input_footer` is cfg-gated under lite.
         let handoff_compose_state = ctx.add_model(|_ctx| HandoffComposeState::default());
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_model(&handoff_compose_state, |me, _, _, ctx| {
             me.set_zero_state_hint_text(ctx);
             ctx.notify();
@@ -2698,6 +2777,7 @@ impl Input {
                 ctx.notify();
             }
         });
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_model(&agent_view_controller, |me, _, event, ctx| {
             use crate::ai::blocklist::agent_view::AgentViewControllerEvent;
             if let AgentViewControllerEvent::EnteredAgentView { origin, .. } = event {
@@ -2744,6 +2824,7 @@ impl Input {
                 me.handle_universal_developer_input_button_bar_event(event, ctx);
             },
         );
+        #[cfg(not(feature = "warp_lite"))]
         let agent_input_footer = ctx.add_typed_action_view(|ctx| {
             AgentInputFooter::new(
                 menu_positioning_provider.clone(),
@@ -2762,7 +2843,9 @@ impl Input {
         // Ambient view state (harness / host / auth selectors) is built in
         // `attach_ambient_agent_view_model`, the single wiring point shared by this constructor
         // and the lazy shared-session viewer path.
+        #[cfg(not(feature = "warp_lite"))]
         let ambient_agent_view_state: Option<AmbientAgentViewState> = None;
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&agent_input_footer, |me, _, event, ctx| {
             match event {
                 #[cfg(feature = "voice_input")]
@@ -2862,7 +2945,11 @@ impl Input {
                     let auto_handoff = false;
 
                     if auto_handoff {
-                        #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
+                        #[cfg(all(
+                            feature = "local_fs",
+                            not(target_family = "wasm"),
+                            not(feature = "warp_lite")
+                        ))]
                         ctx.dispatch_typed_action_deferred(
                             WorkspaceAction::OpenLocalToCloudHandoffPane {
                                 launch: None,
@@ -3186,6 +3273,7 @@ impl Input {
         }
         let inline_history_model = inline_history_menu_view.as_ref(ctx).model().clone();
 
+        #[cfg(not(feature = "warp_lite"))]
         let cloud_mode_v2_history_menu_view = if FeatureFlag::CloudModeInputV2.is_enabled() {
             let view = ctx.add_view({
                 let active_session = active_session.clone();
@@ -3228,9 +3316,11 @@ impl Input {
             )
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let agent_shortcut_view_model = ctx.add_model(|ctx| {
             AgentShortcutViewModel::new(buffer_model.clone(), agent_view_controller.clone(), ctx)
         });
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_model(&agent_shortcut_view_model, |_, _, _, ctx| {
             ctx.notify();
         });
@@ -3285,8 +3375,10 @@ impl Input {
             |_me, _ctx| {},
         );
 
+        #[cfg(not(feature = "warp_lite"))]
         let (debounce_ai_query_prediction_tx, debounce_ai_query_prediction_rx) =
             async_channel::unbounded();
+        #[cfg(not(feature = "warp_lite"))]
         let _ = ctx.spawn_stream_local(
             debounce(
                 DEBOUNCE_AI_QUERY_PREDICTION_PERIOD,
@@ -3518,18 +3610,21 @@ impl Input {
                 }
                 BlocklistAIContextEvent::UpdatedPendingContext { .. } => {
                     me.update_image_context_options(ctx);
-                    me.attachment_chips = context_model
-                        .as_ref(ctx)
-                        .pending_attachments()
-                        .iter()
-                        .enumerate()
-                        .map(|(i, attachment)| AttachmentChip {
-                            file_name: attachment.file_name().to_string(),
-                            mouse_state_handle: Default::default(),
-                            attachment_type: attachment.attachment_type(),
-                            index: i,
-                        })
-                        .collect_vec();
+                    #[cfg(not(feature = "warp_lite"))]
+                    {
+                        me.attachment_chips = context_model
+                            .as_ref(ctx)
+                            .pending_attachments()
+                            .iter()
+                            .enumerate()
+                            .map(|(i, attachment)| AttachmentChip {
+                                file_name: attachment.file_name().to_string(),
+                                mouse_state_handle: Default::default(),
+                                attachment_type: attachment.attachment_type(),
+                                index: i,
+                            })
+                            .collect_vec();
+                    }
                 }
             }
             ctx.notify();
@@ -3539,23 +3634,26 @@ impl Input {
             if let LLMPreferencesEvent::UpdatedActiveAgentModeLLM = event {
                 // If the new model doesn't support vision and we had image chips,
                 // the context model already cleared them — show a toast.
-                let has_image_chips = me
-                    .attachment_chips
-                    .iter()
-                    .any(|c| matches!(c.attachment_type, AttachmentType::Image));
-                let vision_supported =
-                    LLMPreferences::as_ref(ctx).vision_supported(ctx, Some(me.terminal_view_id));
-                if has_image_chips && !vision_supported {
-                    let window_id = ctx.window_id();
-                    ToastStack::handle(ctx).update(ctx, |ts, ctx| {
-                        ts.add_ephemeral_toast(
-                            DismissibleToast::error(
-                                "Attached images were removed — the selected model does not support images.".to_string(),
-                            ),
-                            window_id,
-                            ctx,
-                        );
-                    });
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    let has_image_chips = me
+                        .attachment_chips
+                        .iter()
+                        .any(|c| matches!(c.attachment_type, AttachmentType::Image));
+                    let vision_supported = LLMPreferences::as_ref(ctx)
+                        .vision_supported(ctx, Some(me.terminal_view_id));
+                    if has_image_chips && !vision_supported {
+                        let window_id = ctx.window_id();
+                        ToastStack::handle(ctx).update(ctx, |ts, ctx| {
+                            ts.add_ephemeral_toast(
+                                DismissibleToast::error(
+                                    "Attached images were removed — the selected model does not support images.".to_string(),
+                                ),
+                                window_id,
+                                ctx,
+                            );
+                        });
+                    }
                 }
                 me.update_image_context_options(ctx);
                 ctx.notify();
@@ -3573,8 +3671,10 @@ impl Input {
             },
         );
 
+        #[cfg(not(feature = "warp_lite"))]
         let prompt_suggestions_view = ctx
             .add_typed_action_view(|ctx| PromptSuggestionsView::new(ai_input_model.clone(), ctx));
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&prompt_suggestions_view, move |me, _, event, ctx| {
             me.handle_prompt_suggestions_event(event, ctx);
         });
@@ -3598,6 +3698,7 @@ impl Input {
             },
         );
 
+        #[cfg(not(feature = "warp_lite"))]
         let cloud_mode_composer_slash_command_data_source =
             if FeatureFlag::CloudModeInputV2.is_enabled() {
                 let args = slash_commands::GuiDataSourceArgs {
@@ -3624,17 +3725,19 @@ impl Input {
             me.handle_slash_command_model_event(event, ctx);
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let inline_conversation_menu_view = ctx.add_view(|ctx| {
-            InlineConversationMenuView::new(
-                suggestions_mode_model.clone(),
-                agent_view_controller.clone(),
-                conversation_selection,
-                &buffer_model,
-                &inline_terminal_menu_positioner,
-                active_session.clone(),
-                ctx,
-            )
-        });
+                InlineConversationMenuView::new(
+                    suggestions_mode_model.clone(),
+                    agent_view_controller.clone(),
+                    conversation_selection,
+                    &buffer_model,
+                    &inline_terminal_menu_positioner,
+                    active_session.clone(),
+                    ctx,
+                )
+            });
+        #[cfg(not(feature = "warp_lite"))]
         if FeatureFlag::AgentView.is_enabled() {
             ctx.subscribe_to_view(&inline_conversation_menu_view, |me, _, event, ctx| {
                 me.handle_conversation_menu_event(event, ctx);
@@ -3644,120 +3747,136 @@ impl Input {
             });
         }
 
+        #[cfg(not(feature = "warp_lite"))]
         let inline_repos_menu_view = ctx.add_view(|ctx| {
-            InlineReposMenuView::new(
-                suggestions_mode_model.clone(),
-                agent_view_controller.clone(),
-                &buffer_model,
-                &inline_terminal_menu_positioner,
-                ctx,
-            )
-        });
+                InlineReposMenuView::new(
+                    suggestions_mode_model.clone(),
+                    agent_view_controller.clone(),
+                    &buffer_model,
+                    &inline_terminal_menu_positioner,
+                    ctx,
+                )
+            });
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&inline_repos_menu_view, |me, _, event, ctx| {
             me.handle_repos_menu_event(event, ctx);
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let inline_model_selector_view = ctx.add_view(|ctx| {
-            InlineModelSelectorView::new(
-                terminal_view_id,
-                // Wired post-construction via `attach_ambient_agent_view_model`.
-                None,
-                suggestions_mode_model.clone(),
-                agent_view_controller.clone(),
-                &buffer_model,
-                cli_subagent_controller.clone(),
-                &inline_terminal_menu_positioner,
-                ctx,
-            )
-        });
+                InlineModelSelectorView::new(
+                    terminal_view_id,
+                    // Wired post-construction via `attach_ambient_agent_view_model`.
+                    None,
+                    suggestions_mode_model.clone(),
+                    agent_view_controller.clone(),
+                    &buffer_model,
+                    cli_subagent_controller.clone(),
+                    &inline_terminal_menu_positioner,
+                    ctx,
+                )
+            });
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&inline_model_selector_view, |me, _, event, ctx| {
             me.handle_inline_model_selector_event(event, ctx);
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let inline_profile_selector_view = ctx.add_view(|ctx| {
-            InlineProfileSelectorView::new(
-                terminal_view_id,
-                suggestions_mode_model.clone(),
-                agent_view_controller.clone(),
-                &buffer_model,
-                &inline_terminal_menu_positioner,
-                ctx,
-            )
-        });
+                InlineProfileSelectorView::new(
+                    terminal_view_id,
+                    suggestions_mode_model.clone(),
+                    agent_view_controller.clone(),
+                    &buffer_model,
+                    &inline_terminal_menu_positioner,
+                    ctx,
+                )
+            });
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&inline_profile_selector_view, |me, _, event, ctx| {
             me.handle_inline_profile_selector_event(event, ctx);
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let inline_prompts_menu_view = ctx.add_view(|ctx| {
-            InlinePromptsMenuView::new(
-                suggestions_mode_model.clone(),
-                agent_view_controller.clone(),
-                &buffer_model,
-                &inline_terminal_menu_positioner,
-                ctx,
-            )
-        });
+                InlinePromptsMenuView::new(
+                    suggestions_mode_model.clone(),
+                    agent_view_controller.clone(),
+                    &buffer_model,
+                    &inline_terminal_menu_positioner,
+                    ctx,
+                )
+            });
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&inline_prompts_menu_view, |me, _, event, ctx| {
             me.handle_inline_prompts_menu_event(event, ctx);
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let inline_skill_selector_view = ctx.add_view(|ctx| {
-            InlineSkillSelectorView::new(
-                suggestions_mode_model.clone(),
-                agent_view_controller.clone(),
-                &buffer_model,
-                &inline_terminal_menu_positioner,
-                active_session,
-                terminal_view_id,
-                // Wired post-construction via `attach_ambient_agent_view_model`.
-                None,
-                ctx,
-            )
-        });
+                InlineSkillSelectorView::new(
+                    suggestions_mode_model.clone(),
+                    agent_view_controller.clone(),
+                    &buffer_model,
+                    &inline_terminal_menu_positioner,
+                    active_session,
+                    terminal_view_id,
+                    // Wired post-construction via `attach_ambient_agent_view_model`.
+                    None,
+                    ctx,
+                )
+            });
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&inline_skill_selector_view, |me, _, event, ctx| {
             me.handle_inline_skill_selector_event(event, ctx);
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let user_query_menu_view = ctx.add_view(|ctx| {
-            UserQueryMenuView::new(
-                AIConversationId::default(),
-                suggestions_mode_model.clone(),
-                agent_view_controller.clone(),
-                &inline_terminal_menu_positioner,
-                &buffer_model,
-                ctx,
-            )
-        });
+                UserQueryMenuView::new(
+                    AIConversationId::default(),
+                    suggestions_mode_model.clone(),
+                    agent_view_controller.clone(),
+                    &inline_terminal_menu_positioner,
+                    &buffer_model,
+                    ctx,
+                )
+            });
+        #[cfg(not(feature = "warp_lite"))]
         if FeatureFlag::AgentView.is_enabled() {
             ctx.subscribe_to_view(&user_query_menu_view, |me, _, event, ctx| {
                 me.handle_user_query_menu_event(event, ctx);
             });
         }
 
+        #[cfg(not(feature = "warp_lite"))]
         let inline_plan_menu_view = ctx.add_view(|ctx| {
-            InlinePlanMenuView::new(
-                AIConversationId::default(),
-                suggestions_mode_model.clone(),
-                agent_view_controller.clone(),
-                &inline_terminal_menu_positioner,
-                &buffer_model,
-                ctx,
-            )
-        });
+                InlinePlanMenuView::new(
+                    AIConversationId::default(),
+                    suggestions_mode_model.clone(),
+                    agent_view_controller.clone(),
+                    &inline_terminal_menu_positioner,
+                    &buffer_model,
+                    ctx,
+                )
+            });
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&inline_plan_menu_view, |me, _, event, ctx| {
             me.handle_plan_menu_event(event, ctx);
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let rewind_menu_view = ctx.add_view(|ctx| {
-            RewindMenuView::new(
-                AIConversationId::default(),
-                suggestions_mode_model.clone(),
-                agent_view_controller.clone(),
-                &inline_terminal_menu_positioner,
-                &buffer_model,
-                ctx,
-            )
-        });
+                RewindMenuView::new(
+                    AIConversationId::default(),
+                    suggestions_mode_model.clone(),
+                    agent_view_controller.clone(),
+                    &inline_terminal_menu_positioner,
+                    &buffer_model,
+                    ctx,
+                )
+            });
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&rewind_menu_view, |me, _, event, ctx| {
             me.handle_rewind_menu_event(event, ctx);
         });
@@ -3777,6 +3896,7 @@ impl Input {
             me.handle_slash_commands_menu_event(event, ctx);
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let cloud_mode_v2_slash_commands_view =
             match cloud_mode_composer_slash_command_data_source.clone() {
                 Some(v2_data_source) => {
@@ -3822,7 +3942,9 @@ impl Input {
             ctx.notify();
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let buy_credits_banner = ctx.add_typed_action_view(BuyCreditsBanner::new);
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&buy_credits_banner, |me, _, event, ctx| match event {
             BuyCreditsBannerEvent::OpenBillingAndUsage => {
                 ctx.emit(Event::OpenSettings(SettingsSection::BillingAndUsage));
@@ -3843,6 +3965,7 @@ impl Input {
             }
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let agent_status_view = ctx.add_typed_action_view(|ctx| {
             BlocklistAIStatusBar::new(
                 ai_controller.clone(),
@@ -3866,6 +3989,7 @@ impl Input {
             )
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let queued_prompts_panel = FeatureFlag::QueueSlashCommand.is_enabled().then(|| {
             let cli_subagent_controller = cli_subagent_controller.clone();
             let host_editor = editor.clone();
@@ -3921,6 +4045,7 @@ impl Input {
             command_x_ray_description: None,
             last_parsed_tokens: None,
             debounce_input_background_tx,
+            #[cfg(not(feature = "warp_lite"))]
             debounce_ai_query_prediction_tx,
             has_pending_command: false,
             last_word_insertion,
@@ -3954,39 +4079,66 @@ impl Input {
             terminal_view_id,
             #[cfg(feature = "local_fs")]
             conn: None,
+            #[cfg(not(feature = "warp_lite"))]
             predict_am_queries_future_handle: None,
+            #[cfg(not(feature = "warp_lite"))]
             attachment_chips: Default::default(),
+            #[cfg(not(feature = "warp_lite"))]
             is_processing_attached_images: false,
+            #[cfg(not(feature = "warp_lite"))]
             prompt_suggestions_view,
+            #[cfg(not(feature = "warp_lite"))]
             handoff_compose_state,
             slash_command_model,
             inline_slash_commands_view,
+            #[cfg(not(feature = "warp_lite"))]
             cloud_mode_v2_slash_commands_view,
+            #[cfg(not(feature = "warp_lite"))]
             inline_conversation_menu_view,
+            #[cfg(not(feature = "warp_lite"))]
             inline_plan_menu_view,
+            #[cfg(not(feature = "warp_lite"))]
             inline_repos_menu_view,
+            #[cfg(not(feature = "warp_lite"))]
             inline_model_selector_view,
+            #[cfg(not(feature = "warp_lite"))]
             inline_profile_selector_view,
+            #[cfg(not(feature = "warp_lite"))]
             inline_prompts_menu_view,
+            #[cfg(not(feature = "warp_lite"))]
             inline_skill_selector_view,
+            #[cfg(not(feature = "warp_lite"))]
             skill_selector_should_invoke: false,
+            #[cfg(not(feature = "warp_lite"))]
             user_query_menu_view,
+            #[cfg(not(feature = "warp_lite"))]
             rewind_menu_view,
             inline_history_menu_view,
+            #[cfg(not(feature = "warp_lite"))]
             cloud_mode_v2_history_menu_view,
             inline_terminal_menu_positioner,
+            #[cfg(not(feature = "warp_lite"))]
             cached_agent_mode_hint_text: None,
             is_editor_empty_on_last_edit: is_editor_empty,
             weak_view_handle: ctx.handle(),
+            #[cfg(not(feature = "warp_lite"))]
             buy_credits_banner,
+            #[cfg(not(feature = "warp_lite"))]
             agent_status_view,
+            #[cfg(not(feature = "warp_lite"))]
             queued_prompts_panel,
+            #[cfg(not(feature = "warp_lite"))]
             agent_view_controller,
+            #[cfg(not(feature = "warp_lite"))]
             agent_input_footer,
+            #[cfg(not(feature = "warp_lite"))]
             agent_shortcut_view_model,
+            #[cfg(not(feature = "warp_lite"))]
             ambient_agent_view_state,
             slash_command_data_source,
+            #[cfg(not(feature = "warp_lite"))]
             cloud_mode_composer_slash_command_data_source,
+            #[cfg(not(feature = "warp_lite"))]
             ephemeral_message_model,
             input_contents_before_prompt_chip_command: None,
         };
@@ -4012,6 +4164,7 @@ impl Input {
         input.update_ai_context_menu(ctx);
         // Ambient wiring goes through the single setter path (`attach_ambient_agent_view_model`)
         // so construction and the lazy shared-session viewer attach share one implementation.
+        #[cfg(not(feature = "warp_lite"))]
         if let Some(ambient_agent_view_model) = ambient_agent_view_model {
             input.attach_ambient_agent_view_model(ambient_agent_view_model, ctx);
         }
@@ -4054,10 +4207,12 @@ impl Input {
         });
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn agent_status_bar(&self) -> &ViewHandle<BlocklistAIStatusBar> {
         &self.agent_status_view
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_queued_prompts_panel_event(
         &mut self,
         event: &QueuedPromptsPanelEvent,
@@ -4131,11 +4286,13 @@ impl Input {
     }
 
     /// The queued prompts panel, when [`FeatureFlag::QueueSlashCommand`] is enabled.
+    #[cfg(not(feature = "warp_lite"))]
     pub(crate) fn queued_prompts_panel(&self) -> Option<&ViewHandle<QueuedPromptsPanelView>> {
         self.queued_prompts_panel.as_ref()
     }
 
     /// Returns whether this input's queued-prompt inline editor is currently focused.
+    #[cfg(not(feature = "warp_lite"))]
     pub(crate) fn is_queued_prompt_inline_editor_focused(&self, ctx: &AppContext) -> bool {
         self.queued_prompts_panel
             .as_ref()
@@ -4143,7 +4300,8 @@ impl Input {
     }
 
     /// Returns whether the active queued prompt is being edited inline.
-    fn is_editing_queued_prompt(&self, ctx: &AppContext) -> bool {
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn is_editing_queued_prompt(&self, ctx: &AppContext) -> bool {
         let Some(conversation_id) =
             BlocklistAIHistoryModel::as_ref(ctx).active_conversation_id(self.terminal_view_id)
         else {
@@ -4154,14 +4312,23 @@ impl Input {
             .is_some()
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn agent_input_footer(&self) -> &ViewHandle<AgentInputFooter> {
         &self.agent_input_footer
     }
 
     fn ambient_agent_view_model(&self) -> Option<&ModelHandle<AmbientAgentViewModel>> {
-        self.ambient_agent_view_state
-            .as_ref()
-            .map(AmbientAgentViewState::view_model)
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            return self
+                .ambient_agent_view_state
+                .as_ref()
+                .map(AmbientAgentViewState::view_model);
+        }
+        #[cfg(feature = "warp_lite")]
+        {
+            None
+        }
     }
 
     /// Shows a transient error toast for a follow-up submission that was blocked or redirected.
@@ -4299,23 +4466,48 @@ impl Input {
     }
 
     fn harness_selector(&self) -> Option<&ViewHandle<HarnessSelector>> {
-        self.ambient_agent_view_state
-            .as_ref()
-            .map(|state| &state.harness_selector)
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            return self
+                .ambient_agent_view_state
+                .as_ref()
+                .map(|state| &state.harness_selector);
+        }
+        #[cfg(feature = "warp_lite")]
+        {
+            None
+        }
     }
 
     fn host_selector(&self) -> Option<&ViewHandle<HostSelector>> {
-        self.ambient_agent_view_state
-            .as_ref()
-            .and_then(|state| state.host_selector.as_ref())
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            return self
+                .ambient_agent_view_state
+                .as_ref()
+                .and_then(|state| state.host_selector.as_ref());
+        }
+        #[cfg(feature = "warp_lite")]
+        {
+            None
+        }
     }
 
     fn auth_secret_selector(&self) -> Option<&ViewHandle<AuthSecretSelector>> {
-        self.ambient_agent_view_state
-            .as_ref()
-            .and_then(|state| state.auth_secret_selector.as_ref())
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            return self
+                .ambient_agent_view_state
+                .as_ref()
+                .and_then(|state| state.auth_secret_selector.as_ref());
+        }
+        #[cfg(feature = "warp_lite")]
+        {
+            None
+        }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub(super) fn auth_secret_delete_confirmation_dialog_element(
         &self,
         ctx: &AppContext,
@@ -4324,6 +4516,7 @@ impl Input {
             .map(|selector| selector.as_ref(ctx).delete_confirmation_dialog_element())
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub(super) fn auth_secret_ftux_view(&self) -> Option<&ViewHandle<AuthSecretFtuxView>> {
         self.ambient_agent_view_state
             .as_ref()
@@ -4333,6 +4526,7 @@ impl Input {
     /// Opens the V2 cloud-mode host selector popover, if the feature is enabled and the
     /// selector is constructed. No-op otherwise. Used by the `/host` slash command to
     /// programmatically open the same popover that the V2 footer's host button toggles.
+    #[cfg(not(feature = "warp_lite"))]
     pub(super) fn open_v2_host_selector(&mut self, ctx: &mut ViewContext<Self>) {
         let Some(host_selector) = self.host_selector().cloned() else {
             return;
@@ -4343,6 +4537,7 @@ impl Input {
     /// Opens the V2 cloud-mode harness selector popover, if the feature is enabled and the
     /// selector is constructed. No-op otherwise. Used by the `/harness` slash command to
     /// programmatically open the same popover that the V2 footer's harness button toggles.
+    #[cfg(not(feature = "warp_lite"))]
     pub(super) fn open_v2_harness_selector(&mut self, ctx: &mut ViewContext<Self>) {
         let Some(harness_selector) = self.harness_selector().cloned() else {
             return;
@@ -4350,6 +4545,7 @@ impl Input {
         harness_selector.update(ctx, |selector, ctx| selector.open_menu(ctx));
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub(super) fn open_v2_environment_selector(&mut self, ctx: &mut ViewContext<Self>) {
         self.agent_input_footer
             .clone()
@@ -4357,7 +4553,11 @@ impl Input {
     }
 
     /// Restores the `&` handoff compose draft after a workspace failure.
-    #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
+    #[cfg(all(
+        feature = "local_fs",
+        not(target_family = "wasm"),
+        not(feature = "warp_lite")
+    ))]
     pub(crate) fn restore_cloud_handoff_draft(
         &mut self,
         launch: PendingCloudLaunch,
@@ -4380,7 +4580,36 @@ impl Input {
         }
     }
 
-    fn prefix_mode(&self, ctx: &AppContext) -> InputPrefixMode {
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn is_agent_view_active(&self, ctx: &AppContext) -> bool {
+        self.agent_view_controller.as_ref(ctx).is_active()
+    }
+
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn is_agent_view_fullscreen(&self, ctx: &AppContext) -> bool {
+        self.agent_view_controller.as_ref(ctx).is_fullscreen()
+    }
+
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn is_agent_view_inline(&self, ctx: &AppContext) -> bool {
+        self.agent_view_controller
+            .as_ref(ctx)
+            .agent_view_state()
+            .is_inline()
+    }
+
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn is_cloud_agent_pre_first_exchange(&self, ctx: &AppContext) -> bool {
+        is_cloud_agent_pre_first_exchange(
+            self.ambient_agent_view_model(),
+            &self.agent_view_controller,
+            &self.model.lock(),
+            ctx,
+        )
+    }
+
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn prefix_mode(&self, ctx: &AppContext) -> InputPrefixMode {
         let is_handoff_active = self.handoff_compose_state.as_ref(ctx).is_active();
         let ai_input_model = self.ai_input_model.as_ref(ctx);
         let is_shell_active =
@@ -4397,7 +4626,8 @@ impl Input {
 
     /// Switches the input into cloud handoff compose mode, locking it to AI input
     /// and activating the handoff compose state.
-    fn activate_cloud_handoff_compose(
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn activate_cloud_handoff_compose(
         &mut self,
         entry_point: HandoffEntryPoint,
         ctx: &mut ViewContext<Self>,
@@ -4431,7 +4661,11 @@ impl Input {
 
     /// Spawns an async task to resolve the pwd's git repo and pick the best
     /// environment overlap, updating the handoff compose state when done.
-    #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
+    #[cfg(all(
+        feature = "local_fs",
+        not(target_family = "wasm"),
+        not(feature = "warp_lite")
+    ))]
     fn auto_select_environment_from_pwd(&mut self, ctx: &mut ViewContext<Self>) {
         let Some(pwd) = self
             .active_session_path_if_local(ctx)
@@ -4461,11 +4695,16 @@ impl Input {
     }
 
     #[cfg_attr(target_family = "wasm", allow(dead_code))]
+    #[cfg(not(feature = "warp_lite"))]
     pub(crate) fn handoff_entry_point(&self, ctx: &AppContext) -> HandoffEntryPoint {
         self.handoff_compose_state.as_ref(ctx).entry_point()
     }
 
-    #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
+    #[cfg(all(
+        feature = "local_fs",
+        not(target_family = "wasm"),
+        not(feature = "warp_lite")
+    ))]
     pub(crate) fn exit_cloud_handoff_compose_and_clear_prompt(
         &mut self,
         ctx: &mut ViewContext<Self>,
@@ -4476,7 +4715,8 @@ impl Input {
         });
     }
 
-    fn exit_cloud_handoff_compose(&mut self, ctx: &mut ViewContext<Self>) {
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn exit_cloud_handoff_compose(&mut self, ctx: &mut ViewContext<Self>) {
         if self.prefix_mode(ctx) != InputPrefixMode::CloudHandoff {
             return;
         }
@@ -4500,7 +4740,8 @@ impl Input {
 
     // Cloud handoff methods — candidates for extraction to a separate file
     // following the pattern used by `agent.rs`, `classic.rs`, etc.
-    fn can_activate_cloud_handoff_prefix(
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn can_activate_cloud_handoff_prefix(
         &self,
         edit_origin: &EditOrigin,
         ctx: &AppContext,
@@ -4516,13 +4757,14 @@ impl Input {
             && AISettings::as_ref(ctx).is_ampersand_handoff_enabled(ctx)
             && !is_powershell_with_nld_enabled
             && FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(ctx).is_fullscreen()
+            && self.is_agent_view_fullscreen(ctx)
             && !is_cloud
             && !CLIAgentSessionsModel::as_ref(ctx).is_input_open(self.terminal_view_id)
             && self.prefix_mode(ctx) == InputPrefixMode::None
     }
 
-    fn maybe_activate_cloud_handoff_prefix(
+    #[cfg(not(feature = "warp_lite"))]
+    pub(in crate::terminal) fn maybe_activate_cloud_handoff_prefix(
         &mut self,
         edit_origin: &EditOrigin,
         ctx: &mut ViewContext<Self>,
@@ -4680,7 +4922,11 @@ impl Input {
         true
     }
 
-    #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
+    #[cfg(all(
+        feature = "local_fs",
+        not(target_family = "wasm"),
+        not(feature = "warp_lite")
+    ))]
     fn maybe_launch_cloud_handoff_request(&mut self, ctx: &mut ViewContext<Self>) -> bool {
         use crate::cloud_object::CloudObjectLookup as _;
 
@@ -4752,7 +4998,11 @@ impl Input {
         true
     }
 
-    #[cfg(not(all(feature = "local_fs", not(target_family = "wasm"))))]
+    #[cfg(not(all(
+        feature = "local_fs",
+        not(target_family = "wasm"),
+        not(feature = "warp_lite")
+    )))]
     fn maybe_launch_cloud_handoff_request(&mut self, _ctx: &mut ViewContext<Self>) -> bool {
         false
     }
@@ -5029,7 +5279,7 @@ impl Input {
         } else {
             self.system_insert("/", ctx);
             let is_in_agent_view = FeatureFlag::AgentView.is_enabled()
-                && self.agent_view_controller.as_ref(ctx).is_fullscreen();
+                && self.is_agent_view_fullscreen(ctx);
             send_telemetry_from_ctx!(
                 TelemetryEvent::OpenSlashMenu {
                     source: SlashMenuSource::SlashButton,
@@ -5041,6 +5291,7 @@ impl Input {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_conversation_menu_event(
         &mut self,
         event: &InlineConversationMenuEvent,
@@ -5049,7 +5300,7 @@ impl Input {
         match event {
             InlineConversationMenuEvent::NavigateToConversation { item_id } => {
                 let is_in_agent_view = FeatureFlag::AgentView.is_enabled()
-                    && self.agent_view_controller.as_ref(ctx).is_fullscreen();
+                    && self.is_agent_view_fullscreen(ctx);
                 send_telemetry_from_ctx!(
                     TelemetryEvent::InlineConversationMenuItemSelected { is_in_agent_view },
                     ctx
@@ -5097,6 +5348,7 @@ impl Input {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_repos_menu_event(
         &mut self,
         event: &InlineReposMenuEvent,
@@ -5126,6 +5378,7 @@ impl Input {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_inline_model_selector_event(
         &mut self,
         event: &InlineModelSelectorEvent,
@@ -5211,6 +5464,7 @@ impl Input {
         self.focus_input_box(ctx);
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_inline_profile_selector_event(
         &mut self,
         event: &InlineProfileSelectorEvent,
@@ -5263,6 +5517,7 @@ impl Input {
         self.focus_input_box(ctx);
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_inline_prompts_menu_event(
         &mut self,
         event: &InlinePromptsMenuEvent,
@@ -5293,6 +5548,7 @@ impl Input {
         );
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_inline_skill_selector_event(
         &mut self,
         event: &InlineSkillSelectorEvent,
@@ -5349,6 +5605,7 @@ impl Input {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn toggle_inline_model_selector_from_chip(
         &mut self,
         initial_tab: InlineModelSelectorTab,
@@ -5385,6 +5642,7 @@ impl Input {
     /// input can be used to search models. The parked prompt is restored when the
     /// selector closes (on model selection or dismissal). Shared by the model
     /// chip, the `/model` keybinding, and the OpenModelSelector action.
+    #[cfg(not(feature = "warp_lite"))]
     fn open_model_selector_and_snapshot_prompt(
         &mut self,
         initial_tab: InlineModelSelectorTab,
@@ -5413,6 +5671,7 @@ impl Input {
         self.focus_input_box(ctx);
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_profile_selector(&mut self, ctx: &mut ViewContext<Self>) {
         if !FeatureFlag::InlineProfileSelector.is_enabled() {
             return;
@@ -5425,6 +5684,7 @@ impl Input {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_prompts_menu(&mut self, ctx: &mut ViewContext<Self>) {
         self.suggestions_mode_model.update(ctx, |model, ctx| {
             model.set_mode(InputSuggestionsMode::PromptsMenu, ctx);
@@ -5433,6 +5693,7 @@ impl Input {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_skill_selector(&mut self, ctx: &mut ViewContext<Self>) {
         if !FeatureFlag::ListSkills.is_enabled() {
             return;
@@ -5449,6 +5710,7 @@ impl Input {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_invoke_skill_selector(&mut self, ctx: &mut ViewContext<Self>) {
         if !FeatureFlag::ListSkills.is_enabled() {
             return;
@@ -5465,6 +5727,7 @@ impl Input {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_plan_menu(
         &mut self,
         conversation_id: AIConversationId,
@@ -5476,6 +5739,7 @@ impl Input {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_plan_menu_event(&mut self, event: &InlinePlanMenuEvent, ctx: &mut ViewContext<Self>) {
         match event {
             InlinePlanMenuEvent::OpenPlan {
@@ -5504,6 +5768,7 @@ impl Input {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_conversation_menu(&mut self, ctx: &mut ViewContext<Self>) {
         // Don't open menu if there's a long-running command
         if self
@@ -5520,7 +5785,7 @@ impl Input {
             model.set_mode(InputSuggestionsMode::ConversationMenu, ctx);
         });
         let is_in_agent_view = FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(ctx).is_fullscreen();
+            && self.is_agent_view_fullscreen(ctx);
         send_telemetry_from_ctx!(
             TelemetryEvent::InlineConversationMenuOpened { is_in_agent_view },
             ctx
@@ -5535,6 +5800,7 @@ impl Input {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_user_query_menu_event(
         &mut self,
         event: &UserQueryMenuEvent,
@@ -5565,6 +5831,7 @@ impl Input {
                 };
 
                 let destination = ForkedConversationDestination::for_fork_trigger(*cmd_enter);
+                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ForkAIConversation {
                     conversation_id,
                     fork_from_exchange: Some(ForkFromExchange {
@@ -5579,7 +5846,7 @@ impl Input {
                 });
 
                 let is_in_agent_view = FeatureFlag::AgentView.is_enabled()
-                    && self.agent_view_controller.as_ref(ctx).is_active();
+                    && self.is_agent_view_active(ctx);
                 send_telemetry_from_ctx!(
                     TelemetryEvent::SlashCommandAccepted {
                         command_details: SlashCommandAcceptedDetails::StaticCommand {
@@ -5623,6 +5890,7 @@ impl Input {
                     ctx.notify();
                 }
                 self.clear_buffer_and_reset_undo_stack(ctx);
+                #[cfg(not(feature = "warp_lite"))]
                 self.agent_view_controller.update(ctx, |controller, ctx| {
                     let _ = controller.try_enter_agent_view(
                         Some(*conversation_id),
@@ -5693,7 +5961,7 @@ impl Input {
                 // In fullscreen agent view, lock to Shell mode so the '!' indicator is
                 // rendered while cycling through shell command history.
                 let is_agent_view_fullscreen =
-                    self.agent_view_controller.as_ref(ctx).is_fullscreen();
+                    self.is_agent_view_fullscreen(ctx);
                 self.ai_input_model.update(ctx, |ai_input_model, ctx| {
                     if is_agent_view_fullscreen {
                         ai_input_model.set_input_config(
@@ -5801,6 +6069,7 @@ impl Input {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_rewind_menu(&mut self, ctx: &mut ViewContext<Self>) {
         // Don't reopen if already open.
         if self.suggestions_mode_model.as_ref(ctx).is_rewind_menu() {
@@ -5839,6 +6108,7 @@ impl Input {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_rewind_menu_event(&mut self, event: &RewindMenuEvent, ctx: &mut ViewContext<Self>) {
         if !self.suggestions_mode_model.as_ref(ctx).is_rewind_menu() {
             report_error!("handle_rewind_menu_event called when mode is not RewindMenu");
@@ -5878,7 +6148,7 @@ impl Input {
                 });
 
                 let is_in_agent_view = FeatureFlag::AgentView.is_enabled()
-                    && self.agent_view_controller.as_ref(ctx).is_active();
+                    && self.is_agent_view_active(ctx);
                 send_telemetry_from_ctx!(
                     TelemetryEvent::SlashCommandAccepted {
                         command_details: SlashCommandAcceptedDetails::StaticCommand {
@@ -5904,11 +6174,18 @@ impl Input {
         }
 
         // Don't open inline history menu if a chip menu or model selector is already open
-        let agent_footer = self.agent_input_footer.as_ref(ctx);
-        if self.prompt_render_helper.has_open_chip_menu(ctx)
-            || agent_footer.has_open_chip_menu(ctx)
-            || agent_footer.is_model_selector_open(ctx)
+        #[cfg(not(feature = "warp_lite"))]
         {
+            let agent_footer = self.agent_input_footer.as_ref(ctx);
+            if self.prompt_render_helper.has_open_chip_menu(ctx)
+                || agent_footer.has_open_chip_menu(ctx)
+                || agent_footer.is_model_selector_open(ctx)
+            {
+                return;
+            }
+        }
+        #[cfg(feature = "warp_lite")]
+        if self.prompt_render_helper.has_open_chip_menu(ctx) {
             return;
         }
 
@@ -6001,8 +6278,9 @@ impl Input {
 
         // Enter agent view if not already active
         if FeatureFlag::AgentView.is_enabled()
-            && !self.agent_view_controller.as_ref(ctx).is_active()
+            && !self.is_agent_view_active(ctx)
         {
+            #[cfg(not(feature = "warp_lite"))]
             self.agent_view_controller.update(ctx, |controller, ctx| {
                 let _ = controller.try_enter_agent_view(
                     None,
@@ -6137,6 +6415,7 @@ impl Input {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn update_image_context_options(&mut self, ctx: &mut ViewContext<Self>) {
         let ai_input_model = self.ai_input_model.as_ref(ctx);
 
@@ -6195,6 +6474,7 @@ impl Input {
         self.prompt_suggestions_banner_state = banner_state.clone();
 
         if let Some(banner_state) = banner_state {
+            #[cfg(not(feature = "warp_lite"))]
             self.prompt_suggestions_view.update(ctx, |view, ctx| {
                 view.set_banner_state(banner_state);
                 ctx.notify();
@@ -6562,7 +6842,15 @@ impl Input {
             }
             (InputType::Shell, true) => {
                 // Ensure hint text is cached for new conversations
-                get_stable_agent_mode_hint_text(&mut self.cached_agent_mode_hint_text).to_owned()
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    get_stable_agent_mode_hint_text(&mut self.cached_agent_mode_hint_text).to_owned()
+                }
+                #[cfg(feature = "warp_lite")]
+                {
+                    let mut cache = None;
+                    get_stable_agent_mode_hint_text(&mut cache).to_owned()
+                }
             }
             (InputType::AI, _) => {
                 if let Some(conversation) =
@@ -6610,8 +6898,16 @@ impl Input {
                     }
                     None => {
                         // Ensure hint text is cached for new conversations
-                        get_stable_agent_mode_hint_text(&mut self.cached_agent_mode_hint_text)
-                            .to_owned()
+                        #[cfg(not(feature = "warp_lite"))]
+                        {
+                            get_stable_agent_mode_hint_text(&mut self.cached_agent_mode_hint_text)
+                                .to_owned()
+                        }
+                        #[cfg(feature = "warp_lite")]
+                        {
+                            let mut cache = None;
+                            get_stable_agent_mode_hint_text(&mut cache).to_owned()
+                        }
                     }
                 }
             }
@@ -6786,7 +7082,7 @@ impl Input {
 
         let ai_settings = AISettings::as_ref(ctx);
         if FeatureFlag::AgentView.is_enabled() {
-            if self.agent_view_controller.as_ref(ctx).is_fullscreen() {
+            if self.is_agent_view_fullscreen(ctx) {
                 if !ai_settings.is_ai_autodetection_enabled(ctx) {
                     return;
                 }
@@ -7030,6 +7326,7 @@ impl Input {
     }
 
     /// Clear the cached hint text to generate a new one on next render
+    #[cfg(not(feature = "warp_lite"))]
     pub fn clear_cached_hint_text(&mut self) {
         self.cached_agent_mode_hint_text = None;
     }
@@ -7077,23 +7374,26 @@ impl Input {
             return;
         }
         if self.prefix_mode(ctx) == InputPrefixMode::CloudHandoff {
-            let conversation_is_empty = BlocklistAIHistoryModel::as_ref(ctx)
-                .active_conversation(self.terminal_view_id)
-                .is_none_or(|c| c.is_empty());
-            let hint = if conversation_is_empty {
-                CLOUD_MODE_V2_HINT_TEXT.to_owned()
-            } else {
-                self.handoff_compose_state
-                    .as_ref(ctx)
-                    .selected_environment_id()
-                    .and_then(|id| CloudAmbientAgentEnvironment::get_by_id(id, ctx))
-                    .map(|env| format!("Hand off to {}", env.model().string_model.display_name()))
-                    .unwrap_or_else(|| "Handoff to cloud".to_owned())
-            };
-            self.editor.update(ctx, |editor, ctx| {
-                editor.set_placeholder_text(&hint, ctx);
-            });
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                let conversation_is_empty = BlocklistAIHistoryModel::as_ref(ctx)
+                    .active_conversation(self.terminal_view_id)
+                    .is_none_or(|c| c.is_empty());
+                let hint = if conversation_is_empty {
+                    CLOUD_MODE_V2_HINT_TEXT.to_owned()
+                } else {
+                    self.handoff_compose_state
+                        .as_ref(ctx)
+                        .selected_environment_id()
+                        .and_then(|id| CloudAmbientAgentEnvironment::get_by_id(id, ctx))
+                        .map(|env| format!("Hand off to {}", env.model().string_model.display_name()))
+                        .unwrap_or_else(|| "Handoff to cloud".to_owned())
+                };
+                self.editor.update(ctx, |editor, ctx| {
+                    editor.set_placeholder_text(&hint, ctx);
+                });
+                return;
+            }
         }
 
         if self.is_cloud_mode_input_v2_composing(ctx) {
@@ -9180,6 +9480,7 @@ impl Input {
                 true
             }
             InputSuggestionsMode::SlashCommands => {
+                #[cfg(not(feature = "warp_lite"))]
                 if self.is_cloud_mode_input_v2_composing(ctx) {
                     if let Some(view) = self.cloud_mode_v2_slash_commands_view.clone() {
                         view.update(ctx, |view, ctx| {
@@ -9191,14 +9492,20 @@ impl Input {
                         view.select_up(ctx);
                     });
                 }
+                #[cfg(feature = "warp_lite")]
+                self.inline_slash_commands_view.update(ctx, |view, ctx| {
+                    view.select_up(ctx);
+                });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::ConversationMenu => {
                 self.inline_conversation_menu_view.update(ctx, |view, ctx| {
                     view.select_up(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::UserQueryMenu {
                 action: UserQueryMenuAction::ForkFrom,
                 ..
@@ -9208,6 +9515,7 @@ impl Input {
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::UserQueryMenu {
                 action: UserQueryMenuAction::Rewind,
                 ..
@@ -9217,24 +9525,28 @@ impl Input {
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::ModelSelector => {
                 self.inline_model_selector_view.update(ctx, |view, ctx| {
                     view.select_up(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::ProfileSelector => {
                 self.inline_profile_selector_view.update(ctx, |view, ctx| {
                     view.select_up(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::PromptsMenu => {
                 self.inline_prompts_menu_view.update(ctx, |view, ctx| {
                     view.select_up(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::SkillMenu => {
                 self.inline_skill_selector_view.update(ctx, |view, ctx| {
                     view.select_up(ctx);
@@ -9242,6 +9554,7 @@ impl Input {
                 true
             }
             InputSuggestionsMode::InlineHistoryMenu { .. } => {
+                #[cfg(not(feature = "warp_lite"))]
                 if self.is_cloud_mode_input_v2_composing(ctx) {
                     if let Some(view) = self.cloud_mode_v2_history_menu_view.clone() {
                         view.update(ctx, |view, ctx| {
@@ -9253,14 +9566,20 @@ impl Input {
                         view.select_up(ctx);
                     });
                 }
+                #[cfg(feature = "warp_lite")]
+                self.inline_history_menu_view.update(ctx, |view, ctx| {
+                    view.select_up(ctx);
+                });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::IndexedReposMenu => {
                 self.inline_repos_menu_view.update(ctx, |view, ctx| {
                     view.select_up(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::PlanMenu { .. } => {
                 self.inline_plan_menu_view.update(ctx, |view, ctx| {
                     view.select_up(ctx);
@@ -9272,6 +9591,15 @@ impl Input {
             | InputSuggestionsMode::StaticWorkflowEnumSuggestions { .. }
             | InputSuggestionsMode::DynamicWorkflowEnumSuggestions { .. }
             | InputSuggestionsMode::Closed => false,
+            #[cfg(feature = "warp_lite")]
+            InputSuggestionsMode::ConversationMenu
+            | InputSuggestionsMode::ModelSelector
+            | InputSuggestionsMode::ProfileSelector
+            | InputSuggestionsMode::PromptsMenu
+            | InputSuggestionsMode::SkillMenu
+            | InputSuggestionsMode::UserQueryMenu { .. }
+            | InputSuggestionsMode::IndexedReposMenu
+            | InputSuggestionsMode::PlanMenu { .. } => false,
         };
 
         if handled {
@@ -9358,6 +9686,7 @@ impl Input {
             // If the input is not being used as a search on the model menu
             // we should not restore/revert the changes to the input on-dismiss,
             // unless we parked a prompt to search (then we restore that prompt).
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::ModelSelector => {
                 let view = self.inline_model_selector_view.as_ref(ctx);
                 view.prompt_parked_for_search() || view.filter_results_by_input()
@@ -9429,13 +9758,13 @@ impl Input {
                 editor.handle_action(&EditorAction::VimEscape, editor_ctx);
             });
         } else if FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(ctx).is_active()
+            && self.is_agent_view_active(ctx)
             && has_attached_context
         {
             self.clear_attached_context(ctx);
         } else {
             if FeatureFlag::AgentView.is_enabled()
-                && !self.agent_view_controller.as_ref(ctx).is_fullscreen()
+                && !self.is_agent_view_fullscreen(ctx)
             {
                 if self.ai_input_model.as_ref(ctx).is_ai_input_enabled() {
                     // This implies the contents of the terminal input are autodetected as an agent
@@ -9548,6 +9877,7 @@ impl Input {
                 true
             }
             InputSuggestionsMode::SlashCommands => {
+                #[cfg(not(feature = "warp_lite"))]
                 if self.is_cloud_mode_input_v2_composing(ctx) {
                     if let Some(view) = self.cloud_mode_v2_slash_commands_view.clone() {
                         view.update(ctx, |view, ctx| {
@@ -9559,14 +9889,20 @@ impl Input {
                         view.select_down(ctx);
                     });
                 }
+                #[cfg(feature = "warp_lite")]
+                self.inline_slash_commands_view.update(ctx, |view, ctx| {
+                    view.select_down(ctx);
+                });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::ConversationMenu => {
                 self.inline_conversation_menu_view.update(ctx, |view, ctx| {
                     view.select_down(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::UserQueryMenu {
                 action: UserQueryMenuAction::ForkFrom,
                 ..
@@ -9576,6 +9912,7 @@ impl Input {
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::UserQueryMenu {
                 action: UserQueryMenuAction::Rewind,
                 ..
@@ -9585,36 +9922,42 @@ impl Input {
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::ModelSelector => {
                 self.inline_model_selector_view.update(ctx, |view, ctx| {
                     view.select_down(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::ProfileSelector => {
                 self.inline_profile_selector_view.update(ctx, |view, ctx| {
                     view.select_down(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::PromptsMenu => {
                 self.inline_prompts_menu_view.update(ctx, |view, ctx| {
                     view.select_down(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::SkillMenu => {
-                self.inline_skill_selector_view.update(ctx, |view, ctx| {
+                self.inline_skill_selector_view.update(ctx| {
                     view.select_down(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::IndexedReposMenu => {
                 self.inline_repos_menu_view.update(ctx, |view, ctx| {
                     view.select_down(ctx);
                 });
                 true
             }
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::PlanMenu { .. } => {
                 self.inline_plan_menu_view.update(ctx, |view, ctx| {
                     view.select_down(ctx);
@@ -9627,6 +9970,15 @@ impl Input {
             | InputSuggestionsMode::DynamicWorkflowEnumSuggestions { .. }
             | InputSuggestionsMode::InlineHistoryMenu { .. }
             | InputSuggestionsMode::Closed => false,
+            #[cfg(feature = "warp_lite")]
+            InputSuggestionsMode::ConversationMenu
+            | InputSuggestionsMode::ModelSelector
+            | InputSuggestionsMode::ProfileSelector
+            | InputSuggestionsMode::PromptsMenu
+            | InputSuggestionsMode::SkillMenu
+            | InputSuggestionsMode::UserQueryMenu { .. }
+            | InputSuggestionsMode::IndexedReposMenu
+            | InputSuggestionsMode::PlanMenu { .. } => false,
         };
 
         if handled {
@@ -9637,6 +9989,7 @@ impl Input {
             .is_inline_history_menu()
         {
             if self.is_cloud_mode_input_v2_composing(ctx) {
+                #[cfg(not(feature = "warp_lite"))]
                 if let Some(view) = self.cloud_mode_v2_history_menu_view.clone() {
                     view.update(ctx, |view, ctx| {
                         view.select_down(ctx);
@@ -10211,11 +10564,14 @@ impl Input {
             && is_ai_input_enabled
             && !self.buffer_text(ctx).is_empty()
         {
-            // Cancel any pending requests for AM ghosted text predictions.
-            if let Some(future_handle) = self.predict_am_queries_future_handle.take() {
-                future_handle.abort();
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                // Cancel any pending requests for AM ghosted text predictions.
+                if let Some(future_handle) = self.predict_am_queries_future_handle.take() {
+                    future_handle.abort();
+                }
+                let _ = self.debounce_ai_query_prediction_tx.try_send(());
             }
-            let _ = self.debounce_ai_query_prediction_tx.try_send(());
         }
 
         match event {
@@ -10529,7 +10885,7 @@ impl Input {
                         last_buffer_text == TERMINAL_INPUT_PREFIX && buffer_text.is_empty();
 
                     let is_fullscreen_agent_view_active =
-                        self.agent_view_controller.as_ref(ctx).is_fullscreen();
+                        self.is_agent_view_fullscreen(ctx);
                     let current_input_config = self.ai_input_model.as_ref(ctx).input_config();
 
                     // We should re-enable autodetection if the user overrode an autodetection
@@ -10547,7 +10903,7 @@ impl Input {
                         && current_input_config.is_locked
                         && !was_shell_mode_prefix_stripped)
                         || (ai_settings.is_nld_in_terminal_enabled(ctx)
-                            && !self.agent_view_controller.as_ref(ctx).is_active()
+                            && !self.is_agent_view_active(ctx)
                             && !is_cli_agent_input_open
                             && current_input_config.is_shell()
                             && current_input_config.is_locked);
@@ -10561,7 +10917,7 @@ impl Input {
 
                 // If the last buffer didn't start with the terminal input prefix and the current buffer does, then enable terminal input and lock it.
                 let is_locked_shell_mode = !is_ai_input_enabled && is_input_mode_locked;
-                let is_agent_view_active = self.agent_view_controller.as_ref(ctx).is_active();
+                let is_agent_view_active = self.is_agent_view_active(ctx);
                 let is_agent_in_control_or_tagged_in = self
                     .model
                     .lock()
@@ -10807,6 +11163,7 @@ impl Input {
                         // User query menu handles its own state
                     }
                     InputSuggestionsMode::InlineHistoryMenu { .. } => {
+                        #[cfg(not(feature = "warp_lite"))]
                         let mismatched = if self.is_cloud_mode_input_v2_composing(ctx) {
                             self.cloud_mode_v2_history_menu_view
                                 .as_ref()
@@ -10825,6 +11182,17 @@ impl Input {
                                     *selected_item_text != self.editor.as_ref(ctx).buffer_text(ctx)
                                 })
                         };
+                        #[cfg(feature = "warp_lite")]
+                        let mismatched = self
+                            .inline_history_menu_view
+                            .as_ref(ctx)
+                            .model()
+                            .as_ref(ctx)
+                            .selected_item()
+                            .and_then(|item| item.buffer_replacement_text())
+                            .is_some_and(|selected_item_text| {
+                                *selected_item_text != self.editor.as_ref(ctx).buffer_text(ctx)
+                            });
                         if mismatched {
                             self.suggestions_mode_model.update(ctx, |model, ctx| {
                                 model.set_mode(InputSuggestionsMode::Closed, ctx);
@@ -11115,7 +11483,7 @@ impl Input {
                     let is_cli_agent_input_open =
                         CLIAgentSessionsModel::as_ref(ctx).is_input_open(self.terminal_view_id);
                     let is_agent_view_fullscreen =
-                        self.agent_view_controller.as_ref(ctx).is_fullscreen();
+                        self.is_agent_view_fullscreen(ctx);
                     if is_agent_view_fullscreen || is_cli_agent_input_open {
                         self.exit_shell_mode_to_ai(ctx);
                     }
@@ -11203,6 +11571,7 @@ impl Input {
                     .update(ctx, |button_bar, ctx| {
                         button_bar.set_voice_is_listening(*is_listening, ctx);
                     });
+                #[cfg(not(feature = "warp_lite"))]
                 self.agent_input_footer.update(ctx, |footer, ctx| {
                     footer.set_voice_is_active(*is_listening || *is_transcribing, ctx);
                 });
@@ -11505,7 +11874,7 @@ impl Input {
         let ai_input = self.ai_input_model.as_ref(ctx);
         let in_agent_mode = matches!(ai_input.input_type(), InputType::AI);
         let is_buffer_empty = self.buffer_text(ctx).is_empty();
-        let in_active_agent_view = self.agent_view_controller.as_ref(ctx).is_active();
+        let in_active_agent_view = self.is_agent_view_active(ctx);
         in_agent_mode || is_buffer_empty || in_active_agent_view
     }
 
@@ -11556,7 +11925,7 @@ impl Input {
         }
 
         let is_buffer_empty = self.buffer_text(ctx).is_empty();
-        let in_active_agent_view = self.agent_view_controller.as_ref(ctx).is_active();
+        let in_active_agent_view = self.is_agent_view_active(ctx);
         if is_buffer_empty || in_active_agent_view {
             self.set_input_mode_agent(true, ctx);
             self.update_image_context_options(ctx);
@@ -11637,12 +12006,13 @@ impl Input {
             .active_block()
             .is_active_and_long_running();
         if !FeatureFlag::AgentView.is_enabled()
-            || self.agent_view_controller.as_ref(ctx).is_active()
+            || self.is_agent_view_active(ctx)
             || is_in_long_running_command
         {
             return;
         }
 
+        #[cfg(not(feature = "warp_lite"))]
         if let Err(e) = self.agent_view_controller.update(ctx, |controller, ctx| {
             controller.try_enter_agent_view(None, AgentViewEntryOrigin::ImageAdded, ctx)
         }) {
@@ -11708,6 +12078,7 @@ impl Input {
         images_to_attach
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn set_is_processing_attached_images(
         &mut self,
         is_processing_attached_images: bool,
@@ -11731,7 +12102,7 @@ impl Input {
             InputPrefixMode::Shell => {
                 let is_cli_agent_input_open =
                     CLIAgentSessionsModel::as_ref(ctx).is_input_open(self.terminal_view_id);
-                if self.agent_view_controller.as_ref(ctx).is_fullscreen() || is_cli_agent_input_open
+                if self.is_agent_view_fullscreen(ctx) || is_cli_agent_input_open
                 {
                     self.exit_shell_mode_to_ai(ctx);
                     ctx.notify();
@@ -11754,7 +12125,7 @@ impl Input {
 
         // When the agent view is active, the classic-mode AI icon toggling and follow-up clearing
         // logic below does not apply.
-        if FeatureFlag::AgentView.is_enabled() && self.agent_view_controller.as_ref(ctx).is_active()
+        if FeatureFlag::AgentView.is_enabled() && self.is_agent_view_active(ctx)
         {
             return;
         }
@@ -11948,12 +12319,7 @@ impl Input {
         // sharer's input sync is skipped, so preserve the viewer's in-progress follow-up instead
         // of discarding it.
         let cloud_setup_pre_first_exchange = FeatureFlag::CloudModeSetupV2.is_enabled()
-            && is_cloud_agent_pre_first_exchange(
-                self.ambient_agent_view_model(),
-                &self.agent_view_controller,
-                &self.model.lock(),
-                ctx,
-            );
+            && self.is_cloud_agent_pre_first_exchange(ctx);
         let preserved_text = if cloud_setup_pre_first_exchange {
             self.editor().as_ref(ctx).buffer_text(ctx)
         } else {
@@ -12795,6 +13161,7 @@ impl Input {
         match self.suggestions_mode_model.as_ref(ctx).mode() {
             // If the model selector is open and has multiple tabs,
             // shift + tab should cycle between them.
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::ModelSelector => {
                 if self
                     .inline_model_selector_view
@@ -12806,6 +13173,7 @@ impl Input {
             // If the inline history menu is open and has multiple tabs,
             // shift + tab should cycle between them.
             InputSuggestionsMode::InlineHistoryMenu { .. } => {
+                #[cfg(not(feature = "warp_lite"))]
                 if self.is_cloud_mode_input_v2_composing(ctx) {
                     return;
                 }
@@ -12818,6 +13186,7 @@ impl Input {
             }
             // If the conversation menu is open and has multiple tabs,
             // shift + tab should cycle between them.
+            #[cfg(not(feature = "warp_lite"))]
             InputSuggestionsMode::ConversationMenu => {
                 if self
                     .inline_conversation_menu_view
@@ -12833,6 +13202,8 @@ impl Input {
                 });
                 return;
             }
+            #[cfg(feature = "warp_lite")]
+            InputSuggestionsMode::ModelSelector | InputSuggestionsMode::ConversationMenu => {}
             _ => {}
         }
 
@@ -13237,8 +13608,9 @@ impl Input {
         ctx: &mut ViewContext<Self>,
     ) {
         if FeatureFlag::AgentView.is_enabled()
-            && !self.agent_view_controller.as_ref(ctx).is_active()
+            && !self.is_agent_view_active(ctx)
         {
+            #[cfg(not(feature = "warp_lite"))]
             self.agent_view_controller.update(ctx, |controller, ctx| {
                 let _ =
                     controller.try_enter_agent_view(None, AgentViewEntryOrigin::ProjectEntry, ctx);
@@ -13251,8 +13623,9 @@ impl Input {
 
     pub(crate) fn initiate_clone_repository(&mut self, url: String, ctx: &mut ViewContext<Self>) {
         if FeatureFlag::AgentView.is_enabled()
-            && !self.agent_view_controller.as_ref(ctx).is_active()
+            && !self.is_agent_view_active(ctx)
         {
+            #[cfg(not(feature = "warp_lite"))]
             self.agent_view_controller.update(ctx, |controller, ctx| {
                 let _ =
                     controller.try_enter_agent_view(None, AgentViewEntryOrigin::ProjectEntry, ctx);
@@ -13289,6 +13662,7 @@ impl Input {
             }
 
             // If the prompts menu is open, Enter selects the highlighted prompt.
+            #[cfg(not(feature = "warp_lite"))]
             if self.suggestions_mode_model.as_ref(ctx).is_prompts_menu() {
                 self.inline_prompts_menu_view
                     .update(ctx, |view, ctx| view.accept_selected_item(ctx));
@@ -13296,6 +13670,7 @@ impl Input {
             }
 
             // If the skill selector menu is open, Enter selects the highlighted skill.
+            #[cfg(not(feature = "warp_lite"))]
             if self.suggestions_mode_model.as_ref(ctx).is_skill_menu() {
                 self.inline_skill_selector_view
                     .update(ctx, |view, ctx| view.accept_selected_item(ctx));
@@ -13339,9 +13714,12 @@ impl Input {
             .as_ref(ctx)
             .is_inline_model_selector()
         {
-            self.inline_model_selector_view
-                .update(ctx, |view, ctx| view.accept_selected_item(false, ctx));
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.inline_model_selector_view
+                    .update(ctx, |view, ctx| view.accept_selected_item(false, ctx));
+                return;
+            }
         }
 
         if self
@@ -13349,15 +13727,21 @@ impl Input {
             .as_ref(ctx)
             .is_profile_selector()
         {
-            self.inline_profile_selector_view
-                .update(ctx, |view, ctx| view.accept_selected_item(ctx));
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.inline_profile_selector_view
+                    .update(ctx, |view, ctx| view.accept_selected_item(ctx));
+                return;
+            }
         }
 
         if self.suggestions_mode_model.as_ref(ctx).is_prompts_menu() {
-            self.inline_prompts_menu_view
-                .update(ctx, |view, ctx| view.accept_selected_item(ctx));
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.inline_prompts_menu_view
+                    .update(ctx, |view, ctx| view.accept_selected_item(ctx));
+                return;
+            }
         }
 
         if self.should_insert_newline_on_enter(ctx) {
@@ -13381,35 +13765,50 @@ impl Input {
             .as_ref(ctx)
             .is_conversation_menu()
         {
-            self.inline_conversation_menu_view
-                .update(ctx, |view, ctx| view.accept_selected_item(ctx));
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.inline_conversation_menu_view
+                    .update(ctx, |view, ctx| view.accept_selected_item(ctx));
+                return;
+            }
         } else if self.suggestions_mode_model.as_ref(ctx).is_skill_menu() {
-            self.inline_skill_selector_view
-                .update(ctx, |view, ctx| view.accept_selected_item(ctx));
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.inline_skill_selector_view
+                    .update(ctx, |view, ctx| view.accept_selected_item(ctx));
+                return;
+            }
         } else if self.suggestions_mode_model.as_ref(ctx).is_user_query_menu() {
-            self.user_query_menu_view
-                .update(ctx, |view, ctx| view.accept_selected_item(false, ctx));
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.user_query_menu_view
+                    .update(ctx, |view, ctx| view.accept_selected_item(false, ctx));
+                return;
+            }
         } else if self.suggestions_mode_model.as_ref(ctx).is_rewind_menu() {
-            self.rewind_menu_view
-                .update(ctx, |view, ctx| view.accept_selected_item(ctx));
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.rewind_menu_view
+                    .update(ctx, |view, ctx| view.accept_selected_item(ctx));
+                return;
+            }
         } else if self
             .suggestions_mode_model
             .as_ref(ctx)
             .is_inline_history_menu()
             && self.is_cloud_mode_input_v2_composing(ctx)
-            && self
+        {
+            #[cfg(not(feature = "warp_lite"))]
+            if self
                 .cloud_mode_v2_history_menu_view
                 .as_ref()
                 .is_some_and(|view| view.as_ref(ctx).has_selection(ctx))
-        {
-            if let Some(view) = self.cloud_mode_v2_history_menu_view.clone() {
-                view.update(ctx, |view, ctx| view.accept_selected(ctx));
+            {
+                if let Some(view) = self.cloud_mode_v2_history_menu_view.clone() {
+                    view.update(ctx, |view, ctx| view.accept_selected(ctx));
+                }
+                return;
             }
-            return;
         } else if self
             .suggestions_mode_model
             .as_ref(ctx)
@@ -13426,14 +13825,21 @@ impl Input {
                 .update(ctx, |view, ctx| view.accept_selected_item(ctx));
             return;
         } else if self.suggestions_mode_model.as_ref(ctx).is_repos_menu() {
-            self.inline_repos_menu_view
-                .update(ctx, |view, ctx| view.accept_selected_item(false, ctx));
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.inline_repos_menu_view
+                    .update(ctx, |view, ctx| view.accept_selected_item(false, ctx));
+                return;
+            }
         } else if self.suggestions_mode_model.as_ref(ctx).is_plan_menu() {
-            self.inline_plan_menu_view
-                .update(ctx, |view, ctx| view.accept_selected_item(ctx));
-            return;
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.inline_plan_menu_view
+                    .update(ctx, |view, ctx| view.accept_selected_item(ctx));
+                return;
+            }
         } else if self.suggestions_mode_model.as_ref(ctx).is_slash_commands() {
+            #[cfg(not(feature = "warp_lite"))]
             if self.is_cloud_mode_input_v2_composing(ctx) {
                 if let Some(view) = self.cloud_mode_v2_slash_commands_view.clone() {
                     view.update(ctx, |view, ctx| {
@@ -13445,12 +13851,23 @@ impl Input {
                     view.accept_selected_item(false, ctx);
                 });
             }
+            #[cfg(feature = "warp_lite")]
+            self.inline_slash_commands_view.update(ctx, |view, ctx| {
+                view.accept_selected_item(false, ctx);
+            });
             return;
-        } else if self
-            .queued_prompts_panel
-            .as_ref()
-            .is_some_and(|panel| panel.as_ref(ctx).enter_sends_queued_prompt(ctx))
-        {
+        } else if {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.queued_prompts_panel
+                    .as_ref()
+                    .is_some_and(|panel| panel.as_ref(ctx).enter_sends_queued_prompt(ctx))
+            }
+            #[cfg(feature = "warp_lite")]
+            {
+                false
+            }
+        } {
             // An empty-buffer Enter sends the top queued row, mirroring its send-now button.
             // The locked initial cloud-mode head row is not sendable, so Enter does nothing
             // while it sits at the head of the queue.
@@ -13499,12 +13916,7 @@ impl Input {
                 suggestions.confirm(ctx);
             });
         } else if FeatureFlag::CloudModeSetupV2.is_enabled()
-            && is_cloud_agent_pre_first_exchange(
-                self.ambient_agent_view_model(),
-                &self.agent_view_controller,
-                &self.model.lock(),
-                ctx,
-            )
+            && self.is_cloud_agent_pre_first_exchange(ctx)
         {
             // During cloud-mode setup, non-queued submissions (e.g. third-party harness runs that
             // don't queue) are dropped rather than sent as live prompts the sharer can't accept.
@@ -13736,14 +14148,17 @@ impl Input {
             InputSuggestionsMode::ModelSelector
                 if FeatureFlag::InlineMenuHeaders.is_enabled() =>
             {
+                #[cfg(not(feature = "warp_lite"))]
                 self.inline_model_selector_view
                     .update(ctx, |view, ctx| view.accept_selected_item(true, ctx));
             }
             InputSuggestionsMode::UserQueryMenu { .. } => {
+                #[cfg(not(feature = "warp_lite"))]
                 self.user_query_menu_view
                     .update(ctx, |view, ctx| view.accept_selected_item(true, ctx));
             }
             InputSuggestionsMode::IndexedReposMenu => {
+                #[cfg(not(feature = "warp_lite"))]
                 self.inline_repos_menu_view
                     .update(ctx, |view, ctx| view.accept_selected_item(true, ctx));
             }
@@ -13803,6 +14218,7 @@ impl Input {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn predict_am_query(&mut self, ctx: &mut ViewContext<Self>) {
         // Cancel any pending requests.
         if let Some(future_handle) = self.predict_am_queries_future_handle.take() {
@@ -14280,12 +14696,7 @@ impl Input {
                     ambient_agent_model.as_ref(ctx).is_third_party_harness()
                 });
         let should_queue = !is_third_party_harness
-            && is_cloud_agent_pre_first_exchange(
-                self.ambient_agent_view_model(),
-                &self.agent_view_controller,
-                &self.model.lock(),
-                ctx,
-            );
+            && self.is_cloud_agent_pre_first_exchange(ctx);
         if !should_queue {
             return false;
         }
@@ -14345,7 +14756,7 @@ impl Input {
         // If the agent view is inactive but the current input is detected as AI, submitting
         // this query triggers entering the agent view.
         if FeatureFlag::AgentView.is_enabled()
-            && !self.agent_view_controller.as_ref(ctx).is_active()
+            && !self.is_agent_view_active(ctx)
         {
             let prompt = self.editor.as_ref(ctx).buffer_text(ctx);
             let prompt = prompt.trim().to_owned();
@@ -14897,7 +15308,7 @@ impl Input {
         // shell mode would be a bug.
         let has_locking_attachment = self.ai_context_model.as_ref(ctx).has_locking_attachment();
         let should_unlock = FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(ctx).is_fullscreen()
+            && self.is_agent_view_fullscreen(ctx)
             && is_input_buffer_empty
             && AISettings::as_ref(ctx).is_ai_autodetection_enabled(ctx)
             && !has_locking_attachment;
@@ -15136,12 +15547,7 @@ impl Input {
             // would otherwise reinitialize the buffer and wipe a follow-up the viewer is composing,
             // so skip the clear for that window.
             let cloud_setup_pre_first_exchange = FeatureFlag::CloudModeSetupV2.is_enabled()
-                && is_cloud_agent_pre_first_exchange(
-                    self.ambient_agent_view_model(),
-                    &self.agent_view_controller,
-                    &self.model.lock(),
-                    ctx,
-                );
+                && self.is_cloud_agent_pre_first_exchange(ctx);
             // Only clear the input buffer for user-executed commands, not agent-executed ones.
             let should_clear_buffer = !user_block.was_part_of_agent_interaction
                 && !cloud_setup_pre_first_exchange
@@ -15237,7 +15643,7 @@ impl Input {
             self.last_user_block_completed = Some(block_completed.clone());
 
             let is_in_fullscreen_agent_view =
-                self.agent_view_controller.as_ref(ctx).is_fullscreen();
+                self.is_agent_view_fullscreen(ctx);
             self.ai_input_model.update(ctx, |ai_input_model, ctx| {
                 // If the user has autodetection enabled, unlock the input mode.
                 // Otherwise, keep it locked in the current mode.
@@ -15554,6 +15960,7 @@ impl Input {
                 prompt.update_session_context(session_context.clone(), prompt_ctx);
             });
 
+        #[cfg(not(feature = "warp_lite"))]
         self.agent_input_footer.update(ctx, |footer, footer_ctx| {
             footer.update_session_context(session_context, footer_ctx);
         });
@@ -15566,6 +15973,7 @@ impl Input {
                 prompt.update_repo_path(repo_path.clone(), prompt_ctx);
             });
 
+        #[cfg(not(feature = "warp_lite"))]
         self.agent_input_footer.update(ctx, |footer, footer_ctx| {
             footer.set_current_repo_path(repo_path.clone(), footer_ctx);
         });
@@ -15576,6 +15984,7 @@ impl Input {
                 data_source.set_active_repo_root(repo_path, ctx);
             }
         });
+        #[cfg(not(feature = "warp_lite"))]
         if let Some(data_source) = self.cloud_mode_composer_slash_command_data_source.as_ref() {
             data_source.update(ctx, |data_source, ctx| {
                 data_source.set_active_repo_root(repo_path, ctx);
@@ -15610,7 +16019,7 @@ impl Input {
             .finish();
         let should_use_udi_spacing = self.should_show_universal_developer_input(app)
             || (FeatureFlag::AgentView.is_enabled()
-                && self.agent_view_controller.as_ref(app).is_active());
+                && self.is_agent_view_active(app));
         let mut container: Container = Container::new(constrained_banner);
         let (suggestion_to_prompt_padding, suggestion_to_input_border_padding) =
             if should_use_udi_spacing {
@@ -15646,20 +16055,29 @@ impl Input {
                 return None;
             }
 
-            let prompt_suggestions_banner = ChildView::new(&self.prompt_suggestions_view).finish();
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                let prompt_suggestions_banner =
+                    ChildView::new(&self.prompt_suggestions_view).finish();
 
-            Some(self.apply_input_banner_padding(
-                prompt_suggestions_banner,
-                is_compact_mode,
-                input_mode,
-                appearance,
-                app,
-            ))
+                return Some(self.apply_input_banner_padding(
+                    prompt_suggestions_banner,
+                    is_compact_mode,
+                    input_mode,
+                    appearance,
+                    app,
+                ));
+            }
+            #[cfg(feature = "warp_lite")]
+            {
+                return None;
+            }
         } else {
             None
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn render_attachment_chips(&self, appearance: &Appearance) -> Option<Box<dyn Element>> {
         if self.attachment_chips.is_empty() {
             None
@@ -15680,6 +16098,7 @@ impl Input {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn render_attached_chip(
         &self,
         chip: &AttachmentChip,
@@ -15951,6 +16370,7 @@ impl Input {
         InputSettings::as_ref(app).is_universal_developer_input_enabled(app)
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_prompt_suggestions_event(
         &mut self,
         event: &PromptSuggestionsEvent,
@@ -16044,6 +16464,7 @@ impl TypedActionView for Input {
                     });
                     ctx.notify();
                 } else {
+                    #[cfg(not(feature = "warp_lite"))]
                     self.open_conversation_menu(ctx);
                 }
             }
@@ -16085,6 +16506,7 @@ impl TypedActionView for Input {
                 ctx.emit(Event::TryHandlePassiveCodeDiff(action.clone()));
             }
             InputAction::ToggleAgentViewShortcuts => {
+                #[cfg(not(feature = "warp_lite"))]
                 self.agent_shortcut_view_model.update(ctx, |model, ctx| {
                     if model.is_shortcut_view_open() {
                         model.hide_shortcut_view(ctx);
@@ -16143,15 +16565,18 @@ impl TypedActionView for Input {
 
                 if FeatureFlag::AgentView.is_enabled() {
                     if let AgentViewEntryOrigin::Keybinding(keystroke) = origin {
-                        let should_start_new_conversation =
-                            self.agent_view_controller.update(ctx, |controller, ctx| {
-                                controller.should_start_new_conversation_for_keystroke(
-                                    keystroke.clone(),
-                                    ctx,
-                                )
-                            });
-                        if !should_start_new_conversation {
-                            return;
+                        #[cfg(not(feature = "warp_lite"))]
+                        {
+                            let should_start_new_conversation =
+                                self.agent_view_controller.update(ctx, |controller, ctx| {
+                                    controller.should_start_new_conversation_for_keystroke(
+                                        keystroke.clone(),
+                                        ctx,
+                                    )
+                                });
+                            if !should_start_new_conversation {
+                                return;
+                            }
                         }
                     }
                     ctx.emit(Event::EnterAgentView {
@@ -16228,8 +16653,18 @@ impl View for Input {
             } else if self.prompt_render_helper.has_open_chip_menu(ctx) {
                 // Focus the PromptDisplay, which will in turn focus any open chip menu
                 ctx.focus(self.prompt_render_helper.prompt_view());
-            } else if self.agent_input_footer.as_ref(ctx).has_open_chip_menu(ctx) {
+            } else if {
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    self.agent_input_footer.as_ref(ctx).has_open_chip_menu(ctx)
+                }
+                #[cfg(feature = "warp_lite")]
+                {
+                    false
+                }
+            } {
                 // Focus the AgentInputFooter, which will in turn focus any open chip menu
+                #[cfg(not(feature = "warp_lite"))]
                 ctx.focus(&self.agent_input_footer);
             } else {
                 self.close_voltron(ctx);
@@ -16270,10 +16705,9 @@ impl View for Input {
         // bindings (e.g. cmd-i).
         if FeatureFlag::AgentView.is_enabled() {
             ctx.set.insert(flags::AGENT_VIEW_ENABLED);
-            let agent_view_state = self.agent_view_controller.as_ref(app).agent_view_state();
-            if agent_view_state.is_fullscreen() {
+            if self.is_agent_view_fullscreen(app) {
                 ctx.set.insert(flags::ACTIVE_AGENT_VIEW);
-            } else if agent_view_state.is_inline() {
+            } else if self.is_agent_view_inline(app) {
                 ctx.set.insert(flags::ACTIVE_INLINE_AGENT_VIEW);
             }
         }
@@ -16312,24 +16746,44 @@ impl View for Input {
                 .universal_developer_input_button_bar
                 .as_ref(app)
                 .is_profile_model_selector_open(app);
-        let is_agent_footer_model_selector_open = self
-            .agent_input_footer
-            .as_ref(app)
-            .is_model_selector_open(app);
-        let is_v2_model_selector_open = self
-            .agent_input_footer
-            .as_ref(app)
-            .is_v2_model_selector_open(app);
+        let is_agent_footer_model_selector_open = {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.agent_input_footer.as_ref(app).is_model_selector_open(app)
+            }
+            #[cfg(feature = "warp_lite")]
+            {
+                false
+            }
+        };
+        let is_v2_model_selector_open = {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.agent_input_footer.as_ref(app).is_v2_model_selector_open(app)
+            }
+            #[cfg(feature = "warp_lite")]
+            {
+                false
+            }
+        };
         let is_v2_host_selector_open = self
             .host_selector()
             .is_some_and(|view| view.as_ref(app).is_menu_open());
         let is_v2_harness_selector_open = self
             .harness_selector()
             .is_some_and(|view| view.as_ref(app).is_menu_open());
-        let is_v2_environment_selector_open = self
-            .agent_input_footer
-            .as_ref(app)
-            .is_v2_environment_selector_open(app);
+        let is_v2_environment_selector_open = {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.agent_input_footer
+                    .as_ref(app)
+                    .is_v2_environment_selector_open(app)
+            }
+            #[cfg(feature = "warp_lite")]
+            {
+                false
+            }
+        };
         if is_profile_model_selector_open
             || is_agent_footer_model_selector_open
             || is_v2_model_selector_open
@@ -16341,7 +16795,16 @@ impl View for Input {
         }
 
         if self.prompt_render_helper.has_open_chip_menu(app)
-            || self.agent_input_footer.as_ref(app).has_open_chip_menu(app)
+            || {
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    self.agent_input_footer.as_ref(app).has_open_chip_menu(app)
+                }
+                #[cfg(feature = "warp_lite")]
+                {
+                    false
+                }
+            }
         {
             ctx.set.insert("PromptChipMenuOpen");
         }
@@ -16374,6 +16837,7 @@ impl View for Input {
             ctx.set.insert(flags::OPEN_INLINE_CONVERSATION_MENU);
         }
 
+        #[cfg(not(feature = "warp_lite"))]
         if self
             .buy_credits_banner
             .as_ref(app)
@@ -16440,11 +16904,11 @@ impl View for Input {
         if FeatureFlag::CloudMode.is_enabled() && should_show_status_footer {
             self.render_ambient_agent_status_footer(app)
         } else if FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(app).is_active()
+            && self.is_agent_view_active(app)
         {
             self.render_agent_input(app)
         } else if FeatureFlag::AgentView.is_enabled()
-            && !self.agent_view_controller.as_ref(app).is_active()
+            && !self.is_agent_view_active(app)
             && !should_render_ps1_prompt(&self.model.lock(), app)
         {
             self.render_terminal_input(app)

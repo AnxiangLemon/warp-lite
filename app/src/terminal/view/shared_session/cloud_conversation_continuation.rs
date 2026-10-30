@@ -13,7 +13,7 @@ use crate::ai::ambient_agents::{
 use crate::ai::blocklist::BlocklistAIHistoryModel;
 use crate::auth::AuthStateProvider;
 use crate::cloud_object::{Owner, ServerGuestSubject};
-use crate::drive::sharing::SharingAccessLevel;
+use crate::cloud_object::SharingAccessLevel;
 use crate::terminal::TerminalModel;
 use crate::terminal::view::ambient_agent::AmbientAgentViewModel;
 use crate::workspaces::user_workspaces::UserWorkspaces;

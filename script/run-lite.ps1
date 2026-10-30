@@ -1,10 +1,17 @@
 param(
+    [switch] $Release,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]] $WarpArgs
 )
 
 $ErrorActionPreference = 'Stop'
-$env:RUSTUP_TOOLCHAIN = if ($env:RUSTUP_TOOLCHAIN) { $env:RUSTUP_TOOLCHAIN } else { '1.92.0-x86_64-pc-windows-msvc' }
 
-& cargo run --bin warp-lite --no-default-features --features 'local_tty,warp_lite' -- @WarpArgs
+# Debug builds are ~350MB+ because they keep full debuginfo and skip LTO.
+# Prefer -Release for a distributable binary (still large: full Warp GUI stack).
+$profileArgs = @()
+if ($Release) {
+    $profileArgs = @('--release')
+}
+
+& cargo run @profileArgs --bin warp-lite --no-default-features --features 'warp_lite' -- @WarpArgs
 exit $LASTEXITCODE

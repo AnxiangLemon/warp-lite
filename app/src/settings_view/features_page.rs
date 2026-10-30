@@ -2731,13 +2731,16 @@ impl FeaturesPageView {
     }
 
     fn build_page(ctx: &mut ViewContext<Self>) -> PageType<Self> {
-        let mut general_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
-            vec![Box::new(DefaultSessionModeWidget::default())];
+        let mut general_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![];
+        if !cfg!(feature = "warp_lite") {
+            general_widgets.push(Box::new(DefaultSessionModeWidget::default()));
+        }
 
         let native_preference_settings = NativePreferenceSettings::as_ref(ctx);
-        if native_preference_settings
-            .user_native_redirect_preference
-            .is_supported_on_current_platform()
+        if !cfg!(feature = "warp_lite")
+            && native_preference_settings
+                .user_native_redirect_preference
+                .is_supported_on_current_platform()
         {
             general_widgets.push(Box::new(NativeRedirectWidget::default()));
         }
@@ -2804,7 +2807,8 @@ impl FeaturesPageView {
             general_widgets.push(Box::new(MouseScrollMultiplierWidget::default()));
         }
 
-        if FeatureFlag::AutoOpenCodeReviewPane.is_enabled()
+        if !cfg!(feature = "warp_lite")
+            && FeatureFlag::AutoOpenCodeReviewPane.is_enabled()
             && !FeatureFlag::OpenWarpNewSettingsModes.is_enabled()
         {
             general_widgets.push(Box::new(AutoOpenCodeReviewPaneWidget::default()));
@@ -3070,12 +3074,15 @@ impl FeaturesPageView {
             Category::new("Terminal Input", editor_widgets),
             Category::new("Terminal", terminal_widgets),
             Category::new("Notifications", notifications_widgets),
-            Category::new(
+        ];
+        let mut categories = categories;
+        if !cfg!(feature = "warp_lite") {
+            categories.push(Category::new(
                 "Workflows",
                 vec![Box::new(WorkflowsInCommandSearch::default())],
-            ),
-            Category::new("System", system_widgets),
-        ];
+            ));
+        }
+        categories.push(Category::new("System", system_widgets));
 
         PageType::new_categorized(categories, None)
     }

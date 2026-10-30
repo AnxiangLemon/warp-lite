@@ -46,7 +46,7 @@ use crate::cloud_object::{
     CloudObjectLocation, CloudObjectLookup as _, GenericStringObjectFormat, JsonObjectType, Owner,
     Space,
 };
-use crate::drive::CloudObjectTypeAndId;
+use crate::cloud_object::CloudObjectTypeAndId;
 use crate::editor::{
     EditorView, PropagateAndNoOpNavigationKeys, SingleLineEditorOptions, TextOptions,
 };

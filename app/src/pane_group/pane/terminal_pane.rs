@@ -1280,6 +1280,7 @@ fn handle_terminal_view_event(
             Event::OpenThemeChooser => {
                 ctx.emit(pane_group::Event::OpenThemeChooser);
             }
+            #[cfg(feature = "mcp_client")]
             Event::OpenMCPSettingsPage { page } => {
                 ctx.emit(pane_group::Event::OpenMCPSettingsPage { page: *page });
             }
@@ -1324,6 +1325,7 @@ fn handle_terminal_view_event(
                 document_id,
                 document_version,
             } => {
+                #[cfg(not(feature = "warp_lite"))]
                 if let Some(conversation_id) =
                     crate::ai::document::ai_document_model::AIDocumentModel::as_ref(ctx)
                         .get_conversation_id_for_document_id(document_id)
@@ -1335,8 +1337,11 @@ fn handle_terminal_view_event(
                         ctx,
                     );
                 }
+                #[cfg(feature = "warp_lite")]
+                let _ = (document_id, document_version);
             }
             Event::HideAIDocumentPanes => {
+                #[cfg(not(feature = "warp_lite"))]
                 group.close_all_ai_document_panes(ctx);
             }
             Event::OpenAIDocumentPane {
@@ -1344,6 +1349,8 @@ fn handle_terminal_view_event(
                 document_version,
                 is_auto_open,
             } => {
+                #[cfg(not(feature = "warp_lite"))]
+                {
                 let should_open = if *is_auto_open {
                     // Auto-open: only open if there's already a visible plan pane
                     // (to replace it with the newest plan) or if there's enough space.
@@ -1372,6 +1379,9 @@ fn handle_terminal_view_event(
                         ctx,
                     );
                 }
+                }
+                #[cfg(feature = "warp_lite")]
+                let _ = (document_id, document_version, is_auto_open);
             }
             Event::OpenAgentProfileEditor { profile_id } => {
                 ctx.emit(pane_group::Event::OpenAgentProfileEditor {

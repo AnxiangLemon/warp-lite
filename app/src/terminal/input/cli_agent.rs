@@ -74,6 +74,7 @@ impl Input {
         }
 
         column.add_child(editor_element);
+        #[cfg(not(feature = "warp_lite"))]
         column.add_child(
             SavePosition::new(
                 Container::new(ChildView::new(&self.agent_input_footer).finish())
@@ -135,10 +136,15 @@ impl Input {
         let mut outer_column = Flex::column();
         if self.suggestions_mode_model.as_ref(app).is_slash_commands() {
             outer_column.add_child(ChildView::new(&self.inline_slash_commands_view).finish());
-        } else if self.suggestions_mode_model.as_ref(app).is_prompts_menu() {
-            outer_column.add_child(ChildView::new(&self.inline_prompts_menu_view).finish());
-        } else if self.suggestions_mode_model.as_ref(app).is_skill_menu() {
-            outer_column.add_child(ChildView::new(&self.inline_skill_selector_view).finish());
+        } else {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                if self.suggestions_mode_model.as_ref(app).is_prompts_menu() {
+                    outer_column.add_child(ChildView::new(&self.inline_prompts_menu_view).finish());
+                } else if self.suggestions_mode_model.as_ref(app).is_skill_menu() {
+                    outer_column.add_child(ChildView::new(&self.inline_skill_selector_view).finish());
+                }
+            }
         }
         outer_column.add_child(input);
 

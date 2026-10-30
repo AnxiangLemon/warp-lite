@@ -59,12 +59,12 @@ impl HeaderToolbarItemKind {
     /// Does not check user show/hide preferences — use `is_available` for that.
     pub fn is_supported(&self, app: &AppContext) -> bool {
         match self {
-            Self::TabsPanel => {
-                FeatureFlag::VerticalTabs.is_enabled()
-                    && *TabSettings::as_ref(app).use_vertical_tabs
-            }
-            Self::ToolsPanel => true,
+            Self::TabsPanel => crate::tab::uses_vertical_tabs(app),
+            Self::ToolsPanel => !cfg!(feature = "warp_lite"),
             Self::AgentManagement => {
+                if cfg!(feature = "warp_lite") {
+                    return false;
+                }
                 let is_web_anonymous_user = AuthStateProvider::as_ref(app)
                     .get()
                     .is_user_web_anonymous_user()
@@ -73,8 +73,10 @@ impl HeaderToolbarItemKind {
                     && FeatureFlag::AgentManagementView.is_enabled()
                     && !is_web_anonymous_user
             }
-            Self::CodeReview => cfg!(feature = "local_fs"),
-            Self::NotificationsMailbox => FeatureFlag::HOANotifications.is_enabled(),
+            Self::CodeReview => cfg!(feature = "local_fs") && !cfg!(feature = "warp_lite"),
+            Self::NotificationsMailbox => {
+                !cfg!(feature = "warp_lite") && FeatureFlag::HOANotifications.is_enabled()
+            }
         }
     }
 

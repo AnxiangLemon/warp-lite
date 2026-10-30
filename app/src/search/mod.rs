@@ -5,11 +5,14 @@ pub(crate) mod async_snapshot_data_source;
 pub mod binding_source;
 pub mod command_palette;
 pub mod command_search;
+#[cfg(not(feature = "warp_lite"))]
 mod env_var_collections;
 pub mod external_secrets;
 pub mod files;
 mod filter_chip_renderer;
+#[cfg(not(feature = "warp_lite"))]
 pub mod notebook_embedding;
+#[cfg(not(feature = "warp_lite"))]
 mod notebooks;
 mod palette_styles;
 mod search_bar;

@@ -1330,6 +1330,7 @@ impl ServerApiProvider {
             state.apply_latest_state(experiments, ctx);
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         settings_view::handle_experiment_change(ctx);
     }
 

@@ -48,7 +48,8 @@ use crate::channel::{Channel, ChannelState};
 use crate::context_chips::ChipAvailability;
 use crate::context_chips::prompt::{Prompt, PromptEvent};
 use crate::context_chips::renderer::{ChipDragState, Renderer as ContextChipRenderer};
-use crate::drive::settings::WarpDriveSettings;
+#[cfg(not(feature = "warp_lite"))]
+use crate::settings::WarpDriveSettings;
 use crate::editor::{
     EditOrigin, EditorView, Event as EditorEvent, InteractionState, SingleLineEditorOptions,
     TextOptions,
@@ -535,6 +536,7 @@ pub enum AppearancePageAction {
     ToggleLeftPanelVisibility,
     ToggleToolsPanelProjectExplorer,
     ToggleToolsPanelGlobalSearch,
+    #[cfg(not(feature = "warp_lite"))]
     ToggleToolsPanelWarpDrive,
     ToggleToolsPanelConversationHistory,
     SetEnforceMinimumContrast(EnforceMinimumContrast),
@@ -676,6 +678,7 @@ impl TypedActionView for AppearanceSettingsPageView {
                 });
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             ToggleToolsPanelWarpDrive => {
                 WarpDriveSettings::handle(ctx).update(ctx, |settings, ctx| {
                     report_if_error!(settings.enable_warp_drive.toggle_and_save_value(ctx));
@@ -1443,19 +1446,23 @@ impl AppearanceSettingsPageView {
         // Each toggle is gated only on compile-time / feature-flag availability
         // of the corresponding tab (not on transient login/AI state), so the
         // section stays stable regardless of when the page is built.
-        let mut tools_panel_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![];
-        if cfg!(feature = "local_fs") {
-            tools_panel_widgets.push(Box::new(ToolsPanelProjectExplorerWidget::default()));
-        }
-        if FeatureFlag::AgentViewConversationListView.is_enabled() {
-            tools_panel_widgets.push(Box::new(ToolsPanelConversationHistoryWidget::default()));
-        }
-        if cfg!(feature = "local_fs") && FeatureFlag::GlobalSearch.is_enabled() {
-            tools_panel_widgets.push(Box::new(ToolsPanelGlobalSearchWidget::default()));
-        }
-        tools_panel_widgets.push(Box::new(ToolsPanelWarpDriveWidget::default()));
-        if !tools_panel_widgets.is_empty() {
-            categories.push(Category::new("Tools panel", tools_panel_widgets));
+        // Warp Lite has no tools panel (Drive / explorer / AI history).
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            let mut tools_panel_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![];
+            if cfg!(feature = "local_fs") {
+                tools_panel_widgets.push(Box::new(ToolsPanelProjectExplorerWidget::default()));
+            }
+            if FeatureFlag::AgentViewConversationListView.is_enabled() {
+                tools_panel_widgets.push(Box::new(ToolsPanelConversationHistoryWidget::default()));
+            }
+            if cfg!(feature = "local_fs") && FeatureFlag::GlobalSearch.is_enabled() {
+                tools_panel_widgets.push(Box::new(ToolsPanelGlobalSearchWidget::default()));
+            }
+            tools_panel_widgets.push(Box::new(ToolsPanelWarpDriveWidget::default()));
+            if !tools_panel_widgets.is_empty() {
+                categories.push(Category::new("Tools panel", tools_panel_widgets));
+            }
         }
 
         // Create the Input category with all widgets
@@ -1487,11 +1494,12 @@ impl AppearanceSettingsPageView {
         categories.push(Category::new("Blocks", block_settings_widgets));
 
         let font_settings = FontSettings::as_ref(ctx);
-        let mut text_settings_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![
-            Box::new(TerminalFontWidget::default()),
-            Box::new(AIFontWidget::default()),
-            Box::new(NotebookFontSizeWidget::default()),
-        ];
+        let mut text_settings_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
+            vec![Box::new(TerminalFontWidget::default())];
+        if !cfg!(feature = "warp_lite") {
+            text_settings_widgets.push(Box::new(AIFontWidget::default()));
+            text_settings_widgets.push(Box::new(NotebookFontSizeWidget::default()));
+        }
         if font_settings
             .use_thin_strokes
             .is_supported_on_current_platform()
@@ -1526,7 +1534,7 @@ impl AppearanceSettingsPageView {
         let tab_settings = TabSettings::as_ref(ctx);
         let mut tab_settings_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
             vec![Box::new(TabIndicatorWidget::default())];
-        if !FeatureFlag::OpenWarpNewSettingsModes.is_enabled() {
+        if !cfg!(feature = "warp_lite") && !FeatureFlag::OpenWarpNewSettingsModes.is_enabled() {
             tab_settings_widgets.push(Box::new(CodeReviewButtonWidget::default()));
         }
         if FeatureFlag::FullScreenZenMode.is_enabled()
@@ -1549,9 +1557,11 @@ impl AppearanceSettingsPageView {
             tab_settings_widgets.push(Box::new(
                 HideTitleBarSearchBarInVerticalTabsWidget::default(),
             ));
-            tab_settings_widgets.push(Box::new(
-                UseLatestUserPromptAsConversationTitleInTabNamesWidget::default(),
-            ));
+            if !cfg!(feature = "warp_lite") {
+                tab_settings_widgets.push(Box::new(
+                    UseLatestUserPromptAsConversationTitleInTabNamesWidget::default(),
+                ));
+            }
             if FeatureFlag::ConfigurableToolbar.is_enabled() {
                 tab_settings_widgets.push(Box::new(EditToolbarWidget));
             }
@@ -3699,11 +3709,13 @@ impl SettingsWidget for ToolsPanelGlobalSearchWidget {
     }
 }
 
+#[cfg(not(feature = "warp_lite"))]
 #[derive(Default)]
 struct ToolsPanelWarpDriveWidget {
     switch_state: SwitchStateHandle,
 }
 
+#[cfg(not(feature = "warp_lite"))]
 impl SettingsWidget for ToolsPanelWarpDriveWidget {
     type View = AppearanceSettingsPageView;
 

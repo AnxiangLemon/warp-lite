@@ -124,7 +124,7 @@ use warp_graphql::subscriptions::start_graphql_streaming_operation;
 
 use crate::ai::ambient_agents::scheduled::ScheduledAmbientAgent;
 use crate::ai::cloud_environments::AmbientAgentEnvironment;
-use crate::ai::document::ai_document_model::AIDocumentId;
+use ai::document::AIDocumentId;
 use crate::ai::execution_profiles::AIExecutionProfile;
 use crate::ai::facts::AIFact;
 use crate::ai::mcp::{MCPServer, TemplatableMCPServer};
@@ -140,10 +140,10 @@ use crate::cloud_object::{
     ServerFolder, ServerMetadata, ServerNotebook, ServerObject, ServerPermissions, ServerWorkflow,
     TryFromGql as _, UpdateCloudObjectResult,
 };
-use crate::drive::folders::FolderId;
-use crate::drive::sharing::SharingAccessLevel;
+use crate::cloud_object::FolderId;
+use crate::cloud_object::SharingAccessLevel;
 use crate::env_vars::EnvVarCollection;
-use crate::notebooks::{NotebookId, SerializedNotebook};
+use crate::cloud_object::{NotebookId, SerializedNotebook};
 use crate::server::graphql::schema::{
     action_type_to_gql_action_type, object_action_history_from_gql,
     object_update_success_to_update_result, update_generic_string_object_result_to_update_result,

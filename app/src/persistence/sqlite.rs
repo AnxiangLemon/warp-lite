@@ -74,11 +74,15 @@ use crate::ai::mcp::templatable_installation::VariableValue;
 use crate::ai::mcp::{TemplatableMCPServer, TemplatableMCPServerInstallation};
 use crate::ai::persisted_workspace::EnablementState;
 use crate::app_state::{
-    AIFactPaneSnapshot, AmbientAgentPaneSnapshot, AppState, BranchSnapshot, CodePaneSnapShot,
-    CodePaneTabSnapshot, CodeReviewPaneSnapshot, EnvVarCollectionPaneSnapshot, LeafContents,
-    LeafSnapshot, LeftPanelSnapshot, NotebookPaneSnapshot, PaneFlex, PaneNodeSnapshot,
+    AmbientAgentPaneSnapshot, AppState, BranchSnapshot, CodePaneSnapShot,
+    CodePaneTabSnapshot, CodeReviewPaneSnapshot, LeafContents,
+    LeafSnapshot, LeftPanelSnapshot, PaneFlex, PaneNodeSnapshot,
     RightPanelSnapshot, SettingsPaneSnapshot, SplitDirection, TabGroupSnapshot, TabSnapshot,
-    TerminalPaneSnapshot, WindowSnapshot, WorkflowPaneSnapshot,
+    TerminalPaneSnapshot, WindowSnapshot,
+};
+#[cfg(not(feature = "warp_lite"))]
+use crate::app_state::{
+    AIFactPaneSnapshot, EnvVarCollectionPaneSnapshot, NotebookPaneSnapshot, WorkflowPaneSnapshot,
 };
 use crate::auth::UserUid;
 use crate::auth::auth_manager::PersistedCurrentUserInformation;
@@ -89,8 +93,10 @@ use crate::cloud_object::model::actions::{
 use crate::cloud_object::model::generic_string_model::{CloudStringObject, GenericStringObjectId};
 use crate::cloud_object::{CloudObject, ObjectIdType};
 use crate::code::editor_management::CodeSource;
-use crate::drive::OpenWarpDriveObjectSettings;
-use crate::notebooks::NotebookId;
+#[cfg(not(feature = "warp_lite"))]
+use crate::cloud_object::OpenWarpDriveObjectSettings;
+#[cfg(not(feature = "warp_lite"))]
+use crate::cloud_object::NotebookId;
 use crate::persistence::block_list::{
     get_all_restored_blocks, process_ai_queries_for_nld_history_match,
     process_ai_queries_for_uparrow_prompt, read_recent_ai_queries,
@@ -1198,11 +1204,15 @@ fn save_pane_state(
     // kind-specific tables.
     let kind = match &snapshot.contents {
         LeafContents::Terminal(_) => TERMINAL_PANE_KIND,
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::Notebook(_) => NOTEBOOK_PANE_KIND,
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::EnvVarCollection(_) => ENV_VAR_COLLECTION_PANE_KIND,
         LeafContents::Code(_) => CODE_PANE_KIND,
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::Workflow(_) => WORKFLOW_PANE_KIND,
         LeafContents::Settings(_) => SETTINGS_PANE_KIND,
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::AIFact(_) => AI_FACT_PANE_KIND,
         LeafContents::CodeReview(_) => CODE_REVIEW_PANE_KIND,
         LeafContents::AmbientAgent(_) => AMBIENT_AGENT_PANE_KIND,
@@ -1210,13 +1220,23 @@ fn save_pane_state(
             EXECUTION_PROFILE_EDITOR_PANE_KIND
         }
         LeafContents::GetStarted => GET_STARTED_PANE_KIND,
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::AIDocument(_) => AI_DOCUMENT_PANE_KIND,
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::EnvironmentManagement(_) | LeafContents::NetworkLog => {
             // These pane types are filtered out before this function is
             // called; see `LeafContents::is_persisted` and the skip in
             // `save_app_state`. Reaching this arm would mean a `pane_nodes`
             // row had already been inserted with no corresponding
             // `pane_leaves` row, which would break restoration.
+            debug_assert!(
+                false,
+                "save_pane_state called for non-persisted LeafContents variant"
+            );
+            return Ok(());
+        }
+        #[cfg(feature = "warp_lite")]
+        LeafContents::NetworkLog => {
             debug_assert!(
                 false,
                 "save_pane_state called for non-persisted LeafContents variant"
@@ -1277,6 +1297,7 @@ fn save_pane_state(
                 .values(terminal)
                 .execute(conn)?;
         }
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::Notebook(notebook_snapshot) => {
             let (notebook_id, local_path) = match notebook_snapshot {
                 NotebookPaneSnapshot::CloudNotebook {
@@ -1332,6 +1353,7 @@ fn save_pane_state(
                     .execute(conn)?;
             }
         }
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::EnvVarCollection(env_var_collection_snapshot) => {
             let env_var_collection_id = match env_var_collection_snapshot {
                 EnvVarCollectionPaneSnapshot::CloudEnvVarCollection {
@@ -1349,6 +1371,7 @@ fn save_pane_state(
                 .values(env_var_collection)
                 .execute(conn)?;
         }
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::Workflow(workflow_pane_snapshot) => {
             let workflow_id = match workflow_pane_snapshot {
                 WorkflowPaneSnapshot::CloudWorkflow {
@@ -1363,6 +1386,7 @@ fn save_pane_state(
                 .values(workflow)
                 .execute(conn)?;
         }
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::EnvironmentManagement(_) => {
             // Unreachable: filtered by `is_persisted` in `save_app_state`.
         }
@@ -1380,6 +1404,7 @@ fn save_pane_state(
                 .values(settings_pane)
                 .execute(conn)?;
         }
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::AIFact(_ai_fact_pane_snapshot) => {
             let ai_fact = model::NewAIFactPane { id };
 
@@ -1408,6 +1433,7 @@ fn save_pane_state(
         LeafContents::GetStarted => {
             // Stateless
         }
+        #[cfg(not(feature = "warp_lite"))]
         LeafContents::AIDocument(ai_document_snapshot) => match ai_document_snapshot {
             crate::app_state::AIDocumentPaneSnapshot::Local {
                 document_id,
@@ -2247,6 +2273,7 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                         active_conversation_id,
                     })
                 }
+                #[cfg(not(feature = "warp_lite"))]
                 NOTEBOOK_PANE_KIND => {
                     let notebook_pane = schema::notebook_panes::dsl::notebook_panes
                         .find(node.id)
@@ -2274,6 +2301,7 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                         },
                     })
                 }
+                #[cfg(not(feature = "warp_lite"))]
                 WORKFLOW_PANE_KIND => {
                     let workflow_pane = schema::workflow_panes::dsl::workflow_panes
                         .find(node.id)
@@ -2324,6 +2352,7 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                         source,
                     })
                 }
+                #[cfg(not(feature = "warp_lite"))]
                 ENV_VAR_COLLECTION_PANE_KIND => {
                     let env_var_collection_pane =
                         schema::env_var_collection_panes::dsl::env_var_collection_panes
@@ -2360,6 +2389,7 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                         search_query: None,
                     })
                 }
+                #[cfg(not(feature = "warp_lite"))]
                 AI_FACT_PANE_KIND => LeafContents::AIFact(AIFactPaneSnapshot::Personal),
                 MCP_SERVER_PANE_KIND => {
                     // Legacy MCP server panes are no longer supported.
@@ -2387,6 +2417,7 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                     }
                 }
                 GET_STARTED_PANE_KIND => LeafContents::GetStarted,
+                #[cfg(not(feature = "warp_lite"))]
                 AI_DOCUMENT_PANE_KIND => {
                     let ai_document_pane = schema::ai_document_panes::dsl::ai_document_panes
                         .find(node.id)

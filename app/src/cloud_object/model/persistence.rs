@@ -18,13 +18,14 @@ use crate::cloud_object::{
     ObjectsToUpdate, Owner, Revision, RevisionAndLastEditor, ServerCloudObject, ServerCreationInfo,
     ServerFolder, ServerMetadata, ServerNotebook, ServerPermissions, ServerWorkflow, Space,
 };
-use crate::drive::folders::{CloudFolder, CloudFolderModel};
+use crate::cloud_object::{
+    CloudFolder, CloudFolderModel, CloudNotebook, CloudObjectTypeAndId, DriveIndexVariant,
+};
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::{
-    CloudObjectTypeAndId, DriveIndexVariant, should_auto_open_welcome_folder,
-    write_has_auto_opened_welcome_folder_to_user_defaults,
+    should_auto_open_welcome_folder, write_has_auto_opened_welcome_folder_to_user_defaults,
 };
 use crate::env_vars::{CloudEnvVarCollection, CloudEnvVarCollectionModel, EnvVarCollection};
-use crate::notebooks::CloudNotebook;
 use crate::persistence::ModelEvent;
 use crate::server::ids::{ClientId, HashableId, ObjectUid, ServerId, SyncId, ToServerId};
 use crate::settings::cloud_preferences::{CloudPreference, CloudPreferenceModel};
@@ -1106,7 +1107,16 @@ impl CloudModel {
     pub fn num_visible_errored_objects(&self) -> usize {
         self.objects_by_id
             .values()
-            .filter(|object| object.renders_in_warp_drive() && object.metadata().is_errored())
+            .filter(|object| {
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    object.renders_in_warp_drive() && object.metadata().is_errored()
+                }
+                #[cfg(feature = "warp_lite")]
+                {
+                    object.metadata().is_errored()
+                }
+            })
             .count()
     }
 
@@ -1734,6 +1744,11 @@ impl CloudModel {
 
     // If the object is a folder and a welcome object, open it if we haven't opened a welcome folder before.
     fn maybe_open_welcome_folder(&mut self, object_id: &SyncId, ctx: &mut ModelContext<Self>) {
+        #[cfg(feature = "warp_lite")]
+        {
+            let _ = (object_id, ctx);
+        }
+        #[cfg(not(feature = "warp_lite"))]
         if let Some(object) = self.get_by_uid(&object_id.uid()) {
             let folder: Option<&CloudFolder> = object.into();
             if let Some(folder) = folder

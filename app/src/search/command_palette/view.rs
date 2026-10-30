@@ -23,7 +23,7 @@ use warpui::{
 use super::super::palette_styles as styles;
 use super::CommandPaletteMixer;
 use crate::appearance::Appearance;
-use crate::drive::CloudObjectTypeAndId;
+use crate::cloud_object::CloudObjectTypeAndId;
 use crate::features::FeatureFlag;
 use crate::palette::PaletteMode;
 use crate::root_view::OpenLaunchConfigArg;
@@ -853,6 +853,7 @@ impl View {
                     return;
                 }
 
+                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::RestoreOrNavigateToConversation {
                     pane_view_locator,
                     window_id,
@@ -863,6 +864,7 @@ impl View {
                 send_telemetry_from_app_ctx!(TelemetryEvent::SelectNavigationPaletteItem, ctx);
             }
             CommandPaletteItemAction::ForkConversation { conversation_id } => {
+                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ForkAIConversation {
                     conversation_id,
                     fork_from_exchange: None,
@@ -994,6 +996,7 @@ impl View {
                 }
 
                 if let Some(terminal_view_id) = terminal_view_id {
+                    #[cfg(not(feature = "warp_lite"))]
                     ctx.dispatch_typed_action(&WorkspaceAction::StartNewConversation {
                         terminal_view_id,
                     });

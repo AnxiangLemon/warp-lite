@@ -8,6 +8,7 @@ pub(crate) mod agent_conversations_model;
 pub(crate) mod agent_events;
 pub(crate) mod agent_management;
 pub(crate) mod agent_tips;
+#[cfg(not(feature = "warp_lite"))]
 pub(crate) mod ai_document_view;
 pub mod ambient_agents;
 pub(crate) mod artifact_download;
@@ -33,7 +34,12 @@ pub(crate) mod conversation_utils;
 pub mod credit_availability;
 pub(crate) mod custom_model_router_editor;
 pub(crate) mod custom_model_routers;
+#[cfg(not(feature = "warp_lite"))]
 pub(crate) mod document;
+#[cfg(feature = "warp_lite")]
+pub(crate) mod document_lite;
+#[cfg(feature = "warp_lite")]
+pub(crate) use document_lite as document;
 #[cfg(not(target_family = "wasm"))]
 pub mod geap_credentials;
 pub(crate) mod get_relevant_files;
@@ -71,17 +77,24 @@ pub mod facts;
 pub(crate) mod generate_block_title;
 pub(crate) mod generate_code_review_content;
 pub(crate) mod loading;
+#[cfg(feature = "mcp_client")]
+pub mod mcp;
+#[cfg(not(feature = "mcp_client"))]
+#[path = "mcp_lite.rs"]
 pub mod mcp;
 pub mod outline;
 
 pub(crate) use ai::paths;
+pub use ai::document::{AIDocumentId, AIDocumentVersion};
 
 pub fn init(app: &mut AppContext) {
     blocklist::keyboard_navigable_buttons::init(app);
     blocklist::block::number_shortcut_buttons::init(app);
     blocklist::toggleable_items::init(app);
+    #[cfg(not(feature = "warp_lite"))]
     blocklist::suggested_agent_mode_workflow_modal::init(app);
     blocklist::suggested_rule_modal::init(app);
+    #[cfg(not(feature = "warp_lite"))]
     ai_document_view::init(app);
     conversation_details_panel::init(app);
     agent_management::init(app);

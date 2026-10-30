@@ -10,7 +10,7 @@ use super::{
     ShareableLinkError,
 };
 use crate::app_state::{LeafContents, WorkflowPaneSnapshot};
-use crate::drive::OpenWarpDriveObjectSettings;
+use crate::cloud_object::OpenWarpDriveObjectSettings;
 use crate::drive::items::WarpDriveItemId;
 use crate::server::ids::SyncId;
 use crate::workflows::manager::{WorkflowManager, WorkflowOpenSource};

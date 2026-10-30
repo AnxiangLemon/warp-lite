@@ -1726,6 +1726,7 @@ impl CodeReviewView {
 
         if let Some(comment) = &existing_comment {
             composer.update(ctx, |editor, ctx| {
+                #[cfg(not(feature = "warp_lite"))]
                 editor.reopen_saved_comment(
                     &comment.id,
                     None,
@@ -1733,10 +1734,13 @@ impl CodeReviewView {
                     &comment.origin,
                     ctx,
                 );
+                #[cfg(feature = "warp_lite")]
+                let _ = (editor, comment, ctx);
             });
         }
 
         ctx.subscribe_to_view(&composer, |me, _, event, ctx| match event {
+            #[cfg(not(feature = "warp_lite"))]
             CommentEditorEvent::CommentSaved {
                 id, comment_text, ..
             } => {
@@ -1764,8 +1768,17 @@ impl CodeReviewView {
                     me.update_review_comment(new_comment, ctx);
                 }
             }
+            #[cfg(feature = "warp_lite")]
+            CommentEditorEvent::CommentSaved { .. } => {}
+            #[cfg(not(feature = "warp_lite"))]
             CommentEditorEvent::DeleteComment { id } => {
                 me.delete_comment_by_id(*id, ctx);
+                me.comment_composer = None;
+                me.update_header_dropdown_active_state(ctx);
+                ctx.notify();
+            }
+            #[cfg(feature = "warp_lite")]
+            CommentEditorEvent::DeleteComment { .. } => {
                 me.comment_composer = None;
                 me.update_header_dropdown_active_state(ctx);
                 ctx.notify();

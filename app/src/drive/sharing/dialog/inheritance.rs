@@ -8,7 +8,7 @@ use warpui::{AppContext, Element, SingletonEntity as _};
 use super::style;
 use crate::cloud_object::ServerObjectContainer;
 use crate::cloud_object::model::persistence::CloudModel;
-use crate::drive::CloudObjectTypeAndId;
+use crate::cloud_object::CloudObjectTypeAndId;
 use crate::server::ids::SyncId;
 use crate::server::telemetry::SharingDialogSource;
 use crate::workspace::WorkspaceAction;

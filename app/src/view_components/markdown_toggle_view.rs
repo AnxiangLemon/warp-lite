@@ -9,7 +9,12 @@ use warpui::{
 };
 
 use crate::appearance::Appearance;
-use crate::notebooks::file::MarkdownDisplayMode;
+/// Display mode for markdown files shown via the header segmented control.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarkdownDisplayMode {
+    Rendered,
+    Raw,
+}
 
 #[derive(Debug, Clone)]
 pub enum MarkdownToggleEvent {

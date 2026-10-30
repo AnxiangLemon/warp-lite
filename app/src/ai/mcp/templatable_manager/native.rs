@@ -44,7 +44,7 @@ use crate::cloud_object::{
     CloudObject, CloudObjectLocation, CloudObjectLookup as _, CloudObjectMetadataExt,
     CloudObjectUuidLookup as _, GenericStringObjectFormat, JsonObjectType, Space,
 };
-use crate::drive::CloudObjectTypeAndId;
+use crate::cloud_object::CloudObjectTypeAndId;
 use crate::persistence::{
     ModelEvent, database_file_path_for_current_scope, establish_ro_connection,
 };

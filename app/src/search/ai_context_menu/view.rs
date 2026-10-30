@@ -25,7 +25,7 @@ use warpui::{
 use super::styles;
 use crate::appearance::Appearance;
 use crate::debounce;
-use crate::drive::settings::WarpDriveSettings;
+use crate::settings::WarpDriveSettings;
 #[cfg(not(target_family = "wasm"))]
 use crate::search::ai_context_menu::blocks::data_source::BlockDataSource;
 #[cfg(not(target_family = "wasm"))]
@@ -42,7 +42,7 @@ use crate::search::ai_context_menu::files::data_source::{
     file_data_source_for_current_repo, file_data_source_for_pwd,
 };
 use crate::search::ai_context_menu::mixer::{AIContextMenuMixer, AIContextMenuSearchableAction};
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
 use crate::search::ai_context_menu::notebooks::data_source::NotebookDataSource;
 #[cfg(not(target_family = "wasm"))]
 use crate::search::ai_context_menu::rules::data_source::RulesDataSource;
@@ -936,7 +936,7 @@ impl AIContextMenu {
                     );
                 });
             }
-            #[cfg(not(target_family = "wasm"))]
+            #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
             NavigationState::Category(AIContextMenuCategory::Notebooks) => {
                 let notebook_data_source = ctx.add_model(|_| NotebookDataSource::new(false));
                 self.mixer.update(ctx, |mixer, ctx| {
@@ -950,7 +950,7 @@ impl AIContextMenu {
                     );
                 });
             }
-            #[cfg(not(target_family = "wasm"))]
+            #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
             NavigationState::Category(AIContextMenuCategory::Plans) => {
                 let notebook_data_source = ctx.add_model(|_| NotebookDataSource::new(true));
                 self.mixer.update(ctx, |mixer, ctx| {
@@ -1116,12 +1116,14 @@ impl AIContextMenu {
                         mixer.add_sync_source(workflow_data_source, [QueryFilter::Workflows]);
                     });
                 }
+                #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
                 AIContextMenuCategory::Notebooks => {
                     let notebook_data_source = ctx.add_model(|_| NotebookDataSource::new(false));
                     self.mixer.update(ctx, |mixer, _ctx| {
                         mixer.add_sync_source(notebook_data_source, [QueryFilter::Notebooks]);
                     });
                 }
+                #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
                 AIContextMenuCategory::Plans => {
                     let notebook_data_source = ctx.add_model(|_| NotebookDataSource::new(true));
                     self.mixer.update(ctx, |mixer, _ctx| {

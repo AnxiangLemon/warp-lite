@@ -27,7 +27,7 @@ use crate::cloud_object::{
 };
 use crate::env_vars::CloudEnvVarCollection;
 use crate::env_vars::manager::EnvVarCollectionSource;
-use crate::notebooks::CloudNotebook;
+use crate::cloud_object::CloudNotebook;
 use crate::notebooks::manager::NotebookSource;
 use crate::server::cloud_objects::update_manager::{InitiatedBy, UpdateManager};
 use crate::server::ids::{ClientId, ServerId, SyncId};
@@ -36,8 +36,7 @@ use crate::workflows::manager::WorkflowOpenSource;
 use crate::workflows::{CloudWorkflow, WorkflowViewMode};
 use crate::workspaces::user_workspaces::UserWorkspaces;
 
-pub const MIN_SIDEBAR_WIDTH: f32 = 250.;
-pub const MAX_SIDEBAR_WIDTH_RATIO: f32 = 0.75;
+pub use crate::workspace::sidebar_constants::{MAX_SIDEBAR_WIDTH_RATIO, MIN_SIDEBAR_WIDTH};
 
 pub const WARP_DRIVE_POSITION_ID: &str = "warp_drive";
 

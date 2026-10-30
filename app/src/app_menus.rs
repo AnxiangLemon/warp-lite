@@ -229,6 +229,7 @@ fn make_new_app_menu(ctx: &AppContext) -> Menu {
         None,
     )));
     menu_items.push(MenuItem::Separator);
+    #[cfg(not(feature = "warp_lite"))]
     menu_items.push(MenuItem::Custom(CustomMenuItem::new(
         "Log out",
         auth::maybe_log_out,

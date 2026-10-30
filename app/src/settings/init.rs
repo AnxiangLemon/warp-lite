@@ -25,7 +25,7 @@ use super::{
 use crate::ai::cloud_agent_settings::CloudAgentSettings;
 use crate::appearance;
 use crate::banner::BannerState;
-use crate::drive::settings::WarpDriveSettings;
+use crate::settings::WarpDriveSettings;
 use crate::resource_center::TipsCompleted;
 use crate::search::command_search::settings::CommandSearchSettings;
 use crate::terminal::BlockListSettings;
@@ -144,10 +144,15 @@ pub fn init(
         *general_settings.user_default_shell_unsupported_banner_state;
     let should_restore_session = *general_settings.restore_session;
 
-    // Validate all public settings to detect values that parsed as TOML
-    // but cannot be deserialized into the expected Rust types.
-    let invalid_setting_keys =
-        settings::SettingsManager::as_ref(ctx).validate_all_public_settings(ctx);
+    // Validate settings-file values only when that backend is active. Native
+    // stores (registry / UserDefaults) persist serde JSON (e.g. "FancyDracula"),
+    // while validate_all_public_settings expects file-format snake_case
+    // ("fancy_dracula") — running it against the native store false-positives.
+    let invalid_setting_keys = if FeatureFlag::SettingsFile.is_enabled() {
+        settings::SettingsManager::as_ref(ctx).validate_all_public_settings(ctx)
+    } else {
+        Vec::new()
+    };
     let settings_file_error = if let Some(err) = startup_toml_parse_error {
         Some(super::SettingsFileError::FileParseFailed(err.to_string()))
     } else if !invalid_setting_keys.is_empty() {

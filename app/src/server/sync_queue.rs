@@ -37,10 +37,10 @@ use crate::cloud_object::{
     ObjectType, Owner, Revision, RevisionAndLastEditor, ServerCloudObject, ServerCreationInfo,
     UpdateCloudObjectResult,
 };
-use crate::drive::CloudObjectTypeAndId;
-use crate::drive::folders::CloudFolderModel;
+use crate::cloud_object::CloudObjectTypeAndId;
+use crate::cloud_object::CloudFolderModel;
 use crate::env_vars::CloudEnvVarCollectionModel;
-use crate::notebooks::CloudNotebookModel;
+use crate::cloud_object::CloudNotebookModel;
 use crate::server::cloud_objects::update_manager::InitiatedBy;
 use crate::settings::cloud_preferences::CloudPreferenceModel;
 use crate::workflows::CloudWorkflowModel;

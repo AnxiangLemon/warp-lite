@@ -69,7 +69,7 @@ use crate::editor::{
     PropagateHorizontalNavigationKeys, SingleLineEditorOptions, TextOptions,
 };
 use crate::menu::{MenuItem, MenuItemFields};
-use crate::notebooks::NotebookId;
+use crate::cloud_object::NotebookId;
 use crate::settings::ai::AISettings;
 use crate::ui_components::agent_icon::agent_conversation_entry_icon_variant;
 use crate::ui_components::avatar::{Avatar, AvatarContent};
@@ -1134,6 +1134,7 @@ impl AgentManagementView {
                     ctx
                 );
 
+                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ForkAIConversation {
                     conversation_id: *conversation_id,
                     fork_from_exchange: None,
@@ -1422,6 +1423,7 @@ impl AgentManagementView {
                             AgentManagementTelemetryEvent::SpawnNewCloudAgent,
                             ctx
                         );
+                        #[cfg(not(feature = "warp_lite"))]
                         ctx.dispatch_typed_action(&WorkspaceAction::AddAmbientAgentTab);
                     }
                     AgentType::Local => {
@@ -1429,6 +1431,7 @@ impl AgentManagementView {
                             AgentManagementTelemetryEvent::SpawnNewLocalAgent,
                             ctx
                         );
+                        #[cfg(not(feature = "warp_lite"))]
                         ctx.dispatch_typed_action(&WorkspaceAction::NewTabInAgentMode {
                             entrypoint: AgentModeEntrypoint::AgentManagementView,
                             zero_state_prompt_suggestion_type: None,

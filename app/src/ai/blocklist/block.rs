@@ -143,7 +143,9 @@ use crate::ai::blocklist::suggestion_chip_view::{SuggestedChipViewEvent, Suggest
 use crate::ai::blocklist::{
     BlocklistAIContextEvent, BlocklistAIContextModel, SuggestionDismissButtonTheme,
 };
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentModel, AIDocumentVersion};
+use ai::document::{AIDocumentId, AIDocumentVersion};
+#[cfg(not(feature = "warp_lite"))]
+use crate::ai::document::ai_document_model::{AIDocumentModel};
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
 use crate::ai::facts::{AIFact, AIMemory, CloudAIFactModel};
 use crate::ai::get_relevant_files::controller::{
@@ -167,8 +169,12 @@ use crate::code_review::comments::{
 };
 use crate::code_review::telemetry_event::CodeReviewPaneEntrypoint;
 use crate::editor::InteractionState;
+#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::editor::model::FileLinkResolutionContext;
+#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::editor::view::{EditorViewEvent, RichTextEditorView};
+#[cfg(feature = "warp_lite")]
+use crate::code::editor::comment_editor::RichTextEditorViewStub as RichTextEditorView;
 use crate::server::ids::SyncId;
 use crate::server::server_api::ServerApiProvider;
 use crate::server::telemetry::{
@@ -1479,6 +1485,7 @@ impl AIBlock {
         let mut comment_states = HashMap::new();
         for (id, content) in comment_data {
             let state = CommentElementState::new(id, &content, ctx);
+            #[cfg(not(feature = "warp_lite"))]
             ctx.subscribe_to_view(&state.rich_text_editor, |me, view, event, ctx| {
                 if matches!(event, EditorViewEvent::TextSelectionChanged)
                     && view.as_ref(ctx).selected_text(ctx).is_some()
@@ -2155,6 +2162,7 @@ impl AIBlock {
                     action: AIAgentActionType::CreateDocuments(CreateDocumentsRequest { documents }),
                     ..
                 } => {
+                    #[cfg(not(feature = "warp_lite"))]
                     self.handle_create_documents_stream_update(action_id, documents, ctx);
                 }
                 AIAgentAction {
@@ -3850,6 +3858,7 @@ impl AIBlock {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_create_documents_stream_update(
         &mut self,
         action_id: &AIAgentActionId,
@@ -4767,6 +4776,7 @@ impl AIBlock {
                     }
 
                     // Open the AI document pane when documents are created or edited
+                    #[cfg(not(feature = "warp_lite"))]
                     if let Some(action_result) =
                         action_model.as_ref(ctx).get_action_result(action_id)
                     {
@@ -6205,6 +6215,7 @@ pub enum AIBlockEvent {
         entrypoint: CodeReviewPaneEntrypoint,
     },
     DismissedPassiveBlock,
+    #[cfg(not(feature = "warp_lite"))]
     OpenAIDocumentPane {
         document_id: AIDocumentId,
         document_version: AIDocumentVersion,

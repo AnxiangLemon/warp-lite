@@ -428,6 +428,7 @@ impl View for PromptSuggestionsView {
                     banner_state.accept_button_mouse_state.clone(),
                     Rc::new(move |ctx: &mut warpui::EventContext<'_>| {
                         if open_unavailable_modal {
+                            #[cfg(not(feature = "warp_lite"))]
                             ctx.dispatch_typed_action(
                                 WorkspaceAction::OpenPromptSuggestionsUnavailableModal,
                             );

@@ -33,7 +33,7 @@ use crate::cloud_object::{
     ServerNotebook, ServerObject, ServerObjectGuest, ServerPreference, ServerWorkflow,
     ServerWorkflowEnum, Space, UpdateCloudObjectResult,
 };
-use crate::drive::CloudObjectTypeAndId;
+use crate::cloud_object::CloudObjectTypeAndId;
 use crate::drive::folders::{CloudFolder, CloudFolderModel, FolderId};
 use crate::drive::sharing::{SharingAccessLevel, Subject, UserKind};
 use crate::notebooks::{CloudNotebook, CloudNotebookModel, NotebookId};

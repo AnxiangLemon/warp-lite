@@ -69,7 +69,16 @@ __pycache__/
 
 # Project notes
 .note/
-.claude/scheduled_tasks.lock
 
-# Removed prototype backup
-/_prototype-backup/
+# Warp Lite build output and local investigation artifacts
+/target-*/
+/dist/
+/lite_check*.txt
+/script/fix_lite_document_imports.py
+/script/fix_lite_drive_imports.py
+
+# Local environment settings (keep templates versioned)
+.env
+.env.*
+!.env.example
+!.env.sample

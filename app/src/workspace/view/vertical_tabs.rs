@@ -47,13 +47,17 @@ use crate::code::editor::{add_color, remove_color};
 use crate::code::icon_from_file_path;
 use crate::context_chips::display_chip::GitLineChanges;
 use crate::context_chips::github_pr_display_text_from_url;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::DriveObjectType;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::cloud_object_styling::warp_drive_icon_color;
 use crate::editor::EditorView;
 use crate::pane_group::pane::IPaneType;
 use crate::pane_group::{
-    CodePane, NotebookPane, PaneGroup, PaneId, TabBarHoverIndex, TerminalPane, WorkflowPane,
+    CodePane, PaneGroup, PaneId, TabBarHoverIndex, TerminalPane,
 };
+#[cfg(not(feature = "warp_lite"))]
+use crate::pane_group::{NotebookPane, WorkflowPane};
 use crate::safe_triangle::SafeTriangle;
 use crate::tab::{SelectedTabColor, TAB_INDICATOR_SYNCED_COLOR, TabData, tab_position_id};
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
@@ -901,13 +905,20 @@ pub(super) enum SummaryPaneKind {
     CLIAgent { agent: CLIAgent, is_ambient: bool },
     Code { title: String },
     CodeDiff,
+    #[cfg(not(feature = "warp_lite"))]
     File,
+    #[cfg(not(feature = "warp_lite"))]
     Notebook { is_plan: bool },
+    #[cfg(not(feature = "warp_lite"))]
     Workflow { is_ai_prompt: bool },
     Settings,
+    #[cfg(not(feature = "warp_lite"))]
     EnvVarCollection,
+    #[cfg(not(feature = "warp_lite"))]
     EnvironmentManagement,
+    #[cfg(not(feature = "warp_lite"))]
     AIFact,
+    #[cfg(not(feature = "warp_lite"))]
     AIDocument,
     ExecutionProfileEditor,
     Other,
@@ -1481,12 +1492,15 @@ fn render_detail_kind_badge_icon(
         TypedPane::Code(_) => icon_from_file_path(&props.title, appearance)
             .unwrap_or_else(|| WarpIcon::Code2.to_warpui_icon(sub_text).finish()),
         typed => {
+            #[cfg(not(feature = "warp_lite"))]
             let fill = typed
                 .warp_drive_object_type()
                 .map(|object_type| {
                     WarpThemeFill::Solid(warp_drive_icon_color(appearance, object_type))
                 })
                 .unwrap_or(sub_text);
+            #[cfg(feature = "warp_lite")]
+            let fill = sub_text;
             typed.icon().to_warpui_icon(fill).finish()
         }
     }
@@ -3302,6 +3316,7 @@ fn resolve_icon_with_status_variant(
     let main_text = theme.main_text_color(theme.background());
     let sub_text = theme.sub_text_color(theme.background());
 
+    #[cfg(not(feature = "warp_lite"))]
     let drive_color = |object_type: DriveObjectType| -> WarpThemeFill {
         WarpThemeFill::Solid(warp_drive_icon_color(appearance, object_type))
     };
@@ -3328,32 +3343,42 @@ fn resolve_icon_with_status_variant(
                 icon_color: sub_text,
             },
         },
-        // Settings and environment management use the foreground color per design spec
-        TypedPane::Settings | TypedPane::EnvironmentManagement => IconWithStatusVariant::Neutral {
+        // Settings uses the foreground color per design spec
+        TypedPane::Settings => IconWithStatusVariant::Neutral {
+            icon: typed.icon(),
+            icon_color: main_text,
+        },
+        #[cfg(not(feature = "warp_lite"))]
+        TypedPane::EnvironmentManagement => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: main_text,
         },
         // Warp Drive object types use their established index colors
+        #[cfg(not(feature = "warp_lite"))]
         TypedPane::Notebook { is_plan } => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::Notebook {
                 is_ai_document: *is_plan,
             }),
         },
+        #[cfg(not(feature = "warp_lite"))]
         TypedPane::Workflow { is_ai_prompt: true } => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::AgentModeWorkflow),
         },
+        #[cfg(not(feature = "warp_lite"))]
         TypedPane::Workflow {
             is_ai_prompt: false,
         } => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::Workflow),
         },
+        #[cfg(not(feature = "warp_lite"))]
         TypedPane::EnvVarCollection => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::EnvVarCollection),
         },
+        #[cfg(not(feature = "warp_lite"))]
         TypedPane::AIFact => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::AIFact),
@@ -3564,13 +3589,20 @@ enum TypedPane<'a> {
     Terminal(&'a TerminalPane),
     Code(&'a CodePane),
     CodeDiff,
+    #[cfg(not(feature = "warp_lite"))]
     File,
+    #[cfg(not(feature = "warp_lite"))]
     Notebook { is_plan: bool },
+    #[cfg(not(feature = "warp_lite"))]
     Workflow { is_ai_prompt: bool },
     Settings,
+    #[cfg(not(feature = "warp_lite"))]
     EnvVarCollection,
+    #[cfg(not(feature = "warp_lite"))]
     EnvironmentManagement,
+    #[cfg(not(feature = "warp_lite"))]
     AIFact,
+    #[cfg(not(feature = "warp_lite"))]
     AIDocument,
     ExecutionProfileEditor,
     Other,
@@ -3598,41 +3630,62 @@ impl TypedPane<'_> {
                 title: title.to_string(),
             },
             TypedPane::CodeDiff => SummaryPaneKind::CodeDiff,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::File => SummaryPaneKind::File,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Notebook { is_plan } => SummaryPaneKind::Notebook { is_plan: *is_plan },
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Workflow { is_ai_prompt } => SummaryPaneKind::Workflow {
                 is_ai_prompt: *is_ai_prompt,
             },
             TypedPane::Settings => SummaryPaneKind::Settings,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::EnvVarCollection => SummaryPaneKind::EnvVarCollection,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::EnvironmentManagement => SummaryPaneKind::EnvironmentManagement,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIFact => SummaryPaneKind::AIFact,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIDocument => SummaryPaneKind::AIDocument,
             TypedPane::ExecutionProfileEditor => SummaryPaneKind::ExecutionProfileEditor,
             TypedPane::Other => SummaryPaneKind::Other,
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn warp_drive_object_type(&self) -> Option<DriveObjectType> {
         typed_pane_warp_drive_object_type(self)
     }
 
     fn supports_vertical_tabs_detail_sidecar(&self) -> bool {
-        matches!(self, TypedPane::Terminal(_) | TypedPane::Code(_))
-            || self.warp_drive_object_type().is_some()
+        if matches!(self, TypedPane::Terminal(_) | TypedPane::Code(_)) {
+            return true;
+        }
+        #[cfg(not(feature = "warp_lite"))]
+        if self.warp_drive_object_type().is_some() {
+            return true;
+        }
+        false
     }
     fn kind_label(&self) -> &'static str {
         match self {
             TypedPane::Terminal(_) => "Terminal",
             TypedPane::Code(_) => "Code",
             TypedPane::CodeDiff => "Code Diff",
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::File => "File",
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Notebook { .. } => "Notebook",
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Workflow { .. } => "Workflow",
             TypedPane::Settings => "Settings",
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::EnvVarCollection => "Environment Variables",
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::EnvironmentManagement => "Environments",
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIFact => "Rules",
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIDocument => "Plan",
             TypedPane::ExecutionProfileEditor => "Execution Profile",
             TypedPane::Other => "Other",
@@ -3648,16 +3701,17 @@ impl TypedPane<'_> {
                 .then(|| "Unsaved".to_string()),
             TypedPane::Terminal(_)
             | TypedPane::CodeDiff
-            | TypedPane::File
+            | TypedPane::Settings
+            | TypedPane::ExecutionProfileEditor
+            | TypedPane::Other => None,
+            #[cfg(not(feature = "warp_lite"))]
+            TypedPane::File
             | TypedPane::Notebook { .. }
             | TypedPane::Workflow { .. }
-            | TypedPane::Settings
             | TypedPane::EnvVarCollection
             | TypedPane::EnvironmentManagement
             | TypedPane::AIFact
-            | TypedPane::AIDocument
-            | TypedPane::ExecutionProfileEditor
-            | TypedPane::Other => None,
+            | TypedPane::AIDocument => None,
         }
     }
 
@@ -3666,16 +3720,26 @@ impl TypedPane<'_> {
             TypedPane::Terminal(_) => WarpIcon::Terminal,
             TypedPane::Code(_) => WarpIcon::Code2,
             TypedPane::CodeDiff => WarpIcon::Diff,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::File => WarpIcon::File,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Notebook { is_plan: true } => WarpIcon::Compass,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Notebook { is_plan: false } => WarpIcon::Notebook,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Workflow { is_ai_prompt: true } => WarpIcon::Prompt,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Workflow {
                 is_ai_prompt: false,
             } => WarpIcon::Workflow,
-            TypedPane::Settings | TypedPane::EnvironmentManagement => WarpIcon::Gear,
+            TypedPane::Settings => WarpIcon::Gear,
+            #[cfg(not(feature = "warp_lite"))]
+            TypedPane::EnvironmentManagement => WarpIcon::Gear,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::EnvVarCollection => WarpIcon::EnvVarCollection,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIFact => WarpIcon::BookOpen,
+            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIDocument => WarpIcon::Compass,
             TypedPane::ExecutionProfileEditor => WarpIcon::Lightning,
             TypedPane::Other => WarpIcon::File,
@@ -3815,16 +3879,24 @@ fn build_vertical_tabs_summary_data(
                 );
             }
             TypedPane::CodeDiff
-            | TypedPane::File
+            | TypedPane::Settings
+            | TypedPane::ExecutionProfileEditor
+            | TypedPane::Other => {
+                push_normalized_unique_summary_label(
+                    &mut primary_labels,
+                    &mut primary_seen,
+                    &pane_title,
+                    None,
+                );
+            }
+            #[cfg(not(feature = "warp_lite"))]
+            TypedPane::File
             | TypedPane::Notebook { .. }
             | TypedPane::Workflow { .. }
-            | TypedPane::Settings
             | TypedPane::EnvVarCollection
             | TypedPane::EnvironmentManagement
             | TypedPane::AIFact
-            | TypedPane::AIDocument
-            | TypedPane::ExecutionProfileEditor
-            | TypedPane::Other => {
+            | TypedPane::AIDocument => {
                 push_normalized_unique_summary_label(
                     &mut primary_labels,
                     &mut primary_seen,
@@ -3957,16 +4029,19 @@ impl<'a> PaneProps<'a> {
             ),
             TypedPane::Code(_)
             | TypedPane::CodeDiff
-            | TypedPane::File
+            | TypedPane::Settings
+            | TypedPane::ExecutionProfileEditor
+            | TypedPane::Other => {
+                non_terminal_search_text_fragments(self.generated_or_tab_title(), &self.subtitle)
+            }
+            #[cfg(not(feature = "warp_lite"))]
+            TypedPane::File
             | TypedPane::Notebook { .. }
             | TypedPane::Workflow { .. }
-            | TypedPane::Settings
             | TypedPane::EnvVarCollection
             | TypedPane::EnvironmentManagement
             | TypedPane::AIFact
-            | TypedPane::AIDocument
-            | TypedPane::ExecutionProfileEditor
-            | TypedPane::Other => {
+            | TypedPane::AIDocument => {
                 non_terminal_search_text_fragments(self.generated_or_tab_title(), &self.subtitle)
             }
         };
@@ -4277,7 +4352,9 @@ impl PaneGroup {
                     .expect("IPaneType::Code must correspond to a CodePane"),
             ),
             IPaneType::CodeDiff => TypedPane::CodeDiff,
+            #[cfg(not(feature = "warp_lite"))]
             IPaneType::File => TypedPane::File,
+            #[cfg(not(feature = "warp_lite"))]
             IPaneType::Notebook => {
                 let is_plan = self
                     .downcast_pane_by_id::<NotebookPane>(pane_id)
@@ -4285,6 +4362,7 @@ impl PaneGroup {
                     .unwrap_or(false);
                 TypedPane::Notebook { is_plan }
             }
+            #[cfg(not(feature = "warp_lite"))]
             IPaneType::Workflow => {
                 let is_ai_prompt = self
                     .downcast_pane_by_id::<WorkflowPane>(pane_id)
@@ -4296,16 +4374,20 @@ impl PaneGroup {
                 TypedPane::Workflow { is_ai_prompt }
             }
             IPaneType::Settings => TypedPane::Settings,
+            #[cfg(not(feature = "warp_lite"))]
             IPaneType::EnvVarCollection => TypedPane::EnvVarCollection,
+            #[cfg(not(feature = "warp_lite"))]
             IPaneType::EnvironmentManagement => TypedPane::EnvironmentManagement,
+            #[cfg(not(feature = "warp_lite"))]
             IPaneType::AIFact => TypedPane::AIFact,
+            #[cfg(not(feature = "warp_lite"))]
             IPaneType::AIDocument => TypedPane::AIDocument,
             IPaneType::ExecutionProfileEditor => TypedPane::ExecutionProfileEditor,
             IPaneType::CustomRouterEditor
             | IPaneType::GetStarted
             | IPaneType::NetworkLog
             | IPaneType::DeferredPlaceholder => TypedPane::Other,
-            #[cfg(test)]
+            #[cfg(all(not(feature = "warp_lite"), test))]
             IPaneType::Dummy => TypedPane::Other,
         }
     }
@@ -5037,16 +5119,23 @@ pub(super) fn render_summary_pane_kind_icon_circle(
         ),
         SummaryPaneKind::Terminal
         | SummaryPaneKind::CodeDiff
-        | SummaryPaneKind::File
+        | SummaryPaneKind::Settings
+        | SummaryPaneKind::ExecutionProfileEditor
+        | SummaryPaneKind::Other => {
+            let (icon, icon_color) = summary_pane_kind_icon(kind, appearance);
+            (
+                icon.to_warpui_icon(icon_color).finish(),
+                internal_colors::fg_overlay_2(theme).into(),
+            )
+        }
+        #[cfg(not(feature = "warp_lite"))]
+        SummaryPaneKind::File
         | SummaryPaneKind::Notebook { .. }
         | SummaryPaneKind::Workflow { .. }
-        | SummaryPaneKind::Settings
         | SummaryPaneKind::EnvVarCollection
         | SummaryPaneKind::EnvironmentManagement
         | SummaryPaneKind::AIFact
-        | SummaryPaneKind::AIDocument
-        | SummaryPaneKind::ExecutionProfileEditor
-        | SummaryPaneKind::Other => {
+        | SummaryPaneKind::AIDocument => {
             let (icon, icon_color) = summary_pane_kind_icon(kind, appearance);
             (
                 icon.to_warpui_icon(icon_color).finish(),
@@ -5095,6 +5184,7 @@ fn summary_pane_kind_icon(
     let theme = appearance.theme();
     let main_text = theme.main_text_color(theme.background());
     let sub_text = theme.sub_text_color(theme.background());
+    #[cfg(not(feature = "warp_lite"))]
     let drive_color = |object_type: DriveObjectType| -> WarpThemeFill {
         WarpThemeFill::Solid(warp_drive_icon_color(appearance, object_type))
     };
@@ -5113,7 +5203,9 @@ fn summary_pane_kind_icon(
         ),
         SummaryPaneKind::Code { .. } => (WarpIcon::Code2, sub_text),
         SummaryPaneKind::CodeDiff => (WarpIcon::Diff, sub_text),
+        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::File => (WarpIcon::File, sub_text),
+        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::Notebook { is_plan } => (
             if is_plan {
                 WarpIcon::Compass
@@ -5124,6 +5216,7 @@ fn summary_pane_kind_icon(
                 is_ai_document: is_plan,
             }),
         ),
+        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::Workflow { is_ai_prompt } => (
             if is_ai_prompt {
                 WarpIcon::Prompt
@@ -5136,14 +5229,17 @@ fn summary_pane_kind_icon(
                 drive_color(DriveObjectType::Workflow)
             },
         ),
-        SummaryPaneKind::Settings | SummaryPaneKind::EnvironmentManagement => {
-            (WarpIcon::Gear, main_text)
-        }
+        SummaryPaneKind::Settings => (WarpIcon::Gear, main_text),
+        #[cfg(not(feature = "warp_lite"))]
+        SummaryPaneKind::EnvironmentManagement => (WarpIcon::Gear, main_text),
+        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::EnvVarCollection => (
             WarpIcon::EnvVarCollection,
             drive_color(DriveObjectType::EnvVarCollection),
         ),
+        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::AIFact => (WarpIcon::BookOpen, drive_color(DriveObjectType::AIFact)),
+        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::AIDocument => (WarpIcon::Compass, sub_text),
         SummaryPaneKind::ExecutionProfileEditor => (WarpIcon::Lightning, sub_text),
         SummaryPaneKind::Other => (WarpIcon::File, sub_text),
@@ -6946,6 +7042,7 @@ fn render_code_detail_section(
         .finish()
 }
 
+#[cfg(not(feature = "warp_lite"))]
 fn render_warp_drive_object_detail_section(
     props: &PaneProps<'_>,
     appearance: &Appearance,
@@ -6982,6 +7079,7 @@ fn code_detail_kind_label(file_name: &str) -> Option<String> {
         .map(|language| language.display_name().to_string())
 }
 
+#[cfg(not(feature = "warp_lite"))]
 fn typed_pane_warp_drive_object_type(typed: &TypedPane<'_>) -> Option<DriveObjectType> {
     match typed {
         TypedPane::Notebook { is_plan } => Some(DriveObjectType::Notebook {
@@ -7020,17 +7118,18 @@ fn render_detail_section(
             app,
         ),
         TypedPane::Code(_) => render_code_detail_section(props, appearance, app),
+        #[cfg(not(feature = "warp_lite"))]
         TypedPane::Notebook { .. }
         | TypedPane::Workflow { .. }
         | TypedPane::EnvVarCollection
         | TypedPane::AIFact
         | TypedPane::AIDocument => render_warp_drive_object_detail_section(props, appearance, app),
         TypedPane::CodeDiff
-        | TypedPane::File
         | TypedPane::Settings
-        | TypedPane::EnvironmentManagement
         | TypedPane::ExecutionProfileEditor
         | TypedPane::Other => Empty::new().finish(),
+        #[cfg(not(feature = "warp_lite"))]
+        TypedPane::File | TypedPane::EnvironmentManagement => Empty::new().finish(),
     }
 }
 pub(super) struct DetailSidecarOverlay {

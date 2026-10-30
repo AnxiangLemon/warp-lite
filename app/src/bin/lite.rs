@@ -5,14 +5,11 @@ use anyhow::Result;
 use warp_core::AppId;
 use warp_core::channel::{Channel, ChannelConfig, ChannelState, OzConfig, WarpServerConfig};
 
-/// Local-only terminal/session application with a deliberately small UI.
+/// Local-only terminal build. Uses the real Warp terminal stack but points every
+/// server-backed subsystem at loopback, so no login, cloud, or telemetry is used.
 fn main() -> Result<()> {
     if std::env::args().any(|arg| arg == "--version") {
         println!("Warp Lite 0.1.0");
-        return Ok(());
-    }
-    if std::env::args().any(|arg| arg == "--help" || arg == "-h") {
-        println!("Warp Lite\n\nUsage: warp-lite [--version|--help]");
         return Ok(());
     }
 
@@ -34,7 +31,7 @@ fn main() -> Result<()> {
     }
     ChannelState::set(state);
 
-    warp::run_lite()
+    warp::run()
 }
 
 #[cfg(all(not(feature = "extern_plist"), target_os = "macos"))]

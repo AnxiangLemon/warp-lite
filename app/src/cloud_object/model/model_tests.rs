@@ -23,7 +23,7 @@ use crate::cloud_object::{
     NumInFlightRequests, ObjectIdType, Owner, ServerMetadata, ServerPermissions,
 };
 use crate::drive::DriveIndexVariant;
-use crate::drive::folders::{CloudFolderModel, FolderId};
+use crate::cloud_object::{CloudFolderModel, FolderId};
 use crate::features::FeatureFlag;
 use crate::notebooks::{CloudNotebookModel, NotebookId};
 use crate::server::cloud_objects::listener::ObjectUpdateMessage;

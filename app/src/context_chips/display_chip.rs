@@ -34,7 +34,7 @@ use super::{
 use crate::ai::blocklist::agent_view::AgentViewController;
 use crate::ai::blocklist::prompt::plan_and_todo_list::{PlanAndTodoListEvent, PlanAndTodoListView};
 use crate::ai::blocklist::{BlocklistAIContextModel, BlocklistAIInputModel};
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
+use ai::document::{AIDocumentId, AIDocumentVersion};
 use crate::appearance::Appearance;
 use crate::code::editor::{add_color, remove_color};
 use crate::code_review::code_review_view::CODE_REVIEW_TOOLTIP_TEXT;

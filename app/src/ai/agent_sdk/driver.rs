@@ -68,6 +68,7 @@ use crate::ai::blocklist::{
 use crate::ai::cloud_environments::{
     AmbientAgentEnvironment, CloudAmbientAgentEnvironment, GithubRepo, SourceRepo,
 };
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::document::ai_document_model::{AIDocumentModel, AIDocumentModelEvent};
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
 use crate::ai::llms::{LLMId, LLMPreferences};
@@ -3894,6 +3895,7 @@ impl AgentDriver {
         });
 
         // Subscribe to document model events to emit artifact_created when plans sync to Warp Drive.
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_model(&AIDocumentModel::handle(ctx), move |me, _, event, ctx| {
             let AIDocumentModelEvent::DocumentSaveStatusUpdated(document_id) = event else {
                 return;

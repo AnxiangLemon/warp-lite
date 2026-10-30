@@ -7,7 +7,9 @@ use warpui::platform::Cursor;
 use warpui::{Element, EventContext};
 
 use crate::appearance::Appearance;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::DriveObjectType;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::cloud_object_styling::warp_drive_icon_color;
 use crate::search::{FilterChipRenderer as CommonFilterChipRenderer, QueryFilter};
 use crate::util::color::{ContrastingColor, MinimumAllowedContrast};
@@ -123,25 +125,55 @@ impl FilterChipRenderer for QueryFilter {
                 .theme()
                 .main_text_color(appearance.theme().surface_2())
                 .into_solid(),
+            #[cfg(not(feature = "warp_lite"))]
             QueryFilter::Workflows => warp_drive_icon_color(appearance, DriveObjectType::Workflow),
+            #[cfg(feature = "warp_lite")]
+            QueryFilter::Workflows => appearance
+                .theme()
+                .main_text_color(appearance.theme().surface_2())
+                .into_solid(),
+            #[cfg(not(feature = "warp_lite"))]
             QueryFilter::Notebooks => warp_drive_icon_color(
                 appearance,
                 DriveObjectType::Notebook {
                     is_ai_document: false,
                 },
             ),
+            #[cfg(feature = "warp_lite")]
+            QueryFilter::Notebooks => appearance
+                .theme()
+                .main_text_color(appearance.theme().surface_2())
+                .into_solid(),
+            #[cfg(not(feature = "warp_lite"))]
             QueryFilter::Plans => warp_drive_icon_color(
                 appearance,
                 DriveObjectType::Notebook {
                     is_ai_document: true,
                 },
             ),
+            #[cfg(feature = "warp_lite")]
+            QueryFilter::Plans => appearance
+                .theme()
+                .main_text_color(appearance.theme().surface_2())
+                .into_solid(),
+            #[cfg(not(feature = "warp_lite"))]
             QueryFilter::EnvironmentVariables => {
                 warp_drive_icon_color(appearance, DriveObjectType::EnvVarCollection)
             }
+            #[cfg(feature = "warp_lite")]
+            QueryFilter::EnvironmentVariables => appearance
+                .theme()
+                .main_text_color(appearance.theme().surface_2())
+                .into_solid(),
+            #[cfg(not(feature = "warp_lite"))]
             QueryFilter::AgentModeWorkflows => {
                 warp_drive_icon_color(appearance, DriveObjectType::AgentModeWorkflow)
             }
+            #[cfg(feature = "warp_lite")]
+            QueryFilter::AgentModeWorkflows => appearance
+                .theme()
+                .main_text_color(appearance.theme().surface_2())
+                .into_solid(),
         }
     }
 }

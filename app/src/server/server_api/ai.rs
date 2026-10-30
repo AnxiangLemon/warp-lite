@@ -150,6 +150,7 @@ use crate::ai_assistant::execution_context::WarpAiExecutionContext;
 use crate::ai_assistant::requests::GenerateDialogueResult;
 use crate::ai_assistant::utils::TranscriptPart;
 use crate::ai_assistant::{AIGeneratedCommand, GenerateCommandsFromNaturalLanguageError};
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::workflows::ai_assist::{GeneratedCommandMetadata, GeneratedCommandMetadataError};
 use crate::persistence::model::ConversationUsageMetadata;
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
@@ -1158,6 +1159,7 @@ pub trait AIClient: 'static + Send + Sync {
         ai_execution_context: Option<WarpAiExecutionContext>,
     ) -> anyhow::Result<GenerateDialogueResult>;
 
+    #[cfg(not(feature = "warp_lite"))]
     async fn generate_metadata_for_command(
         &self,
         command: String,
@@ -1730,6 +1732,7 @@ impl AIClient for ServerApi {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     async fn generate_metadata_for_command(
         &self,
         command: String,

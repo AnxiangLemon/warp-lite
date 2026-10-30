@@ -24,9 +24,8 @@ use crate::ai::agent::todos::popup::{AgentTodosPopupEvent, AgentTodosPopupView};
 use crate::ai::blocklist::{
     BlocklistAIContextEvent, BlocklistAIContextModel, BlocklistAIHistoryEvent,
 };
-use crate::ai::document::ai_document_model::{
-    AIDocumentId, AIDocumentModel, AIDocumentModelEvent, AIDocumentVersion,
-};
+use ai::document::{AIDocumentId, AIDocumentVersion};
+use crate::ai::document::ai_document_model::{AIDocumentModel, AIDocumentModelEvent};
 use crate::terminal::input::{MenuPositioning, MenuPositioningProvider};
 use crate::ui_components::blended_colors;
 use crate::{AIAgentTodoList, BlocklistAIHistoryModel};

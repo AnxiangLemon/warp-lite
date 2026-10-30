@@ -57,7 +57,7 @@ use crate::appearance::Appearance;
 use crate::auth::AuthStateProvider;
 use crate::auth::auth_manager::{AuthManager, LoginGatedFeature};
 use crate::auth::auth_state::AuthState;
-use crate::auth::auth_view_modal::AuthViewVariant;
+use crate::auth::AuthViewVariant;
 use crate::banner::BannerState;
 use crate::cloud_object::model::persistence::{CloudModel, CloudModelEvent};
 use crate::cloud_object::model::view::{CloudViewModel, CloudViewModelEvent, UpdateTimestamp};
@@ -504,11 +504,7 @@ struct MouseStateHandles {
     search_button_mouse_state: MouseStateHandle,
 }
 
-#[derive(Copy, Clone, PartialEq)]
-pub enum DriveIndexVariant {
-    MainIndex,
-    Trash,
-}
+pub use crate::cloud_object::DriveIndexVariant;
 
 #[derive(Clone)]
 struct SpaceMenuState {

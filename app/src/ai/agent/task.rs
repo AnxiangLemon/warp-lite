@@ -30,7 +30,7 @@ use super::{
     Shared,
 };
 use crate::AIAgentTodoList;
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
+use ai::document::{AIDocumentId, AIDocumentVersion};
 use crate::terminal::model::block::BlockId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

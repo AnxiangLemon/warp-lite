@@ -40,7 +40,13 @@ use crate::terminal::view::TerminalAction;
 use crate::view_components::{FeaturePopup, NewFeaturePopupEvent, NewFeaturePopupLabel};
 use crate::workspace::{TabBarDropTargetData, TabBarLocation, VerticalTabsPaneDropTargetData};
 
+#[cfg(not(feature = "warp_lite"))]
 mod sharing;
+#[cfg(feature = "warp_lite")]
+#[path = "sharing_lite.rs"]
+mod sharing;
+#[cfg(feature = "warp_lite")]
+pub use sharing::SharingDialogLite;
 
 pub(crate) mod components;
 

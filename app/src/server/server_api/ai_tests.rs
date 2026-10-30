@@ -14,7 +14,7 @@ use super::{
     TaskListFilter, UploadFieldValue, UserQueryMode, build_fork_conversation_url,
     build_list_agent_runs_url, build_run_followup_url,
 };
-use crate::notebooks::NotebookId;
+use crate::cloud_object::NotebookId;
 use crate::server::server_api::presigned_upload::upload_to_target;
 
 #[test]

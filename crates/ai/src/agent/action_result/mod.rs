@@ -1084,7 +1084,14 @@ impl Display for FileGlobV2Match {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallMCPToolResult {
-    Success { result: rmcp::model::CallToolResult },
+    #[cfg(feature = "mcp")]
+    Success {
+        result: rmcp::model::CallToolResult,
+    },
+    #[cfg(not(feature = "mcp"))]
+    Success {
+        result: String,
+    },
     Error(String),
     Cancelled,
 }
@@ -1107,8 +1114,13 @@ impl Display for CallMCPToolResult {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReadMCPResourceResult {
+    #[cfg(feature = "mcp")]
     Success {
         resource_contents: Vec<rmcp::model::ResourceContents>,
+    },
+    #[cfg(not(feature = "mcp"))]
+    Success {
+        resource_contents: Vec<String>,
     },
     Error(String),
     Cancelled,

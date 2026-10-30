@@ -1,8 +1,9 @@
 use warpui::AppContext;
 
-use super::{CloudObject, Space};
-use crate::drive::CloudObjectTypeAndId;
-use crate::drive::folders::CloudFolder;
+use super::{CloudObject, CloudObjectTypeAndId, Space};
+#[cfg(not(feature = "warp_lite"))]
+use crate::cloud_object::CloudFolder;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::WarpDriveItemId;
 use crate::ui_components::breadcrumb::Breadcrumb;
 
@@ -24,6 +25,7 @@ impl Breadcrumb for ContainingObject {
     }
 }
 
+#[cfg(not(feature = "warp_lite"))]
 impl From<&CloudFolder> for ContainingObject {
     fn from(folder: &CloudFolder) -> Self {
         Self {
@@ -48,6 +50,7 @@ pub enum ContainingObjectKind {
     Object(CloudObjectTypeAndId),
 }
 
+#[cfg(not(feature = "warp_lite"))]
 impl ContainingObjectKind {
     pub fn into_item_id(self) -> WarpDriveItemId {
         match self {

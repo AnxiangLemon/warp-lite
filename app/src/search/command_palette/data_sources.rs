@@ -6,8 +6,10 @@ use warp_core::features::FeatureFlag;
 use warpui::keymap::BindingId;
 use warpui::{AppContext, Entity, ModelContext, ModelHandle, SingletonEntity, WindowId};
 
-use super::{conversations, warp_drive};
-use crate::drive::settings::WarpDriveSettings;
+use super::conversations;
+#[cfg(not(feature = "warp_lite"))]
+use super::warp_drive;
+use crate::settings::WarpDriveSettings;
 use crate::search::QueryFilter;
 use crate::search::action::CommandBindingDataSource;
 use crate::search::binding_source::BindingSource;
@@ -25,6 +27,7 @@ use crate::settings::AISettings;
 pub struct DataSourceStore {
     actions_data_source: ModelHandle<CommandBindingDataSource>,
     sessions_data_source: ModelHandle<navigation::DataSource>,
+    #[cfg(not(feature = "warp_lite"))]
     warp_drive_data_source: ModelHandle<warp_drive::DataSource>,
     launch_config_data_source: ModelHandle<launch_config::DataSource>,
     new_session_data_source: Option<ModelHandle<NewSessionDataSource>>,
@@ -46,6 +49,7 @@ impl DataSourceStore {
         let sessions_data_source =
             ctx.add_model(|_| navigation::DataSource::new(active_session_handle));
 
+        #[cfg(not(feature = "warp_lite"))]
         let warp_drive_data_source =
             ctx.add_model(|ctx| warp_drive::DataSource::new(window_id, ctx));
 
@@ -63,6 +67,7 @@ impl DataSourceStore {
         Self {
             actions_data_source,
             sessions_data_source,
+            #[cfg(not(feature = "warp_lite"))]
             warp_drive_data_source,
             launch_config_data_source,
             new_session_data_source,
@@ -94,6 +99,7 @@ impl DataSourceStore {
                 HashSet::from([QueryFilter::Sessions]),
             );
 
+            #[cfg(not(feature = "warp_lite"))]
             if WarpDriveSettings::is_warp_drive_enabled(ctx) {
                 let mut warp_drive_filters = HashSet::from([
                     QueryFilter::Notebooks,
@@ -211,18 +217,25 @@ impl DataSourceStore {
                 .actions_data_source
                 .as_ref(app)
                 .query_result(*binding_id),
+            #[cfg(not(feature = "warp_lite"))]
             ItemSummary::Workflow { id } => self
                 .warp_drive_data_source
                 .as_ref(app)
                 .query_result(id, app),
+            #[cfg(not(feature = "warp_lite"))]
             ItemSummary::EnvVarCollection { id } => self
                 .warp_drive_data_source
                 .as_ref(app)
                 .query_result(id, app),
+            #[cfg(not(feature = "warp_lite"))]
             ItemSummary::Notebook { id } => self
                 .warp_drive_data_source
                 .as_ref(app)
                 .query_result(id, app),
+            #[cfg(feature = "warp_lite")]
+            ItemSummary::Workflow { .. }
+            | ItemSummary::EnvVarCollection { .. }
+            | ItemSummary::Notebook { .. } => None,
             ItemSummary::Session { pane_view_locator } => self
                 .sessions_data_source
                 .as_ref(app)

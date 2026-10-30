@@ -63,7 +63,7 @@ use super::{HEIGHT_FUDGE_FACTOR_LINES, TerminalModel, heights_approx_eq};
 use crate::ai::blocklist::{ATTACH_AS_AGENT_MODE_CONTEXT_TEXT, ai_brand_color};
 use crate::ai_assistant::{AI_ASSISTANT_SVG_PATH, ASK_AI_ASSISTANT_TEXT};
 use crate::appearance::Appearance;
-use crate::drive::settings::WarpDriveSettings;
+use crate::settings::WarpDriveSettings;
 use crate::features::FeatureFlag;
 use crate::pane_group::SplitPaneState;
 use crate::settings::{

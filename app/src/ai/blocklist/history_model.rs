@@ -39,6 +39,7 @@ use crate::ai::agent::{
     RequestCost, Suggestions,
 };
 use crate::ai::artifacts::Artifact;
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::document::ai_document_model::AIDocumentModel;
 use crate::input_suggestions::HistoryOrder;
 use crate::persistence::ModelEvent;
@@ -2035,6 +2036,7 @@ impl BlocklistAIHistoryModel {
                 log::warn!("Failed to mark exchange as cancelled: {e}");
             }
         }
+        #[cfg(not(feature = "warp_lite"))]
         AIDocumentModel::handle(ctx).update(ctx, |model, ctx| {
             model.clear_streaming_documents_for_conversation(&conversation_id, ctx);
         });

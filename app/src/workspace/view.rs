@@ -3,6 +3,7 @@ pub(crate) mod auto_handoff_sleep_modal;
 mod build_plan_migration_modal;
 pub(crate) mod cloud_agent_capacity_modal;
 pub(crate) mod codex_modal;
+#[cfg(not(feature = "warp_lite"))]
 pub mod conversation_list;
 #[cfg(enable_crash_recovery)]
 mod crash_recovery;
@@ -212,7 +213,8 @@ use crate::ai::cloud_agent_settings::CloudAgentSettings;
 #[cfg(target_family = "wasm")]
 use crate::ai::conversation_details_panel::ConversationDetailsPanel;
 use crate::ai::conversation_utils;
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentModel};
+use ai::document::AIDocumentId;
+use crate::ai::document::ai_document_model::AIDocumentModel;
 use crate::ai::execution_profiles::ExecutionProfileId;
 use crate::ai::execution_profiles::editor::ExecutionProfileEditorManager;
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
@@ -226,18 +228,24 @@ use crate::ai_assistant::execution_context::WarpAiExecutionContext;
 use crate::ai_assistant::panel::{AIAssistantPanelEvent, AIAssistantPanelView};
 use crate::ai_assistant::{AI_ASSISTANT_FEATURE_NAME, AI_ASSISTANT_LOGO_COLOR, AskAIType};
 use crate::app_state::{
-    LeafContents, LeafSnapshot, LeftPanelDisplayedTab, LeftPanelSnapshot, NotebookPaneSnapshot,
-    PaneNodeSnapshot, PaneUuid, RightPanelSnapshot, SettingsPaneSnapshot, TabGroupSnapshot,
-    TabSnapshot, TerminalPaneSnapshot, WindowSnapshot, WorkflowPaneSnapshot,
+    LeafContents, LeafSnapshot, LeftPanelDisplayedTab, LeftPanelSnapshot, PaneNodeSnapshot,
+    PaneUuid, RightPanelSnapshot, SettingsPaneSnapshot, TabGroupSnapshot, TabSnapshot,
+    TerminalPaneSnapshot, WindowSnapshot,
 };
+#[cfg(not(feature = "warp_lite"))]
+use crate::app_state::{NotebookPaneSnapshot, WorkflowPaneSnapshot};
 use crate::appearance::{Appearance, AppearanceManager};
 use crate::auth::AuthStateProvider;
 use crate::auth::auth_manager::{AuthManager, AuthManagerEvent};
+#[cfg(not(feature = "warp_lite"))]
 use crate::auth::auth_override_warning_modal::{
     AuthOverrideWarningModal, AuthOverrideWarningModalEvent, AuthOverrideWarningModalVariant,
 };
 use crate::auth::auth_state::AuthState;
+#[cfg(not(feature = "warp_lite"))]
 use crate::auth::auth_view_modal::{AuthRedirectPayload, AuthView, AuthViewEvent, AuthViewVariant};
+#[cfg(feature = "warp_lite")]
+use crate::auth::{AuthRedirectPayload, AuthViewVariant};
 use crate::autoupdate::{
     AutoupdateState, AutoupdateStateEvent, RelaunchModel, is_incoming_version_past_current,
 };
@@ -265,15 +273,22 @@ use crate::code_review::telemetry_event::CodeReviewPaneEntrypoint;
 use crate::coding_panel_enablement_state::CodingPanelEnablementState;
 use crate::context_chips::ChipRuntimeCapabilities;
 use crate::default_terminal::DefaultTerminal;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::export::ExportManager;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::import::modal::{ImportModal, ImportModalEvent};
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::WarpDriveItemId;
-use crate::drive::settings::{WarpDriveSettings, WarpDriveSettingsChangedEvent};
-use crate::drive::workflows::arguments::ArgumentsState;
-use crate::drive::workflows::modal::{WorkflowModal, WorkflowModalEvent};
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::{
-    CloudObjectTypeAndId, DriveObjectType, DrivePanel, DrivePanelEvent, OpenWarpDriveObjectSettings,
+    DriveObjectType, DrivePanel, DrivePanelEvent,
 };
+#[cfg(not(feature = "warp_lite"))]
+use crate::drive::workflows::arguments::ArgumentsState;
+#[cfg(not(feature = "warp_lite"))]
+use crate::drive::workflows::modal::{WorkflowModal, WorkflowModalEvent};
+use crate::cloud_object::{CloudObjectTypeAndId, OpenWarpDriveObjectSettings};
+use crate::settings::{WarpDriveSettings, WarpDriveSettingsChangedEvent};
 use crate::editor::{
     EditorView, Event as EditorEvent, PropagateAndNoOpNavigationKeys, SingleLineEditorOptions,
     TextOptions,
@@ -289,19 +304,24 @@ use crate::menu::{
 };
 use crate::modal::{Modal, ModalEvent, ModalViewState};
 use crate::network::{NetworkStatus, NetworkStatusEvent};
-use crate::notebooks::CloudNotebook;
+use crate::cloud_object::CloudNotebook;
+#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::manager::{NotebookManager, NotebookSource};
 use crate::notification::NotificationContext;
 use crate::palette::PaletteMode;
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 use crate::pane_group::FilePane;
 use crate::pane_group::pane::ActionOrigin;
 use crate::pane_group::{
-    self, AIFactPane, AnyPaneContent, ChildAgentOrigin, CodeDiffPane, CodePane, CodeReviewPanelArg,
-    CustomRouterEditorPane, Direction as PaneGroupDirection, Direction, EnvironmentManagementPane,
-    ExecutionProfileEditorPane, NetworkLogPane, NewTerminalOptions, PaneGroup, PaneId, PanesLayout,
-    TabBarHoverIndex, TerminalPaneId,
+    self, AnyPaneContent, ChildAgentOrigin, CodeDiffPane, CodePane, CodeReviewPanelArg,
+    CustomRouterEditorPane, Direction as PaneGroupDirection, Direction, ExecutionProfileEditorPane,
+    NetworkLogPane, NewTerminalOptions, PaneGroup, PaneId, PanesLayout, TabBarHoverIndex,
+    TerminalPaneId,
 };
+#[cfg(not(feature = "warp_lite"))]
+use crate::pane_group::AIFactPane;
+#[cfg(not(feature = "warp_lite"))]
+use crate::pane_group::EnvironmentManagementPane;
 use crate::persistence::ModelEvent;
 use crate::projects::ProjectManagementModel;
 use crate::prompt::editor_modal::{
@@ -351,11 +371,14 @@ use crate::settings::{
     PrivacySettings, SelectionSettings, Settings, SshSettings, ThemeSettings, active_theme_kind,
     respect_system_theme,
 };
+#[cfg(not(feature = "warp_lite"))]
 use crate::settings_view::environments_page::EnvironmentsPage;
+#[cfg(not(feature = "warp_lite"))]
 use crate::settings_view::handoff_environment_creation_modal::{
     HandoffEnvironmentCreationModal, HandoffEnvironmentCreationModalEvent,
 };
 use crate::settings_view::keybindings::{KeybindingChangedEvent, KeybindingChangedNotifier};
+#[cfg(feature = "mcp_client")]
 use crate::settings_view::mcp_servers_page::MCPServersSettingsPage;
 use crate::settings_view::pane_manager::SettingsPaneManager;
 use crate::settings_view::{SettingsSection, SettingsView, SettingsViewEvent, flags};
@@ -844,6 +867,7 @@ impl ShowTabBar {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SimplifiedWasmTabBarContent {
     /// Viewing a Warp Drive object (notebook, workflow, env vars, AI facts, MCP servers)
+    #[cfg(not(feature = "warp_lite"))]
     WarpDriveObject,
     /// Participating in a shared session (viewer or writer). Contains the optional ambient agent task ID.
     SharedSession { task_id: Option<AmbientAgentTaskId> },
@@ -1054,6 +1078,7 @@ pub struct Workspace {
     ctrl_tab_palette: ViewHandle<CommandPalette>,
     mouse_states: WorkspaceMouseStates,
     settings_pane: ViewHandle<SettingsView>,
+    #[cfg(not(feature = "warp_lite"))]
     import_modal: ViewHandle<ImportModal>,
     theme_chooser_view: ViewHandle<ThemeChooser>,
     previous_theme: Option<ThemeKind>,
@@ -1089,8 +1114,11 @@ pub struct Workspace {
     ai_assistant_panel: ViewHandle<AIAssistantPanelView>,
     should_show_ai_assistant_warm_welcome: bool,
     ai_assistant_close_warm_welcome_mouse_state_handle: MouseStateHandle,
+    #[cfg(not(feature = "warp_lite"))]
     auth_override_warning_modal: ViewHandle<AuthOverrideWarningModal>,
+    #[cfg(not(feature = "warp_lite"))]
     require_login_modal: ViewHandle<AuthView>,
+    #[cfg(not(feature = "warp_lite"))]
     workflow_modal: ViewHandle<WorkflowModal>,
     prompt_editor_modal: ViewHandle<PromptEditorModal>,
     agent_toolbar_editor_modal: ViewHandle<AgentToolbarEditorModal>,
@@ -1196,6 +1224,7 @@ pub struct Workspace {
     tab_config_action_sidecar_item: Option<SidecarItemKind>,
     tab_config_action_sidecar_mouse_states: crate::tab_configs::action_sidecar::SidecarMouseStates,
     remove_tab_config_confirmation_dialog: ViewHandle<RemoveTabConfigConfirmationDialog>,
+    #[cfg(not(feature = "warp_lite"))]
     handoff_environment_creation_modal: Option<ViewHandle<HandoffEnvironmentCreationModal>>,
     /// Workspace-level modal hosting `AuthSecretFtuxView` for the
     /// orchestration cards' "New API key…" flow. Cloud mode renders the
@@ -1589,6 +1618,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn build_import_modal(ctx: &mut ViewContext<Self>) -> ViewHandle<ImportModal> {
         let modal = ctx.add_typed_action_view(ImportModal::new);
         ctx.subscribe_to_view(&modal, |me, _, event, ctx| {
@@ -1597,6 +1627,7 @@ impl Workspace {
         modal
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_import_modal_event(&mut self, event: &ImportModalEvent, ctx: &mut ViewContext<Self>) {
         match event {
             ImportModalEvent::OpenTargetWithHashedId(server_id) => {
@@ -1787,6 +1818,7 @@ impl Workspace {
         (settings_pane, theme_chooser_view)
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn build_require_login_modal(ctx: &mut ViewContext<Self>) -> ViewHandle<AuthView> {
         let require_login_modal = ctx.add_typed_action_view(|ctx| {
             AuthView::new(AuthViewVariant::RequireLoginCloseable, ctx)
@@ -1798,6 +1830,7 @@ impl Workspace {
         require_login_modal
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn build_auth_override_warning_modal(
         ctx: &mut ViewContext<Self>,
     ) -> ViewHandle<AuthOverrideWarningModal> {
@@ -1812,6 +1845,7 @@ impl Workspace {
         auth_override_warning_modal
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_auth_override_warning_modal_event(
         &mut self,
         event: &AuthOverrideWarningModalEvent,
@@ -1822,12 +1856,16 @@ impl Workspace {
                 self.current_workspace_state.is_auth_override_modal_open = false;
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             AuthOverrideWarningModalEvent::BulkExport => {
                 self.export_all_warp_drive_objects(ctx);
             }
+            #[cfg(feature = "warp_lite")]
+            AuthOverrideWarningModalEvent::BulkExport => {}
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn build_workflow_modal(
         ai_client: Arc<dyn AIClient>,
         ctx: &mut ViewContext<Self>,
@@ -1898,6 +1936,7 @@ impl Workspace {
             }
             SuggestedRuleModalEvent::OpenRuleForEditing { rule } => {
                 self.current_workspace_state.is_suggested_rule_modal_open = false;
+                #[cfg(not(feature = "warp_lite"))]
                 self.open_ai_fact_collection_pane(Some(Direction::Right), None, ctx);
                 send_telemetry_from_ctx!(
                     TelemetryEvent::AISuggestedRuleEdited {
@@ -2983,10 +3022,13 @@ impl Workspace {
             },
         );
 
+        #[cfg(not(feature = "warp_lite"))]
         let require_login_modal = Self::build_require_login_modal(ctx);
 
+        #[cfg(not(feature = "warp_lite"))]
         let auth_override_warning_modal = Self::build_auth_override_warning_modal(ctx);
 
+        #[cfg(not(feature = "warp_lite"))]
         let workflow_modal = Self::build_workflow_modal(ai_client.clone(), ctx);
 
         let theme_creator_modal = Self::build_theme_creator_modal(ctx);
@@ -3208,6 +3250,7 @@ impl Workspace {
             }
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_model(&WarpDriveSettings::handle(ctx), |me, _, event, ctx| {
             if let WarpDriveSettingsChangedEvent::EnableWarpDrive { .. } = event {
                 me.update_left_panel_available_views(ctx);
@@ -3273,6 +3316,7 @@ impl Workspace {
         let prompt_editor_modal = Self::build_prompt_editor_modal(ctx);
         let agent_toolbar_editor_modal = Self::build_agent_toolbar_editor_modal(ctx);
 
+        #[cfg(not(feature = "warp_lite"))]
         let import_modal = Self::build_import_modal(ctx);
 
         Self::observe_server_api(ctx);
@@ -3443,14 +3487,18 @@ impl Workspace {
             ai_assistant_panel,
             should_show_ai_assistant_warm_welcome,
             ai_assistant_close_warm_welcome_mouse_state_handle: Default::default(),
+            #[cfg(not(feature = "warp_lite"))]
             auth_override_warning_modal,
             suggested_agent_mode_workflow_modal,
             suggested_rule_modal,
             build_plan_migration_modal,
+            #[cfg(not(feature = "warp_lite"))]
             require_login_modal,
+            #[cfg(not(feature = "warp_lite"))]
             workflow_modal,
             theme_creator_modal,
             theme_deletion_modal,
+            #[cfg(not(feature = "warp_lite"))]
             import_modal,
             window_id: ctx.window_id(),
             toast_stack,
@@ -3529,6 +3577,7 @@ impl Workspace {
             tab_config_action_sidecar_mouse_states: Default::default(),
             remove_tab_config_confirmation_dialog:
                 Self::build_remove_tab_config_confirmation_dialog(ctx),
+            #[cfg(not(feature = "warp_lite"))]
             handoff_environment_creation_modal: None,
             create_auth_secret_modal: None,
         };
@@ -4061,12 +4110,15 @@ impl Workspace {
                     ctx,
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
             NewWorkspaceSource::NotebookFromFilePath { file_path } => {
                 self.add_tab_for_file_notebook(file_path, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             NewWorkspaceSource::NotebookById { id, settings } => {
                 self.add_tab_for_cloud_notebook(id, &settings, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             NewWorkspaceSource::WorkflowById { id, settings } => {
                 self.open_workflow_from_intent(id, &settings, ctx);
             }
@@ -4146,8 +4198,7 @@ impl Workspace {
         workspace_setting: &NewWorkspaceSource,
         ctx: &AppContext,
     ) -> bool {
-        let should_default_open =
-            FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs;
+        let should_default_open = crate::tab::uses_vertical_tabs(ctx);
 
         match workspace_setting {
             NewWorkspaceSource::Restored {
@@ -4156,7 +4207,9 @@ impl Workspace {
                 if !should_default_open {
                     // Stale "panel open" snapshot would leave a click-eating dismiss underlay (#9505).
                     false
-                } else if *TabSettings::as_ref(ctx).show_vertical_tab_panel_in_restored_windows {
+                } else if cfg!(feature = "warp_lite")
+                    || *TabSettings::as_ref(ctx).show_vertical_tab_panel_in_restored_windows
+                {
                     true
                 } else {
                     window_snapshot.vertical_tabs_panel_open
@@ -4171,22 +4224,25 @@ impl Workspace {
             | NewWorkspaceSource::Session { .. }
             | NewWorkspaceSource::AgentSession { .. }
             | NewWorkspaceSource::AmbientAgent
-            | NewWorkspaceSource::TeamSwitched { .. }
-            | NewWorkspaceSource::NotebookFromFilePath { .. } => should_default_open,
+            | NewWorkspaceSource::TeamSwitched { .. } => should_default_open,
+            #[cfg(not(feature = "warp_lite"))]
+            NewWorkspaceSource::NotebookFromFilePath { .. } => should_default_open,
             #[cfg(not(target_family = "wasm"))]
             NewWorkspaceSource::SharedSessionAsViewer { .. }
-            | NewWorkspaceSource::FromCloudConversationId { .. }
-            | NewWorkspaceSource::NotebookById { .. }
+            | NewWorkspaceSource::FromCloudConversationId { .. } => should_default_open,
+            #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
+            NewWorkspaceSource::NotebookById { .. }
             | NewWorkspaceSource::WorkflowById { .. } => should_default_open,
             #[cfg(target_family = "wasm")]
             NewWorkspaceSource::SharedSessionAsViewer { .. }
-            | NewWorkspaceSource::FromCloudConversationId { .. }
-            | NewWorkspaceSource::NotebookById { .. }
-            | NewWorkspaceSource::WorkflowById { .. } => {
+            | NewWorkspaceSource::FromCloudConversationId { .. } => {
                 // Web opens these as single-purpose views without exposed multi-tab UI, so keep
                 // the tabs panel closed even though native windows still expose workspace chrome.
                 false
             }
+            #[cfg(all(target_family = "wasm", not(feature = "warp_lite")))]
+            NewWorkspaceSource::NotebookById { .. }
+            | NewWorkspaceSource::WorkflowById { .. } => false,
         }
     }
 
@@ -4214,7 +4270,9 @@ impl Workspace {
                 LeftPanelDisplayedTab::GlobalSearch => ToolPanelView::GlobalSearch {
                     entry_focus: GlobalSearchEntryFocus::Results,
                 },
+                #[cfg(not(feature = "warp_lite"))]
                 LeftPanelDisplayedTab::WarpDrive => ToolPanelView::WarpDrive,
+                #[cfg(not(feature = "warp_lite"))]
                 LeftPanelDisplayedTab::ConversationListView => ToolPanelView::ConversationListView,
             };
             lp.restore_active_view_from_snapshot(active_view, ctx);
@@ -4258,7 +4316,7 @@ impl Workspace {
         ctx: &mut ViewContext<Self>,
     ) {
         let show_warp_home = !ContextFlag::CreateNewSession.is_enabled();
-        let mut placeholder_pane = None;
+        let mut placeholder_pane: Option<PaneId> = None;
         let open_warp_drive = if !show_warp_home {
             if self.should_trigger_get_started_onboarding(ctx) {
                 self.trigger_get_started_onboarding(ctx);
@@ -4275,9 +4333,12 @@ impl Workspace {
             }
             false
         } else {
-            let home_pane = super::home::create_home_pane(ctx);
-            placeholder_pane = Some(home_pane.as_pane().id());
-            self.add_tab_from_existing_pane(home_pane, 0, None, ctx);
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                let home_pane = super::home::create_home_pane(ctx);
+                placeholder_pane = Some(home_pane.as_pane().id());
+                self.add_tab_from_existing_pane(home_pane, 0, None, ctx);
+            }
 
             // If we can't start a terminal session to run the onboarding flow, show the Warp Home
             // placeholder along with Warp Drive.
@@ -4285,6 +4346,7 @@ impl Workspace {
         };
         let initial_tab = self.active_tab_pane_group().clone();
 
+        #[cfg(not(feature = "warp_lite"))]
         if open_warp_drive {
             // We open Warp Drive automatically in two cases:
             // * The user is new to Warp, and went through the overall onboarding flow
@@ -4825,6 +4887,7 @@ impl Workspace {
     }
 
     /// Sets focused to the index of either the selected object or the first item in WD
+    #[cfg(not(feature = "warp_lite"))]
     fn reset_focused_index_in_warp_drive(
         &mut self,
         should_scroll: bool,
@@ -4837,6 +4900,7 @@ impl Workspace {
         });
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn has_warp_drive_initialized_sections(
         &self,
         app: &AppContext,
@@ -5055,9 +5119,18 @@ impl Workspace {
     fn focus_left_panel(&mut self, ctx: &mut ViewContext<Self>) {
         // Starts from terminal
         if self.active_tab_pane_group().is_self_or_child_focused(ctx) {
+            #[cfg(not(feature = "warp_lite"))]
             if self.current_workspace_state.is_warp_drive_open {
                 self.reset_focused_index_in_warp_drive(true, ctx);
             } else if self.is_theme_chooser_open() {
+                ctx.focus(&self.theme_chooser_view);
+            } else if self.current_workspace_state.is_ai_assistant_panel_open {
+                ctx.focus(&self.ai_assistant_panel);
+            } else if self.current_workspace_state.is_resource_center_open {
+                ctx.focus(&self.resource_center_view);
+            }
+            #[cfg(feature = "warp_lite")]
+            if self.is_theme_chooser_open() {
                 ctx.focus(&self.theme_chooser_view);
             } else if self.current_workspace_state.is_ai_assistant_panel_open {
                 ctx.focus(&self.ai_assistant_panel);
@@ -5072,16 +5145,28 @@ impl Workspace {
             self.focus_active_tab(ctx);
         }
         // Starts from a left panel: Warp Drive
-        else if self.is_warp_drive_view_focused(ctx) {
-            if self.current_workspace_state.is_right_panel_open() {
-                self.set_selected_object(None, ctx);
-                if self.current_workspace_state.is_ai_assistant_panel_open {
-                    ctx.focus(&self.ai_assistant_panel);
-                } else if self.current_workspace_state.is_resource_center_open {
-                    ctx.focus(&self.resource_center_view);
+        else if {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                self.is_warp_drive_view_focused(ctx)
+            }
+            #[cfg(feature = "warp_lite")]
+            {
+                false
+            }
+        } {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                if self.current_workspace_state.is_right_panel_open() {
+                    self.set_selected_object(None, ctx);
+                    if self.current_workspace_state.is_ai_assistant_panel_open {
+                        ctx.focus(&self.ai_assistant_panel);
+                    } else if self.current_workspace_state.is_resource_center_open {
+                        ctx.focus(&self.resource_center_view);
+                    }
+                } else {
+                    self.focus_active_tab(ctx);
                 }
-            } else {
-                self.focus_active_tab(ctx);
             }
         }
         // Starts from a left panel: theme chooser
@@ -5111,6 +5196,7 @@ impl Workspace {
             } else if self.current_workspace_state.is_resource_center_open {
                 ctx.focus(&self.resource_center_view);
             } else if self.current_workspace_state.is_warp_drive_open {
+                #[cfg(not(feature = "warp_lite"))]
                 self.reset_focused_index_in_warp_drive(true, ctx);
             } else if self.is_theme_chooser_open() {
                 ctx.focus(&self.theme_chooser_view);
@@ -5128,6 +5214,7 @@ impl Workspace {
         {
             if self.current_workspace_state.is_left_panel_open() {
                 if self.current_workspace_state.is_warp_drive_open {
+                    #[cfg(not(feature = "warp_lite"))]
                     self.reset_focused_index_in_warp_drive(true, ctx);
                 } else if self.is_theme_chooser_open() {
                     ctx.focus(&self.theme_chooser_view);
@@ -6358,6 +6445,7 @@ impl Workspace {
                 );
             }
             AgentManagementViewEvent::OpenPlanNotebook { notebook_uid } => {
+                #[cfg(not(feature = "warp_lite"))]
                 self.open_notebook(
                     &NotebookSource::Existing((*notebook_uid).into()),
                     &OpenWarpDriveObjectSettings::default(),
@@ -6423,6 +6511,8 @@ impl Workspace {
 
         match target {
             FileTarget::MarkdownViewer(layout) => {
+                #[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
+                {
                 let session = self.get_active_session(ctx);
 
                 self.open_file_notebook(
@@ -6432,6 +6522,9 @@ impl Workspace {
                     Some(code_source),
                     ctx,
                 );
+                }
+                #[cfg(not(all(feature = "local_fs", not(feature = "warp_lite"))))]
+                let _ = (layout, code_source);
             }
             FileTarget::EnvEditor => {
                 let editor_value: Option<String> = self
@@ -6515,6 +6608,7 @@ impl Workspace {
                 let pane_group = self.active_tab_pane_group().clone();
                 self.handle_file_tree_event(pane_group, pane_group_event, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             LeftPanelEvent::WarpDrive(drive_event) => {
                 self.handle_warp_drive_event(drive_event, ctx);
             }
@@ -6543,6 +6637,7 @@ impl Workspace {
                             // Jupyter notebook) instead of always opening remote
                             // files as raw code in the editor.
                             if let FileTarget::MarkdownViewer(layout) = target {
+                                #[cfg(not(feature = "warp_lite"))]
                                 self.open_file_notebook(
                                     location.clone(),
                                     None,
@@ -6550,6 +6645,17 @@ impl Workspace {
                                     Some(code_source),
                                     ctx,
                                 );
+                                #[cfg(feature = "warp_lite")]
+                                {
+                                    self.open_code(
+                                        code_source,
+                                        crate::util::openable_file_type::EditorLayout::SplitPane,
+                                        *line_col,
+                                        false,
+                                        &[],
+                                        ctx,
+                                    );
+                                }
                             } else {
                                 self.open_code(
                                     code_source,
@@ -6582,10 +6688,13 @@ impl Workspace {
                 );
             }
             LeftPanelEvent::SignInRequested => {
-                self.open_require_login_modal(AuthViewVariant::RequireLoginCloseable, ctx);
-                self.require_login_modal.update(ctx, |modal, ctx| {
-                    modal.start_sign_in(ctx);
-                });
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    self.open_require_login_modal(AuthViewVariant::RequireLoginCloseable, ctx);
+                    self.require_login_modal.update(ctx, |modal, ctx| {
+                        modal.start_sign_in(ctx);
+                    });
+                }
             }
         }
     }
@@ -6732,6 +6841,7 @@ impl Workspace {
             .write(ClipboardContent::plain_text(version.to_string()));
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn export_all_warp_drive_objects(&mut self, ctx: &mut ViewContext<Self>) {
         let window_id = ctx.window_id();
         let cloud_model = CloudModel::as_ref(ctx);
@@ -6758,6 +6868,7 @@ impl Workspace {
             keybinding_name_to_display_string("app:reopen_closed_session", ctx);
 
         // 1. Agent (if AI enabled)
+        #[cfg(not(feature = "warp_lite"))]
         if is_any_ai_enabled {
             let mut agent_item = MenuItemFields::new("Agent")
                 .with_on_select_action(WorkspaceAction::AddAgentTab)
@@ -6825,6 +6936,7 @@ impl Workspace {
         }
 
         // 3. Cloud Agent (if flags enabled)
+        #[cfg(not(feature = "warp_lite"))]
         if is_any_ai_enabled
             && FeatureFlag::AgentView.is_enabled()
             && FeatureFlag::CloudMode.is_enabled()
@@ -8278,6 +8390,7 @@ impl Workspace {
 
     /// Opens the Warp Drive object identified by `uid` in a new pane
     /// if it has a pane representation.
+    #[cfg(not(feature = "warp_lite"))]
     fn open_warp_drive_object_in_new_pane(&mut self, uid: &ObjectUid, ctx: &mut ViewContext<Self>) {
         let Some(object) = CloudModel::as_ref(ctx).get_by_uid(uid) else {
             return;
@@ -8322,6 +8435,7 @@ impl Workspace {
     /// Open the notebook identified by `source`. If the notebook is already open in another pane,
     /// that pane is focused. If the notebook is not open, the notebook will be opened in a new
     /// pane if default_to_new_pane is true; otherwise, it'll be opened in a new tab.
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_notebook(
         &mut self,
         source: &NotebookSource,
@@ -8405,6 +8519,7 @@ impl Workspace {
     }
 
     /// Open a Warp Drive workflow in response to an intent URL.
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_workflow_from_intent(
         &mut self,
         workflow_id: SyncId,
@@ -8447,6 +8562,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_workflow_in_pane(
         &mut self,
         source: &WorkflowOpenSource,
@@ -8485,6 +8601,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_env_var_collection(
         &mut self,
         source: &EnvVarCollectionSource,
@@ -8544,6 +8661,7 @@ impl Workspace {
     /// Create a pane from a cloud object. Returns `None` if the object cannot be opened in a
     /// pane. The pane will not be associated with any tab - the caller is responsible for
     /// inserting it.
+    #[cfg(not(feature = "warp_lite"))]
     fn create_cloud_object_pane(
         &self,
         cloud_object: CloudObjectTypeAndId,
@@ -8642,7 +8760,7 @@ impl Workspace {
     }
 
     /// Open a file from the given session as a notebook pane.
-    #[cfg(feature = "local_fs")]
+    #[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
     fn open_file_notebook(
         &mut self,
         path: LocalOrRemotePath,
@@ -8947,6 +9065,7 @@ impl Workspace {
     }
 
     /// Open the AI Fact Collection pane in a split pane (default direction is left).
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_ai_fact_collection_pane(
         &mut self,
         direction: Option<Direction>,
@@ -9021,6 +9140,7 @@ impl Workspace {
     }
 
     /// Open the Environment Management pane in a split pane (default direction is right).
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_environment_management_pane(
         &mut self,
         direction: Option<Direction>,
@@ -9260,6 +9380,7 @@ impl Workspace {
         })
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_import_modal(
         &mut self,
         owner: Owner,
@@ -9274,6 +9395,7 @@ impl Workspace {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_or_toggle_warp_drive(
         &mut self,
         toggle: bool,
@@ -10549,11 +10671,13 @@ impl Workspace {
             Some(WorkspaceAction::SelectTabConfig(config)) => SidecarItemKind::UserTabConfig {
                 config: config.clone(),
             },
+            #[cfg(not(feature = "warp_lite"))]
             Some(WorkspaceAction::AddAgentTab) => SidecarItemKind::BuiltIn {
                 name: label.to_string(),
                 default_mode: DefaultSessionMode::Agent,
                 shell: None,
             },
+            #[cfg(not(feature = "warp_lite"))]
             Some(WorkspaceAction::AddAmbientAgentTab) => SidecarItemKind::BuiltIn {
                 name: label.to_string(),
                 default_mode: DefaultSessionMode::CloudAgent,
@@ -11241,6 +11365,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_workflow_modal_event(
         &mut self,
         event: &WorkflowModalEvent,
@@ -11338,6 +11463,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_require_login_modal_event(
         &mut self,
         event: &AuthViewEvent,
@@ -11492,6 +11618,7 @@ impl Workspace {
             RewindConfirmationEvent::Confirm { rewind_source } => {
                 self.current_workspace_state
                     .is_rewind_confirmation_dialog_open = false;
+                #[cfg(not(feature = "warp_lite"))]
                 self.handle_action(
                     &WorkspaceAction::ExecuteRewindAIConversation {
                         ai_block_view_id: rewind_source.ai_block_view_id,
@@ -11521,6 +11648,7 @@ impl Workspace {
             DeleteConversationConfirmationEvent::Confirm { source } => {
                 self.current_workspace_state
                     .is_delete_conversation_confirmation_dialog_open = false;
+                #[cfg(not(feature = "warp_lite"))]
                 self.handle_action(
                     &WorkspaceAction::ExecuteDeleteConversation {
                         conversation_id: source.conversation_id,
@@ -11550,9 +11678,11 @@ impl Workspace {
         ctx: &mut ViewContext<Self>,
     ) {
         match event {
+            #[cfg(not(feature = "warp_lite"))]
             AuthManagerEvent::AttemptedLoginGatedFeature { auth_view_variant } => {
                 self.open_require_login_modal(*auth_view_variant, ctx)
             }
+            #[cfg(not(feature = "warp_lite"))]
             AuthManagerEvent::LoginOverrideDetected(interrupted_auth_payload) => {
                 self.open_auth_override_warning_modal(interrupted_auth_payload.clone(), ctx);
             }
@@ -12932,6 +13062,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn add_tab_for_cloud_notebook(
         &mut self,
         notebook_id: SyncId,
@@ -12950,6 +13081,7 @@ impl Workspace {
         self.add_tab_with_pane_layout(panes_layout, Arc::new(HashMap::new()), None, ctx);
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn add_tab_for_cloud_workflow(
         &mut self,
         workflow_id: SyncId,
@@ -12968,6 +13100,7 @@ impl Workspace {
     }
 
     /// Add a tab with a file notebook pane open.
+    #[cfg(not(feature = "warp_lite"))]
     pub fn add_tab_for_file_notebook(
         &mut self,
         file_path: Option<PathBuf>,
@@ -14543,6 +14676,7 @@ impl Workspace {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_warp_drive_palette(&mut self, ctx: &mut ViewContext<Self>) {
         self.palette.update(ctx, |view, ctx| {
             view.reset(ctx);
@@ -14650,6 +14784,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_require_login_modal(&mut self, variant: AuthViewVariant, ctx: &mut ViewContext<Self>) {
         self.require_login_modal.update(ctx, |modal, ctx| {
             modal.set_variant(ctx, variant);
@@ -14661,6 +14796,10 @@ impl Workspace {
         ctx.notify();
     }
 
+    #[cfg(feature = "warp_lite")]
+    fn open_require_login_modal(&mut self, _variant: AuthViewVariant, _ctx: &mut ViewContext<Self>) {}
+
+    #[cfg(not(feature = "warp_lite"))]
     fn open_auth_override_warning_modal(
         &mut self,
         auth_payload: AuthRedirectPayload,
@@ -14718,9 +14857,12 @@ impl Workspace {
                 _ => self.open_navigation_palette(ctx),
             },
             PaletteMode::LaunchConfig => self.open_launch_config_palette(ctx),
+            #[cfg(not(feature = "warp_lite"))]
             PaletteMode::WarpDrive => self.open_warp_drive_palette(ctx),
             PaletteMode::Files => self.open_files_palette(ctx),
             PaletteMode::Conversations => self.open_conversations_palette(ctx),
+            #[cfg(feature = "warp_lite")]
+            PaletteMode::WarpDrive => {}
         }
 
         ctx.focus(&self.palette);
@@ -14808,15 +14950,19 @@ impl Workspace {
 
                 self.invoke_environment_variables(env_var_collection.clone(), false, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             CommandPaletteEvent::OpenNotebook { id } => self.open_notebook(
                 &NotebookSource::Existing(*id),
                 &OpenWarpDriveObjectSettings::default(),
                 ctx,
                 true,
             ),
+            #[cfg(not(feature = "warp_lite"))]
             CommandPaletteEvent::ViewInWarpDrive { id } => {
                 self.view_in_and_focus_warp_drive(WarpDriveItemId::Object(*id), ctx);
             }
+            #[cfg(feature = "warp_lite")]
+            CommandPaletteEvent::OpenNotebook { .. } | CommandPaletteEvent::ViewInWarpDrive { .. } => {}
             #[allow(unused_variables)]
             CommandPaletteEvent::OpenFile {
                 path,
@@ -14878,6 +15024,7 @@ impl Workspace {
 
     /// This function is used when we set a selected object, which is an object open in an active pane.
     /// We do not want to focus Warp Drive, instead we want to focus the editor of the open object.
+    #[cfg(not(feature = "warp_lite"))]
     fn view_in_warp_drive(&mut self, item_id: WarpDriveItemId, ctx: &mut ViewContext<Self>) {
         self.open_left_panel(ctx);
         self.left_panel_view.update(ctx, |left_panel, ctx| {
@@ -14897,6 +15044,7 @@ impl Workspace {
     }
 
     /// This function is used when we want to view an item in Warp Drive AND focus Warp Drive.
+    #[cfg(not(feature = "warp_lite"))]
     pub fn view_in_and_focus_warp_drive(
         &mut self,
         item_id: WarpDriveItemId,
@@ -14912,6 +15060,7 @@ impl Workspace {
     }
 
     /// Updates the left panel's warp drive view.
+    #[cfg(not(feature = "warp_lite"))]
     fn update_warp_drive_view<F>(&mut self, ctx: &mut ViewContext<Self>, update_fn: F)
     where
         F: FnOnce(&mut DrivePanel, &mut ViewContext<DrivePanel>),
@@ -14924,6 +15073,7 @@ impl Workspace {
     }
 
     /// View an object in Warp Drive and open its sharing settings.
+    #[cfg(not(feature = "warp_lite"))]
     fn open_object_sharing_settings(
         &mut self,
         object_id: CloudObjectTypeAndId,
@@ -14940,6 +15090,7 @@ impl Workspace {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn move_to_drive_space(
         &mut self,
         cloud_object_type_and_id: CloudObjectTypeAndId,
@@ -14951,6 +15102,7 @@ impl Workspace {
         });
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn set_focused_index(&mut self, index: Option<usize>, ctx: &mut ViewContext<Self>) {
         self.update_warp_drive_view(ctx, |warp_drive, ctx| {
             warp_drive.set_focused_index(index, ctx);
@@ -15118,6 +15270,7 @@ impl Workspace {
             SettingsViewEvent::LaunchNetworkLogging => {
                 self.open_network_log_pane(ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             SettingsViewEvent::OpenWarpDrive => {
                 self.close_all_overlays(ctx);
                 self.open_or_toggle_warp_drive(
@@ -15127,6 +15280,8 @@ impl Workspace {
                 );
                 ctx.notify();
             }
+            #[cfg(feature = "warp_lite")]
+            SettingsViewEvent::OpenWarpDrive => {}
             SettingsViewEvent::SignupAnonymousUser => {
                 self.initiate_user_signup(AnonymousUserSignupEntrypoint::SignUpButton, ctx);
             }
@@ -15137,6 +15292,7 @@ impl Workspace {
                         .add_ephemeral_toast(DismissibleToast::new(message.clone(), *flavor), ctx);
                 });
             }
+            #[cfg(not(feature = "warp_lite"))]
             SettingsViewEvent::OpenAIFactCollection => {
                 self.open_ai_fact_collection_pane(Some(Direction::Right), None, ctx);
                 send_telemetry_from_ctx!(
@@ -15146,6 +15302,8 @@ impl Workspace {
                     ctx
                 );
             }
+            #[cfg(feature = "warp_lite")]
+            SettingsViewEvent::OpenAIFactCollection => {}
             SettingsViewEvent::OpenMCPServerCollection => {
                 self.show_settings_with_section(Some(SettingsSection::MCPServers), ctx);
 
@@ -15212,11 +15370,20 @@ impl Workspace {
             .code_diff_view_paths(ctx)
             .filter_map(|(id, cwd)| cwd.map(|c| (id, c)))
             .collect();
-        let notebook_paths: Vec<(EntityId, LocalOrRemotePath)> = pane_group
-            .as_ref(ctx)
-            .file_notebook_paths(ctx)
-            .filter_map(|(id, path)| path.map(|p| (id, p)))
-            .collect();
+        let notebook_paths: Vec<(EntityId, LocalOrRemotePath)> = {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                pane_group
+                    .as_ref(ctx)
+                    .file_notebook_paths(ctx)
+                    .filter_map(|(id, path)| path.map(|p| (id, p)))
+                    .collect()
+            }
+            #[cfg(feature = "warp_lite")]
+            {
+                Vec::new()
+            }
+        };
         let local_paths: Vec<(EntityId, LocalOrRemotePath)> = code_paths
             .into_iter()
             .chain(notebook_paths)
@@ -15280,6 +15447,7 @@ impl Workspace {
         });
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn show_handoff_environment_creation_modal(&mut self, ctx: &mut ViewContext<Self>) {
         // Capture the initiating source view now, before async creation begins.
         // If we waited until the Created callback, the user may have switched panes.
@@ -15410,6 +15578,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn show_cloud_mode_v2_environment_creation_modal(&mut self, ctx: &mut ViewContext<Self>) {
         let Some(source_view) = self
             .active_tab_pane_group()
@@ -16128,18 +16297,22 @@ impl Workspace {
                     self.handle_task_status_reset(pane_group.id(), ctx);
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenWorkflowModalWithCommand(command) => {
                 self.open_workflow_with_command(command.clone(), ctx)
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenCloudWorkflowForEdit(workflow_id) => self
                 .open_workflow_with_existing(
                     *workflow_id,
                     &OpenWarpDriveObjectSettings::default(),
                     ctx,
                 ),
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenWorkflowModalWithTemporary(workflow) => {
                 self.open_workflow_with_temporary(*workflow.clone(), ctx)
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenAIFactCollection { sync_id } => {
                 // Entrypoint from AI blocklist
                 let page = if sync_id.is_some() {
@@ -16164,10 +16337,12 @@ impl Workspace {
             pane_group::Event::OpenCLIAgentToolbarEditor => {
                 self.open_agent_toolbar_editor(AgentToolbarEditorMode::CLIAgent, ctx);
             }
+            #[cfg(feature = "mcp_client")]
             pane_group::Event::OpenMCPSettingsPage { page } => {
                 // Open the MCP servers settings page to the list page
                 self.open_mcp_servers_page(page.unwrap_or_default(), None, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenAddRulePane => {
                 // Open the AI Fact Collection pane directly with the Rule Editor page for adding a new rule
                 self.open_ai_fact_collection_pane(
@@ -16182,20 +16357,19 @@ impl Workspace {
                     ctx
                 );
             }
-            #[cfg_attr(not(feature = "local_fs"), allow(unused_variables))]
+            #[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
             pane_group::Event::OpenFileInWarp { path, session } => {
-                #[cfg(feature = "local_fs")]
-                {
-                    let layout = *EditorSettings::as_ref(ctx).open_file_layout.value();
-                    self.open_file_notebook(path.clone(), Some(session.clone()), layout, None, ctx);
-                }
+                let layout = *EditorSettings::as_ref(ctx).open_file_layout.value();
+                self.open_file_notebook(path.clone(), Some(session.clone()), layout, None, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::MoveToSpace {
                 cloud_object_type_and_id,
                 space,
             } => {
                 self.move_to_drive_space(*cloud_object_type_and_id, *space, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenWarpDriveLink {
                 open_warp_drive_args,
             } => {
@@ -16314,6 +16488,7 @@ impl Workspace {
                     ctx,
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::InvokeEnvVarCollection {
                 env_var_collection,
                 in_subshell,
@@ -16373,6 +16548,7 @@ impl Workspace {
                 // Focus an existing pane by its locator (used when avoiding duplicate file panes during undo close pane)
                 self.focus_pane(*locator, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::ViewInWarpDrive(id) => {
                 self.view_in_and_focus_warp_drive(*id, ctx);
             }
@@ -16383,6 +16559,8 @@ impl Workspace {
                 // Re-evaluate which region is focused and update pane dimming accordingly.
                 self.update_pane_dimming_for_current_focus_region(ctx);
 
+                #[cfg(not(feature = "warp_lite"))]
+                {
                 let mut active_object_open_in_pane = false;
                 // Case 1: if workflow, get workflow ID via TerminalView input
                 if let Some(terminal_view) = self
@@ -16485,6 +16663,7 @@ impl Workspace {
                 if !active_object_open_in_pane {
                     self.set_selected_object(None, ctx);
                     self.set_focused_index(None, ctx);
+                }
                 }
 
                 let focused_terminal_view_id = {
@@ -16826,6 +17005,7 @@ impl Workspace {
                 ctx.notify();
             }
             pane_group::Event::ClearHoveredTabIndex => self.hovered_tab_index = None,
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenWarpDriveObjectInPane(uid) => {
                 self.open_warp_drive_object_in_new_pane(uid, ctx);
             }
@@ -16838,6 +17018,7 @@ impl Workspace {
             pane_group::Event::AnonymousUserSignup => {
                 self.initiate_user_signup(AnonymousUserSignupEntrypoint::RenotificationBlock, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenDriveObjectShareDialog {
                 cloud_object_type_and_id,
                 invitee_email,
@@ -17014,6 +17195,7 @@ impl Workspace {
                     ctx,
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenAddPromptPane { initial_content } => {
                 if UserWorkspaces::as_ref(ctx).personal_drive(ctx).is_some() {
                     self.update_warp_drive_view(ctx, |drive_view, ctx| {
@@ -17047,7 +17229,10 @@ impl Workspace {
                     self.left_panel_view
                         .read(ctx, |left_panel, _| match target_view {
                             LeftPanelTargetView::FileTree => left_panel.is_file_tree_active(),
+                            #[cfg(not(feature = "warp_lite"))]
                             LeftPanelTargetView::WarpDrive => left_panel.is_warp_drive_active(),
+                            #[cfg(feature = "warp_lite")]
+                            LeftPanelTargetView::WarpDrive => false,
                         });
 
                 if self.active_tab_pane_group().as_ref(ctx).left_panel_open && is_target_active {
@@ -17062,7 +17247,10 @@ impl Workspace {
                     self.left_panel_view.update(ctx, |left_panel, ctx| {
                         let action = match target_view {
                             LeftPanelTargetView::FileTree => LeftPanelAction::ProjectExplorer,
+                            #[cfg(not(feature = "warp_lite"))]
                             LeftPanelTargetView::WarpDrive => LeftPanelAction::WarpDrive,
+                            #[cfg(feature = "warp_lite")]
+                            LeftPanelTargetView::WarpDrive => LeftPanelAction::ProjectExplorer,
                         };
                         left_panel.handle_action_with_force_open(&action, *force_open, ctx);
                     });
@@ -17101,6 +17289,7 @@ impl Workspace {
             pane_group::Event::OpenAgentProfileEditor { profile_id } => {
                 self.open_execution_profile_editor_pane(None, profile_id.clone(), ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             pane_group::Event::OpenEnvironmentManagementPane => {
                 self.open_environment_management_pane(
                     None,
@@ -17108,6 +17297,8 @@ impl Workspace {
                     ctx,
                 );
             }
+            #[cfg(feature = "warp_lite")]
+            pane_group::Event::OpenEnvironmentManagementPane => {}
             pane_group::Event::OpenLspLogs { log_path } => {
                 self.open_lsp_logs(log_path, ctx);
             }
@@ -17204,6 +17395,8 @@ impl Workspace {
             pane_group::Event::ShowCloudAgentCapacityModal { variant } => {
                 self.open_cloud_agent_capacity_modal(*variant, ctx);
             }
+            #[cfg(feature = "warp_lite")]
+            _ => {}
         }
     }
 
@@ -17549,6 +17742,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_warp_drive_event(&mut self, event: &DrivePanelEvent, ctx: &mut ViewContext<Self>) {
         match event {
             DrivePanelEvent::RunWorkflow(workflow) => {
@@ -17694,6 +17888,7 @@ impl Workspace {
         );
         ctx.focus_self();
         ctx.notify();
+        #[cfg(not(feature = "warp_lite"))]
         self.set_selected_object(
             Some(WarpDriveItemId::Object(workflow.cloud_object_type_and_id())),
             ctx,
@@ -18067,6 +18262,7 @@ impl Workspace {
                         });
                     }
                     AcceptNotebook(sync_id) => {
+                        #[cfg(not(feature = "warp_lite"))]
                         self.open_notebook(
                             &NotebookSource::Existing(*sync_id),
                             &OpenWarpDriveObjectSettings::default(),
@@ -18202,6 +18398,8 @@ impl Workspace {
                             let object_id_clone = object_id.clone();
                             let mut new_toast =
                                 DismissibleToast::success(message).with_object_id(object_id);
+                            #[cfg(not(feature = "warp_lite"))]
+                            {
                             if let Some(notebook) = cloned_notebook
                                 && (matches!(result.operation, ObjectOperation::Create { .. })
                                     || result.operation == ObjectOperation::Update)
@@ -18255,6 +18453,7 @@ impl Workspace {
                                     ),
                                 )
                             }
+                            }
 
                             view.add_ephemeral_toast(new_toast, ctx);
                         }
@@ -18265,6 +18464,7 @@ impl Workspace {
                             // showing persistent error toasts for transient
                             // failures is confusing when the user didn't
                             // initiate the action.
+                            #[cfg(not(feature = "warp_lite"))]
                             if let Some(notebook) = &cloned_notebook
                                 && result.operation == ObjectOperation::Update
                                 && notebook.model().ai_document_id.is_some_and(|ai_doc_id| {
@@ -18281,6 +18481,7 @@ impl Workspace {
                             view.add_persistent_toast(new_toast, ctx);
                         }
                         OperationSuccessType::Rejection => {
+                            #[cfg(not(feature = "warp_lite"))]
                             let new_toast = if let Some(workflow) = cloned_workflow {
                                 DismissibleToast::error(message)
                                     .with_link(
@@ -18310,7 +18511,14 @@ impl Workspace {
                             } else {
                                 return;
                             };
+                            #[cfg(not(feature = "warp_lite"))]
                             view.add_persistent_toast(new_toast, ctx);
+                            #[cfg(feature = "warp_lite")]
+                            {
+                                let new_toast =
+                                    DismissibleToast::error(message).with_object_id(object_id);
+                                view.add_persistent_toast(new_toast, ctx);
+                            }
                         }
                         OperationSuccessType::FeatureNotAvailable => {
                             if cloned_workflow.is_some() {
@@ -18381,6 +18589,7 @@ impl Workspace {
 
         // If this was a successful personal object creation, then potentially show the sharing
         // onboarding block.
+        #[cfg(not(feature = "warp_lite"))]
         if result.success_type == OperationSuccessType::Success
             && matches!(result.operation, ObjectOperation::Create { .. })
             && let Some(created_object) = result
@@ -18624,11 +18833,15 @@ impl Workspace {
         self.show_settings_with_section(Some(SettingsSection::Teams), ctx);
 
         self.settings_pane.update(ctx, |view, ctx| {
+            #[cfg(not(feature = "warp_lite"))]
             view.open_teams_page_email_invite(email_invite, ctx);
+            #[cfg(feature = "warp_lite")]
+            let _ = (view, email_invite, ctx);
         });
     }
 
     /// Opens the MCP servers settings page, optionally triggering auto-install of a gallery MCP.
+    #[cfg(feature = "mcp_client")]
     pub fn open_mcp_servers_page(
         &mut self,
         page: MCPServersSettingsPage,
@@ -18781,6 +18994,7 @@ impl Workspace {
         });
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn set_selected_object(&mut self, id: Option<WarpDriveItemId>, ctx: &mut ViewContext<Self>) {
         // Set Warp drive index selected state
         self.update_warp_drive_view(ctx, |drive_panel, ctx| {
@@ -18949,10 +19163,15 @@ impl Workspace {
             }
             AIAssistantPanelEvent::PasteInTerminalInput(code) => {
                 let command = code.trim().to_string();
-                let args_state =
-                    ArgumentsState::for_command_workflow(&Default::default(), command.clone());
-                let workflow = Workflow::new("Command from Warp AI", command)
-                    .with_arguments(args_state.arguments);
+                #[cfg(not(feature = "warp_lite"))]
+                let workflow = {
+                    let args_state =
+                        ArgumentsState::for_command_workflow(&Default::default(), command.clone());
+                    Workflow::new("Command from Warp AI", command)
+                        .with_arguments(args_state.arguments)
+                };
+                #[cfg(feature = "warp_lite")]
+                let workflow = Workflow::new("Command from Warp AI", command);
                 self.run_workflow_in_active_input(
                     &WorkflowType::AIGenerated {
                         workflow,
@@ -18970,9 +19189,12 @@ impl Workspace {
                 self.focus_active_tab(ctx);
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             AIAssistantPanelEvent::OpenWorkflowModalWithCommand(command) => {
                 self.open_workflow_with_command(command.clone(), ctx);
             }
+            #[cfg(feature = "warp_lite")]
+            AIAssistantPanelEvent::OpenWorkflowModalWithCommand(_command) => {}
         }
     }
 
@@ -19334,6 +19556,7 @@ impl Workspace {
     }
 
     /// Opens a new tab and enters agent view with a prompt from a Linear deeplink.
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_linear_issue_work(
         &mut self,
         args: &crate::linear::LinearIssueWork,
@@ -19533,6 +19756,7 @@ impl Workspace {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_shared_objects_creation_denied_modal(
         &mut self,
         object_type: DriveObjectType,
@@ -19580,6 +19804,7 @@ impl Workspace {
     }
 
     /// Opens the workflow modal in the provided space and folder with no existing content (i.e. a new workflow modal).
+    #[cfg(not(feature = "warp_lite"))]
     fn open_workflow_modal(
         &mut self,
         space: Space,
@@ -19627,6 +19852,7 @@ impl Workspace {
     }
 
     /// Opens the workflow from a given [`CloudWorkflow`]'s server ID.
+    #[cfg(not(feature = "warp_lite"))]
     fn open_workflow_with_existing(
         &mut self,
         workflow_id: SyncId,
@@ -19638,6 +19864,7 @@ impl Workspace {
     }
 
     /// Opens the workflow using a mocked [`Workflow`] object as the base
+    #[cfg(not(feature = "warp_lite"))]
     fn open_workflow_with_temporary(&mut self, workflow: Workflow, ctx: &mut ViewContext<Self>) {
         let Some(owner) = UserWorkspaces::as_ref(ctx).personal_drive(ctx) else {
             log::warn!("Unable to open temporary workflow - unset personal drive");
@@ -19657,6 +19884,7 @@ impl Workspace {
     }
 
     /// Opens the workflow for create with a prepopulated command specified
+    #[cfg(not(feature = "warp_lite"))]
     fn open_workflow_with_command(&mut self, command: String, ctx: &mut ViewContext<Self>) {
         let Some(owner) = UserWorkspaces::as_ref(ctx).personal_drive(ctx) else {
             log::warn!("Unable to open workflow with command - unset personal drive");
@@ -19679,6 +19907,7 @@ impl Workspace {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn render_ai_assistant_warm_welcome(&self, appearance: &Appearance) -> Box<dyn Element> {
         let theme = appearance.theme();
         let background_color = theme.surface_2();
@@ -20353,6 +20582,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn render_agent_management_view_button(
         &self,
         appearance: &Appearance,
@@ -20409,11 +20639,13 @@ impl Workspace {
                         .left_panel_views
                         .first()
                         .copied()
-                        .unwrap_or(ToolPanelView::WarpDrive)
+                        .unwrap_or(ToolPanelView::ProjectExplorer)
                     {
                         ToolPanelView::ProjectExplorer => "Project explorer",
                         ToolPanelView::GlobalSearch { .. } => "Global search",
+                        #[cfg(not(feature = "warp_lite"))]
                         ToolPanelView::WarpDrive => "Warp Drive",
+                        #[cfg(not(feature = "warp_lite"))]
                         ToolPanelView::ConversationListView => "Agent conversations",
                     }
                 } else {
@@ -20463,11 +20695,13 @@ impl Workspace {
                 .left_panel_views
                 .first()
                 .copied()
-                .unwrap_or(ToolPanelView::WarpDrive)
+                .unwrap_or(ToolPanelView::ProjectExplorer)
             {
                 ToolPanelView::ProjectExplorer => "Project explorer",
                 ToolPanelView::GlobalSearch { .. } => "Global search",
+                #[cfg(not(feature = "warp_lite"))]
                 ToolPanelView::WarpDrive => "Warp Drive",
+                #[cfg(not(feature = "warp_lite"))]
                 ToolPanelView::ConversationListView => "Agent conversations",
             }
         } else {
@@ -21120,11 +21354,25 @@ impl Workspace {
                 }
             }
             HeaderToolbarItemKind::AgentManagement => {
-                self.render_agent_management_view_button(appearance, ctx)
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    self.render_agent_management_view_button(appearance, ctx)
+                }
+                #[cfg(feature = "warp_lite")]
+                {
+                    return None;
+                }
             }
             HeaderToolbarItemKind::CodeReview => self.render_right_panel_button(appearance, ctx),
             HeaderToolbarItemKind::NotificationsMailbox => {
-                self.render_notifications_mailbox_button(appearance, ctx)
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    self.render_notifications_mailbox_button(appearance, ctx)
+                }
+                #[cfg(feature = "warp_lite")]
+                {
+                    return None;
+                }
             }
         };
         Some(
@@ -21145,6 +21393,7 @@ impl Workspace {
 
     /// Renders the notifications mailbox button (extracted for reuse from
     /// add_right_side_tab_bar_controls).
+    #[cfg(not(feature = "warp_lite"))]
     fn render_notifications_mailbox_button(
         &self,
         appearance: &Appearance,
@@ -21247,6 +21496,7 @@ impl Workspace {
         }
 
         // Legacy AI assistant button (non-agent-mode only)
+        #[cfg(not(feature = "warp_lite"))]
         if is_online
             && !FeatureFlag::AgentMode.is_enabled()
             && !is_web_anonymous_user
@@ -21273,7 +21523,10 @@ impl Workspace {
             );
         } else {
             let resource_center_closed = !self.current_workspace_state.is_resource_center_open;
-            if resource_center_closed && ContextFlag::WarpEssentials.is_enabled() {
+            if !cfg!(feature = "warp_lite")
+                && resource_center_closed
+                && ContextFlag::WarpEssentials.is_enabled()
+            {
                 target.add_child(
                     Container::new(self.render_resource_center_button(appearance, ctx))
                         .with_margin_left(TAB_BAR_PADDING_LEFT)
@@ -21846,6 +22099,7 @@ impl Workspace {
         Align::new(hoverable.finish()).finish()
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn render_legacy_warp_ai_entrypoint_button(&self, appearance: &Appearance) -> Box<dyn Element> {
         let (icon, action, label) = (
             icons::Icon::AiAssistant,
@@ -22165,18 +22419,26 @@ impl Workspace {
         }
         let error = self.settings_file_error.as_ref()?;
         let (heading, description) = error.heading_and_description();
-        let secondary_button =
-            AISettings::as_ref(app)
-                .is_any_ai_enabled(app)
-                .then(|| WorkspaceBannerButtonDetails {
-                    text: "Fix with Oz".to_owned(),
-                    action: WorkspaceAction::FixSettingsWithOz {
-                        error_description: error.to_string(),
-                    },
-                    variant: BannerButtonVariant::Naked,
-                    icon: Some(Icon::Agent),
-                    more_info_button_action: None,
-                });
+        let secondary_button = {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                AISettings::as_ref(app)
+                    .is_any_ai_enabled(app)
+                    .then(|| WorkspaceBannerButtonDetails {
+                        text: "Fix with Oz".to_owned(),
+                        action: WorkspaceAction::FixSettingsWithOz {
+                            error_description: error.to_string(),
+                        },
+                        variant: BannerButtonVariant::Naked,
+                        icon: Some(Icon::Agent),
+                        more_info_button_action: None,
+                    })
+            }
+            #[cfg(feature = "warp_lite")]
+            {
+                None
+            }
+        };
         Some(WorkspaceBannerFields {
             banner_type: WorkspaceBanner::InvalidSettings,
             severity: BannerSeverity::Warning,
@@ -23607,10 +23869,13 @@ impl Workspace {
                 ctx.open_url(&sign_up_url);
             });
         }
-        self.require_login_modal.update(ctx, |auth_modal, ctx| {
-            auth_modal.skip_to_browser_open_step(ctx);
-        });
-        self.open_require_login_modal(AuthViewVariant::RequireLoginCloseable, ctx);
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            self.require_login_modal.update(ctx, |auth_modal, ctx| {
+                auth_modal.skip_to_browser_open_step(ctx);
+            });
+            self.open_require_login_modal(AuthViewVariant::RequireLoginCloseable, ctx);
+        }
     }
 
     fn redirect_to_sign_in(&mut self) {
@@ -23753,6 +24018,7 @@ impl Workspace {
         if cfg!(feature = "local_fs") && *CodeSettings::as_ref(ctx).show_project_explorer.value() {
             views.push(ToolPanelView::ProjectExplorer);
         }
+        #[cfg(not(feature = "warp_lite"))]
         if FeatureFlag::AgentViewConversationListView.is_enabled()
             && *AISettings::as_ref(ctx).show_conversation_history
         {
@@ -23766,6 +24032,7 @@ impl Workspace {
                 entry_focus: GlobalSearchEntryFocus::Results,
             });
         }
+        #[cfg(not(feature = "warp_lite"))]
         if *WarpDriveSettings::as_ref(ctx).enable_warp_drive {
             views.push(ToolPanelView::WarpDrive);
         }
@@ -24051,9 +24318,12 @@ impl TypedActionView for Workspace {
                 self.add_tab_with_shell(shell.clone(), *source, ctx)
             }
             AddGetStartedTab => self.add_get_started_tab(ctx),
+            #[cfg(not(feature = "warp_lite"))]
             AddAmbientAgentTab => self.add_ambient_agent_tab(ctx),
+            #[cfg(not(feature = "warp_lite"))]
             AddAgentTab => self.add_terminal_tab_with_new_agent_view(ctx),
             AddDockerSandboxTab => self.add_docker_sandbox_tab(ctx),
+            #[cfg(not(feature = "warp_lite"))]
             StartAgentOnboardingTutorial(tutorial) => {
                 self.start_agent_onboarding_tutorial(tutorial.clone(), ctx)
             }
@@ -24197,6 +24467,7 @@ impl TypedActionView for Workspace {
                 let path = crate::settings::user_preferences_toml_file_path();
                 self.add_tab_for_code_file(path, None, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenLocalToCloudHandoffPane {
                 launch,
                 environment_id,
@@ -24214,6 +24485,7 @@ impl TypedActionView for Workspace {
                     let _ = (launch, environment_id, entry_point);
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             AutoHandoffActiveAgentToCloud {
                 terminal_view_id,
                 conversation_id,
@@ -24254,18 +24526,22 @@ impl TypedActionView for Workspace {
                     let _ = (terminal_view_id, conversation_id, trigger);
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ShowHandoffEnvironmentCreationModal => {
                 self.show_handoff_environment_creation_modal(ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             ShowCloudModeV2EnvironmentCreationModal => {
                 self.show_cloud_mode_v2_environment_creation_modal(ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenCreateAuthSecretModal { harness } => {
                 self.show_create_auth_secret_modal(*harness, ctx);
             }
             OpenNetworkLogPane => {
                 self.open_network_log_pane(ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             FixSettingsWithOz { error_description } => {
                 use crate::ai::skills::SkillManager;
                 let modify_settings_skill = SkillManager::as_ref(ctx)
@@ -24326,6 +24602,7 @@ impl TypedActionView for Workspace {
                 // the currently active session in the log out modal.
                 ctx.dispatch_global_action("app:maybe_log_out", ());
             }
+            #[cfg(not(feature = "warp_lite"))]
             ExportAllWarpDriveObjects => {
                 self.export_all_warp_drive_objects(ctx);
             }
@@ -24340,6 +24617,7 @@ impl TypedActionView for Workspace {
                 search_query,
                 section,
             } => self.show_settings_with_search(search_query, *section, ctx),
+            #[cfg(not(feature = "warp_lite"))]
             OpenPromptSuggestionsUnavailableModal => {
                 self.open_prompt_suggestions_unavailable_modal(ctx)
             }
@@ -24428,17 +24706,20 @@ impl TypedActionView for Workspace {
                 filter,
                 init_content,
             }) => self.show_command_search(*filter, init_content, ctx),
+            #[cfg(not(feature = "warp_lite"))]
             ImportToPersonalDrive => {
                 if let Some(personal_drive) = UserWorkspaces::as_ref(ctx).personal_drive(ctx) {
                     self.open_import_modal(personal_drive, &None, ctx);
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ImportToTeamDrive => {
                 let team_uid = self.team_uid(ctx);
                 if let Some(team_uid) = team_uid {
                     self.open_import_modal(Owner::Team { team_uid }, &None, ctx);
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreatePersonalNotebook => {
                 if let Some(personal_drive) = UserWorkspaces::as_ref(ctx).personal_drive(ctx) {
                     self.open_notebook(
@@ -24453,6 +24734,7 @@ impl TypedActionView for Workspace {
                     );
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamNotebook => {
                 let team_uid = self.team_uid(ctx);
                 if let Some(team_uid) = team_uid {
@@ -24470,6 +24752,7 @@ impl TypedActionView for Workspace {
                     ctx.notify();
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreatePersonalEnvVarCollection => {
                 if let Some(personal_drive) = UserWorkspaces::as_ref(ctx).personal_drive(ctx) {
                     self.open_env_var_collection(
@@ -24483,6 +24766,7 @@ impl TypedActionView for Workspace {
                     );
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamEnvVarCollection => {
                 let team_uid = self.team_uid(ctx);
                 if let Some(team_uid) = team_uid {
@@ -24498,6 +24782,7 @@ impl TypedActionView for Workspace {
                     ctx.notify();
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreatePersonalWorkflow => {
                 if let Some(personal_drive) = UserWorkspaces::as_ref(ctx).personal_drive(ctx) {
                     let source = WorkflowOpenSource::New {
@@ -24515,6 +24800,7 @@ impl TypedActionView for Workspace {
                     );
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamWorkflow => {
                 let team_uid = self.team_uid(ctx);
                 if let Some(team_uid) = team_uid {
@@ -24533,6 +24819,7 @@ impl TypedActionView for Workspace {
                     );
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreatePersonalFolder => {
                 self.update_warp_drive_view(ctx, |drive_panel, ctx| {
                     drive_panel.open_cloud_object_dialog(
@@ -24545,6 +24832,7 @@ impl TypedActionView for Workspace {
                 self.current_workspace_state.is_warp_drive_open = true;
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamFolder => {
                 let team_uid = self.team_uid(ctx);
                 if let Some(team_uid) = team_uid {
@@ -24585,6 +24873,7 @@ impl TypedActionView for Workspace {
                 send_telemetry_from_ctx!(TelemetryEvent::DragAndDropTabGroup, ctx);
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenWarpDrive => {
                 if WarpDriveSettings::is_warp_drive_enabled(ctx) {
                     self.open_left_panel_view(&LeftPanelAction::WarpDrive, ctx);
@@ -24602,9 +24891,17 @@ impl TypedActionView for Workspace {
                 let file_tree_active = self
                     .left_panel_view
                     .read(ctx, |lp, _| lp.is_file_tree_active());
-                let warp_drive_active = self
-                    .left_panel_view
-                    .read(ctx, |lp, _| lp.is_warp_drive_active());
+                let warp_drive_active = {
+                    #[cfg(not(feature = "warp_lite"))]
+                    {
+                        self.left_panel_view
+                            .read(ctx, |lp, _| lp.is_warp_drive_active())
+                    }
+                    #[cfg(feature = "warp_lite")]
+                    {
+                        false
+                    }
+                };
 
                 self.toggle_left_panel(ctx);
 
@@ -24695,6 +24992,7 @@ impl TypedActionView for Workspace {
                     self.toggle_vertical_tabs_panel(ctx);
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ToggleNotificationMailbox { select_first } => {
                 if FeatureFlag::HOANotifications.is_enabled()
                     && *AISettings::as_ref(ctx).show_agent_notifications
@@ -24851,6 +25149,7 @@ impl TypedActionView for Workspace {
                 );
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             ToggleAgentManagementView => {
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
@@ -24872,6 +25171,7 @@ impl TypedActionView for Workspace {
                     ctx.notify();
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenAgentManagementView => {
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
@@ -24881,6 +25181,7 @@ impl TypedActionView for Workspace {
                     ctx.notify();
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ViewAgentRunsForEnvironment { environment_id } => {
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
@@ -24910,6 +25211,7 @@ impl TypedActionView for Workspace {
             OpenFilePath { path } => {
                 ctx.open_file_path(path);
             }
+            #[cfg(not(feature = "warp_lite"))]
             NewTabInAgentMode {
                 entrypoint,
                 zero_state_prompt_suggestion_type,
@@ -24923,6 +25225,7 @@ impl TypedActionView for Workspace {
 
                 self.add_terminal_tab_in_ai_mode(*zero_state_prompt_suggestion_type, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             NewPaneInAgentMode {
                 entrypoint,
                 zero_state_prompt_suggestion_type,
@@ -24936,6 +25239,7 @@ impl TypedActionView for Workspace {
 
                 self.add_terminal_pane_in_ai_mode(*zero_state_prompt_suggestion_type, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenCloudAgentSetupGuide => {
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
@@ -24948,6 +25252,7 @@ impl TypedActionView for Workspace {
                     ctx.notify();
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ToggleAIAssistant => {
                 self.toggle_ai_assistant_panel(ctx);
                 send_telemetry_from_ctx!(
@@ -24957,6 +25262,7 @@ impl TypedActionView for Workspace {
                     ctx
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
             ClickedAIAssistantIcon => {
                 if !FeatureFlag::AgentMode.is_enabled() {
                     self.toggle_ai_assistant_panel(ctx);
@@ -24970,10 +25276,12 @@ impl TypedActionView for Workspace {
                     }
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ShowAIAssistantWarmWelcome => {
                 self.should_show_ai_assistant_warm_welcome = true;
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             ClickedAIAssistantWarmWelcome => {
                 self.toggle_ai_assistant_panel(ctx);
                 send_telemetry_from_ctx!(
@@ -25053,6 +25361,7 @@ impl TypedActionView for Workspace {
                 }
             }
             DismissWorkspaceBanner(banner_type) => self.dismiss_workspace_banner(ctx, banner_type),
+            #[cfg(not(feature = "warp_lite"))]
             DismissAIAssistantWarmWelcome => {
                 self.dismiss_ai_assistant_warm_welcome(ctx);
             }
@@ -25158,6 +25467,7 @@ impl TypedActionView for Workspace {
             SignInAnonymousWebUser => {
                 self.redirect_to_sign_in();
             }
+            #[cfg(not(feature = "warp_lite"))]
             HandleConflictingWorkflow(workflow_id) => {
                 self.toast_stack.update(ctx, |view, ctx| {
                     view.dismiss_older_toasts(&workflow_id.uid(), ctx);
@@ -25168,6 +25478,7 @@ impl TypedActionView for Workspace {
                     ctx,
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
             HandleConflictingEnvVarCollection(env_var_collection_id) => {
                 self.toast_stack.update(ctx, |view, ctx| {
                     view.dismiss_older_toasts(&env_var_collection_id.uid(), ctx);
@@ -25181,9 +25492,11 @@ impl TypedActionView for Workspace {
             OpenPromptEditor { open_source } => {
                 self.open_prompt_editor(*open_source, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenAgentToolbarEditor => {
                 self.open_agent_toolbar_editor(AgentToolbarEditorMode::AgentView, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenCLIAgentToolbarEditor => {
                 self.open_agent_toolbar_editor(AgentToolbarEditorMode::CLIAgent, ctx);
             }
@@ -25237,13 +25550,16 @@ impl TypedActionView for Workspace {
             }
             FocusLeftPanel => self.focus_left_panel(ctx),
             FocusRightPanel => self.focus_right_panel(ctx),
+            #[cfg(not(feature = "warp_lite"))]
             ViewObjectInWarpDrive(item_id) => {
                 // Focus newly created object in WD
                 self.view_in_and_focus_warp_drive(*item_id, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenObjectSharingSettings { object_id, source } => {
                 self.open_object_sharing_settings(*object_id, None, *source, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             UndoTrash(cloud_object_type_and_id) => {
                 self.update_warp_drive_view(ctx, |warp_drive, ctx| {
                     warp_drive.undo_trash(cloud_object_type_and_id, ctx);
@@ -25257,6 +25573,7 @@ impl TypedActionView for Workspace {
                     ctx.close_window();
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             RunAISuggestedCommand(code) => {
                 let command = code.trim().to_string();
                 let workflow = Workflow::new("Command from Oz", command);
@@ -25286,6 +25603,7 @@ impl TypedActionView for Workspace {
                 self.insert_in_input(content, *replace_buffer, false, *ensure_agent_mode, ctx);
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             AttemptLoginGatedAIUpgrade => {
                 AuthManager::handle(ctx).update(ctx, |auth_manager, ctx| {
                     auth_manager.attempt_login_gated_feature(
@@ -25300,6 +25618,7 @@ impl TypedActionView for Workspace {
                 self.dismiss_workspace_banner(ctx, &WorkspaceBanner::WaylandCrashRecovery);
                 ctx.open_url("https://docs.warp.dev/terminal/more-features/linux#native-wayland");
             }
+            #[cfg(not(feature = "warp_lite"))]
             FixInAgentMode { query } => {
                 self.active_tab_pane_group().update(ctx, |pane_group, ctx| {
                     pane_group.add_terminal_pane_in_agent_mode(None, None, ctx);
@@ -25321,6 +25640,7 @@ impl TypedActionView for Workspace {
                     }
                 });
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenAIFactCollection => {
                 self.open_ai_fact_collection_pane(None, None, ctx);
                 send_telemetry_from_ctx!(
@@ -25330,6 +25650,8 @@ impl TypedActionView for Workspace {
                     ctx
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(not(feature = "warp_lite"))]
             OpenMCPServerCollection => {
                 self.show_settings_with_section(Some(SettingsSection::MCPServers), ctx);
 
@@ -25340,9 +25662,11 @@ impl TypedActionView for Workspace {
                     ctx
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenEnvironmentManagementPane => {
                 self.open_environment_management_pane(None, EnvironmentsPage::Create, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             ToggleAIDocumentPane {
                 document_id,
                 document_version,
@@ -25361,11 +25685,13 @@ impl TypedActionView for Workspace {
                     });
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             HideAIDocumentPanes => {
                 self.active_tab_pane_group().update(ctx, |pane_group, ctx| {
                     pane_group.close_all_ai_document_panes(ctx);
                 });
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenAIDocumentPane {
                 document_id,
                 document_version,
@@ -25402,6 +25728,8 @@ impl TypedActionView for Workspace {
             FocusPane(locator) => {
                 self.focus_pane(*locator, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(not(feature = "warp_lite"))]
             StartNewConversation { terminal_view_id } => {
                 Self::set_pending_query_state_for_terminal_view(
                     *terminal_view_id,
@@ -25416,6 +25744,8 @@ impl TypedActionView for Workspace {
                     ctx,
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(not(feature = "warp_lite"))]
             JumpToLatestToast => {
                 if FeatureFlag::HOANotifications.is_enabled() {
                     let newest = AgentNotificationsModel::as_ref(ctx)
@@ -25491,6 +25821,7 @@ impl TypedActionView for Workspace {
             NewCodeFile => {
                 self.add_tab_for_new_code_file(ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenNotebook { id } => self.open_notebook(
                 &NotebookSource::Existing(*id),
                 &OpenWarpDriveObjectSettings::default(),
@@ -25510,6 +25841,8 @@ impl TypedActionView for Workspace {
                 TerminalSessionFallbackBehavior::default(),
                 ctx,
             ),
+            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(not(feature = "warp_lite"))]
             RestoreOrNavigateToConversation {
                 pane_view_locator,
                 window_id,
@@ -25526,6 +25859,8 @@ impl TypedActionView for Workspace {
                     ctx,
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(not(feature = "warp_lite"))]
             OpenOrAttachAmbientAgentConversation {
                 session_id,
                 task_id,
@@ -25560,6 +25895,8 @@ impl TypedActionView for Workspace {
                     None => self.add_tab_for_joining_shared_session(*session_id, true, ctx),
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(not(feature = "warp_lite"))]
             OpenConversationTranscriptViewer {
                 conversation_id,
                 ambient_agent_task_id,
@@ -25578,6 +25915,8 @@ impl TypedActionView for Workspace {
                     ctx,
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(not(feature = "warp_lite"))]
             ForkAIConversation {
                 conversation_id,
                 fork_from_exchange,
@@ -25598,7 +25937,7 @@ impl TypedActionView for Workspace {
                     ctx,
                 );
             }
-            #[cfg(not(target_family = "wasm"))]
+            #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
             ContinueConversationLocally { conversation_id } => {
                 self.fork_ai_conversation(
                     *conversation_id,
@@ -25611,16 +25950,19 @@ impl TypedActionView for Workspace {
                     ctx,
                 );
             }
-            #[cfg(not(target_family = "wasm"))]
+            #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
             ContinueThirdPartyConversationLocally { task_id, harness } => {
                 self.continue_third_party_conversation_locally(*task_id, *harness, ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
             SummarizeAIConversation {
                 prompt,
                 initial_prompt,
             } => {
                 self.summarize_active_ai_conversation(prompt.clone(), initial_prompt.clone(), ctx);
             }
+            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(not(feature = "warp_lite"))]
             InsertForkSlashCommand => {
                 self.active_tab_pane_group().update(ctx, |pane_group, ctx| {
                     if let Some(terminal_view) = pane_group.active_session_view(ctx) {
@@ -25653,6 +25995,7 @@ impl TypedActionView for Workspace {
                     }
                 });
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreatePersonalAIPrompt => {
                 if let Some(personal_drive) = UserWorkspaces::as_ref(ctx).personal_drive(ctx) {
                     let source = WorkflowOpenSource::New {
@@ -25670,6 +26013,7 @@ impl TypedActionView for Workspace {
                     );
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamAIPrompt => {
                 let team_uid = self.team_uid(ctx);
                 if let Some(team_uid) = team_uid {
@@ -26068,6 +26412,7 @@ impl TypedActionView for Workspace {
                     self.open_left_panel_view(&LeftPanelAction::ProjectExplorer, ctx);
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ToggleWarpDrive => {
                 if WarpDriveSettings::is_warp_drive_enabled(ctx) {
                     let is_showing =
@@ -26121,6 +26466,7 @@ impl TypedActionView for Workspace {
                     );
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ToggleConversationListView => {
                 if FeatureFlag::AgentViewConversationListView.is_enabled() {
                     let is_showing = self.left_panel_view.as_ref(ctx).active_view()
@@ -26132,11 +26478,13 @@ impl TypedActionView for Workspace {
                     );
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             OpenConversationListView => {
                 if FeatureFlag::AgentViewConversationListView.is_enabled() {
                     self.open_left_panel_view(&LeftPanelAction::ConversationListView, ctx);
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ShowRewindConfirmationDialog {
                 ai_block_view_id,
                 exchange_id,
@@ -26151,6 +26499,7 @@ impl TypedActionView for Workspace {
                     ctx,
                 );
             }
+            #[cfg(not(feature = "warp_lite"))]
             ExecuteRewindAIConversation {
                 ai_block_view_id,
                 exchange_id,
@@ -26185,6 +26534,7 @@ impl TypedActionView for Workspace {
                     self.insert_in_input(&query, true, false, true, ctx);
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ExecuteDeleteConversation {
                 conversation_id,
                 terminal_view_id,
@@ -27191,10 +27541,12 @@ impl View for Workspace {
         }
 
         if self.current_workspace_state.is_require_login_modal_open {
+            #[cfg(not(feature = "warp_lite"))]
             stack.add_child(ChildView::new(&self.require_login_modal).finish());
         }
 
         if self.current_workspace_state.is_auth_override_modal_open {
+            #[cfg(not(feature = "warp_lite"))]
             stack.add_child(ChildView::new(&self.auth_override_warning_modal).finish());
         }
 
@@ -27203,6 +27555,7 @@ impl View for Workspace {
         }
 
         if self.current_workspace_state.is_import_modal_open {
+            #[cfg(not(feature = "warp_lite"))]
             stack.add_child(ChildView::new(&self.import_modal).finish());
         }
 
@@ -27273,6 +27626,7 @@ impl View for Workspace {
             stack.add_child(self.new_worktree_modal.render());
         }
 
+        #[cfg(not(feature = "warp_lite"))]
         if self.workflow_modal.as_ref(app).is_open() {
             stack.add_child(ChildView::new(&self.workflow_modal).finish());
         }
@@ -27479,6 +27833,7 @@ impl View for Workspace {
             stack.add_child(ChildView::new(lightbox_view).finish());
         }
 
+        #[cfg(not(feature = "warp_lite"))]
         if let Some(handoff_modal) = &self.handoff_environment_creation_modal {
             stack.add_child(ChildView::new(handoff_modal).finish());
         }
@@ -27596,6 +27951,7 @@ impl View for Workspace {
             );
         }
 
+        #[cfg(not(feature = "warp_lite"))]
         if !FeatureFlag::AgentMode.is_enabled()
             && AISettings::as_ref(app).is_any_ai_enabled(app)
             && self.should_show_ai_assistant_warm_welcome

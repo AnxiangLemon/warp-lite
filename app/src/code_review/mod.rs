@@ -1,4 +1,8 @@
 pub mod code_review_view;
+#[cfg(not(feature = "warp_lite"))]
+pub mod comment_list_view;
+#[cfg(feature = "warp_lite")]
+#[path = "comment_list_view_lite.rs"]
 pub mod comment_list_view;
 pub mod context;
 pub mod diff_size_limits;
@@ -17,6 +21,11 @@ pub mod telemetry_event;
 pub use telemetry_event::CodeReviewTelemetryEvent;
 
 pub(crate) mod code_review_header;
+#[cfg(not(feature = "warp_lite"))]
+#[path = "comment_rendering.rs"]
+pub(crate) mod comment_rendering;
+#[cfg(feature = "warp_lite")]
+#[path = "comment_rendering_lite.rs"]
 pub(crate) mod comment_rendering;
 pub mod comments;
 pub(crate) mod diff_menu;

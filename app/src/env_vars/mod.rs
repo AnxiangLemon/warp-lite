@@ -6,20 +6,30 @@ use warp_util::path::ShellFamily;
 
 pub mod active_env_var_collection_data;
 pub mod env_var_collection_block;
+#[cfg(not(feature = "warp_lite"))]
+#[path = "manager.rs"]
 pub mod manager;
+#[cfg(feature = "warp_lite")]
+#[path = "manager_lite.rs"]
+pub mod manager;
+#[cfg(not(feature = "warp_lite"))]
 pub mod view;
 
 use crate::cloud_object::model::generic_string_model::StringModel;
 use crate::cloud_object::model::json_model::JsonModel;
 use crate::cloud_object::{
-    GenericStringObjectFormat, GenericStringObjectUniqueKey, JsonObjectType, Revision,
+    CloudObjectTypeAndId, GenericStringObjectFormat, GenericStringObjectUniqueKey, JsonObjectType,
+    Revision,
 };
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::WarpDriveItem;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::env_var_collection::WarpDriveEnvVarCollection;
 use crate::server::ids::SyncId;
 use crate::server::sync_queue::QueueItem;
 use crate::terminal::shell::ShellType;
-use crate::{Appearance, CloudObjectTypeAndId};
+#[cfg(not(feature = "warp_lite"))]
+use crate::Appearance;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum EnvVarCollectionType {
@@ -143,6 +153,7 @@ impl StringModel for EnvVarCollection {
         true
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool {
         true
     }
@@ -155,6 +166,7 @@ impl StringModel for EnvVarCollection {
         true
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn to_warp_drive_item(
         &self,
         id: SyncId,

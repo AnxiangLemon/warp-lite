@@ -25,6 +25,10 @@ mod input_model;
 mod permissions;
 mod persistence;
 pub mod prompt;
+#[cfg(not(feature = "warp_lite"))]
+pub mod suggested_agent_mode_workflow_modal;
+#[cfg(feature = "warp_lite")]
+#[path = "suggested_agent_mode_workflow_modal_lite.rs"]
 pub mod suggested_agent_mode_workflow_modal;
 pub mod suggested_rule_modal;
 mod suggestion_chip_view;

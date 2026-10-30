@@ -7,7 +7,7 @@ use warpui::{AppContext, SingletonEntity as _};
 
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
 use crate::ai::execution_profiles::{ActionPermission, WriteToPtyPermission};
-use crate::drive::settings::WarpDriveSettings;
+use crate::settings::WarpDriveSettings;
 use crate::settings::ai::DefaultSessionMode;
 use crate::settings::{AISettings, CodeSettings};
 use crate::workspace::tab_settings::TabSettings;

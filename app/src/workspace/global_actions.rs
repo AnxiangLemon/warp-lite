@@ -84,7 +84,9 @@ pub fn init_global_actions(app: &mut AppContext) {
     app.add_global_action("workspace:toggle_scroll_reporting", toggle_scroll_reporting);
     app.add_global_action("workspace:toggle_focus_reporting", toggle_focus_reporting);
     app.add_global_action("workspace:save_app", save_app);
+    #[cfg(not(feature = "warp_lite"))]
     app.add_global_action("workspace:fork_ai_conversation", fork_ai_conversation);
+    #[cfg(not(feature = "warp_lite"))]
     app.add_global_action(
         "workspace:summarize_ai_conversation",
         summarize_ai_conversation,
@@ -233,6 +235,7 @@ fn open_repository(path: &String, ctx: &mut AppContext) {
     }
 }
 
+#[cfg(not(feature = "warp_lite"))]
 fn fork_ai_conversation(params: &ForkAIConversationParams, ctx: &mut AppContext) {
     dispatch_to_active_workspace(
         ctx,
@@ -248,6 +251,7 @@ fn fork_ai_conversation(params: &ForkAIConversationParams, ctx: &mut AppContext)
     );
 }
 
+#[cfg(not(feature = "warp_lite"))]
 fn summarize_ai_conversation(prompt: &Option<String>, ctx: &mut AppContext) {
     dispatch_to_active_workspace(
         ctx,

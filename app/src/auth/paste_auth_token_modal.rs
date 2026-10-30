@@ -28,7 +28,7 @@ use warpui::{
 use crate::appearance::Appearance;
 use crate::auth::auth_manager::{AuthManager, AuthManagerEvent};
 use crate::auth::auth_view_modal::AuthRedirectPayload;
-use crate::auth::login_failure_notification::LoginFailureReason;
+use crate::auth::login_failure_reason::LoginFailureReason;
 use crate::editor::{
     EditorView, InteractionState, SingleLineEditorOptions, TextColors, TextOptions,
 };

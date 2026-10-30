@@ -1422,10 +1422,17 @@ impl AgentConversationsModel {
                 .entry_for_server_token(&server_token, app)
                 .and_then(|entry| model.resolve_entry_open_action(&entry, restore_layout, app))
                 .or_else(|| {
-                    Some(WorkspaceAction::OpenConversationTranscriptViewer {
-                        ambient_agent_task_id: model.task_id_for_server_token(&server_token),
-                        conversation_id: server_token,
-                    })
+                    #[cfg(not(feature = "warp_lite"))]
+                    {
+                        Some(WorkspaceAction::OpenConversationTranscriptViewer {
+                            ambient_agent_task_id: model.task_id_for_server_token(&server_token),
+                            conversation_id: server_token,
+                        })
+                    }
+                    #[cfg(feature = "warp_lite")]
+                    {
+                        None
+                    }
                 }),
         }
     }
@@ -1461,10 +1468,13 @@ impl AgentConversationsModel {
                 .map(AmbientAgentTask::active_live_session_state)
             {
                 Some(AmbientAgentLiveSessionState::Attachable { session_id }) => {
-                    return Some(WorkspaceAction::OpenOrAttachAmbientAgentConversation {
-                        session_id,
-                        task_id,
-                    });
+                    #[cfg(not(feature = "warp_lite"))]
+                    {
+                        return Some(WorkspaceAction::OpenOrAttachAmbientAgentConversation {
+                            session_id,
+                            task_id,
+                        });
+                    }
                 }
                 Some(AmbientAgentLiveSessionState::ActiveUnattachable) => {
                     return active_views_model
@@ -1493,13 +1503,16 @@ impl AgentConversationsModel {
                 .get(&conversation_id)
                 .map(|metadata| &metadata.nav_data)
             {
-                return Some(WorkspaceAction::RestoreOrNavigateToConversation {
-                    conversation_id,
-                    window_id: nav_data.window_id,
-                    pane_view_locator: nav_data.pane_view_locator,
-                    terminal_view_id: nav_data.terminal_view_id,
-                    restore_layout,
-                });
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    return Some(WorkspaceAction::RestoreOrNavigateToConversation {
+                        conversation_id,
+                        window_id: nav_data.window_id,
+                        pane_view_locator: nav_data.pane_view_locator,
+                        terminal_view_id: nav_data.terminal_view_id,
+                        restore_layout,
+                    });
+                }
             }
 
             if let Some(terminal_view_id) =
@@ -1519,24 +1532,34 @@ impl AgentConversationsModel {
                 || entry.backing.has_loaded_conversation
                 || nav_data.is_some()
             {
-                return Some(WorkspaceAction::RestoreOrNavigateToConversation {
-                    conversation_id,
-                    window_id: nav_data.and_then(|nav_data| nav_data.window_id),
-                    pane_view_locator: None,
-                    terminal_view_id: nav_data.and_then(|nav_data| nav_data.terminal_view_id),
-                    restore_layout,
-                });
+                #[cfg(not(feature = "warp_lite"))]
+                {
+                    return Some(WorkspaceAction::RestoreOrNavigateToConversation {
+                        conversation_id,
+                        window_id: nav_data.and_then(|nav_data| nav_data.window_id),
+                        pane_view_locator: None,
+                        terminal_view_id: nav_data.and_then(|nav_data| nav_data.terminal_view_id),
+                        restore_layout,
+                    });
+                }
             }
         }
 
-        entry
-            .identity
-            .server_conversation_token
-            .as_ref()
-            .map(|token| WorkspaceAction::OpenConversationTranscriptViewer {
-                conversation_id: token.clone(),
-                ambient_agent_task_id: entry.identity.ambient_agent_task_id,
-            })
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            return entry
+                .identity
+                .server_conversation_token
+                .as_ref()
+                .map(|token| WorkspaceAction::OpenConversationTranscriptViewer {
+                    conversation_id: token.clone(),
+                    ambient_agent_task_id: entry.identity.ambient_agent_task_id,
+                });
+        }
+        #[cfg(feature = "warp_lite")]
+        {
+            None
+        }
     }
 
     fn resolve_entry_copy_link(&self, entry: &AgentConversationEntry) -> Option<String> {

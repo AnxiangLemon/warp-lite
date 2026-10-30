@@ -54,7 +54,7 @@ use crate::ai::harness_display;
 use crate::appearance::Appearance;
 use crate::auth::UserUid;
 use crate::cloud_object::CloudObjectLookup as _;
-use crate::notebooks::NotebookId;
+use crate::cloud_object::NotebookId;
 use crate::send_telemetry_from_ctx;
 use crate::server::ids::{ServerId, SyncId};
 use crate::server::server_api::ai::AmbientAgentTask;
@@ -959,6 +959,7 @@ impl ConversationDetailsPanel {
                     ctx
                 );
 
+                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ForkAIConversation {
                     conversation_id: *conversation_id,
                     fork_from_exchange: None,
@@ -2312,11 +2313,13 @@ impl TypedActionView for ConversationDetailsPanel {
                     );
                     match continuation_info {
                         DetailsPanelLocalContinuationInfo::Conversation(conversation_id) => {
+                            #[cfg(not(feature = "warp_lite"))]
                             ctx.dispatch_typed_action(
                                 &WorkspaceAction::ContinueConversationLocally { conversation_id },
                             );
                         }
                         DetailsPanelLocalContinuationInfo::ThirdPartyTask { task_id, harness } => {
+                            #[cfg(not(feature = "warp_lite"))]
                             ctx.dispatch_typed_action(
                                 &WorkspaceAction::ContinueThirdPartyConversationLocally {
                                     task_id,

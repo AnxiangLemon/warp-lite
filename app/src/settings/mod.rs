@@ -38,6 +38,7 @@ mod tui_theme;
 mod tui_voice;
 mod tui_zero_state;
 mod vim_banner;
+mod warp_drive;
 
 #[cfg(test)]
 #[path = "schema_validation_tests.rs"]
@@ -76,6 +77,7 @@ pub use tui_theme::*;
 pub use tui_voice::*;
 pub use tui_zero_state::*;
 pub use vim_banner::*;
+pub use warp_drive::*;
 use warp_core::user_preferences::GetUserPreferences as _;
 
 /// Describes errors encountered when loading settings from `settings.toml`.
@@ -108,6 +110,24 @@ impl SettingsFileError {
     /// (`Workspace::render_settings_error_banner`) and the settings nav rail
     /// footer (`render_settings_error_alert`) so the two UIs stay in sync.
     pub fn heading_and_description(&self) -> (String, String) {
+        if cfg!(feature = "warp_lite") {
+            return match self {
+                Self::FileParseFailed(_) => (
+                    "设置文件存在错误。".to_owned(),
+                    format!("{self}。请打开文件修复。"),
+                ),
+                Self::InvalidSettings(keys) => match keys.len() {
+                    1 => (
+                        "设置文件存在错误。".to_owned(),
+                        format!("{self}。正在使用默认值。"),
+                    ),
+                    _ => (
+                        "设置文件存在多处错误。".to_owned(),
+                        format!("{self}。正在使用默认值。"),
+                    ),
+                },
+            };
+        }
         match self {
             Self::FileParseFailed(_) => (
                 "Your settings file contains an error.".to_owned(),

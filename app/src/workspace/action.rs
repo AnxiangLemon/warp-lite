@@ -11,35 +11,44 @@ use warpui::geometry::vector::Vector2F;
 use warpui::platform::Cursor;
 use warpui::{EntityId, WeakViewHandle, WindowId};
 
+#[cfg(not(feature = "warp_lite"))]
 use super::global_actions::{ForkFromExchange, ForkedConversationDestination};
 use super::tab_settings::{
     VerticalTabsCompactSubtitle, VerticalTabsDisplayGranularity, VerticalTabsPrimaryInfo,
     VerticalTabsTabItemMode, VerticalTabsViewMode,
 };
 use super::view::{OnboardingTutorial, WorkspaceBanner};
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::agent::AIAgentExchangeId;
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::agent::api::ServerConversationToken;
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
 use crate::ai::agent::conversation::AIAgentHarness;
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::agent::conversation::AIConversationId;
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::ambient_agents::AmbientAgentTaskId;
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::blocklist::PendingAttachment;
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
+#[cfg(not(feature = "warp_lite"))]
+use ai::document::{AIDocumentId, AIDocumentVersion};
 use crate::auth::auth_manager::LoginGatedFeature;
-use crate::drive::CloudObjectTypeAndId;
+use crate::cloud_object::CloudObjectTypeAndId;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::WarpDriveItemId;
 use crate::palette::PaletteMode;
 use crate::pane_group::PaneGroup;
 use crate::prompt::editor_modal::OpenSource as PromptEditorOpenSource;
 use crate::search;
 use crate::server::ids::{ServerId, SyncId};
-use crate::server::telemetry::{
-    AddTabWithShellSource, AgentModeEntrypoint, PaletteSource, SharingDialogSource,
-};
+use crate::server::telemetry::{AddTabWithShellSource, PaletteSource, SharingDialogSource};
+#[cfg(not(feature = "warp_lite"))]
+use crate::server::telemetry::AgentModeEntrypoint;
 use crate::settings_view::{SettingsAction as SettingsTabAction, SettingsSection};
 use crate::tab::{NewSessionMenuItem, SelectedTabColor};
 use crate::tab_configs::TabConfig;
 use crate::terminal::available_shells::AvailableShell;
+#[cfg(not(feature = "warp_lite"))]
 use crate::terminal::view::inline_banner::ZeroStatePromptSuggestionType;
 use crate::themes::theme::AnsiColorIdentifier;
 use crate::themes::theme_chooser::ThemeChooserMode;
@@ -267,8 +276,10 @@ pub enum WorkspaceAction {
         source: AddTabWithShellSource,
     },
     AddGetStartedTab,
+    #[cfg(not(feature = "warp_lite"))]
     AddAmbientAgentTab,
     /// Add a new tab that immediately enters agent view with a new conversation.
+    #[cfg(not(feature = "warp_lite"))]
     AddAgentTab,
     /// Add a new tab running a local Docker sandbox via `sbx`.
     AddDockerSandboxTab,
@@ -327,6 +338,7 @@ pub enum WorkspaceAction {
     ToggleErrorUnderlining,
     ToggleSyntaxHighlighting,
     CheckForUpdate,
+    #[cfg(not(feature = "warp_lite"))]
     ExportAllWarpDriveObjects,
     SetA11yVerbosityLevel(AccessibilityVerbosity),
     ToggleNotifications,
@@ -345,21 +357,35 @@ pub enum WorkspaceAction {
     DispatchToSettingsTab(SettingsTabAction),
     ToggleResourceCenter,
     ToggleUserMenu,
+    #[cfg(not(feature = "warp_lite"))]
     ToggleAIAssistant,
+    #[cfg(not(feature = "warp_lite"))]
     ClickedAIAssistantIcon,
     ToggleKeybindingsPage,
     ShowCommandSearch(CommandSearchOptions),
+    #[cfg(not(feature = "warp_lite"))]
     CreatePersonalNotebook,
+    #[cfg(not(feature = "warp_lite"))]
     ImportToPersonalDrive,
+    #[cfg(not(feature = "warp_lite"))]
     ImportToTeamDrive,
+    #[cfg(not(feature = "warp_lite"))]
     CreateTeamNotebook,
+    #[cfg(not(feature = "warp_lite"))]
     CreatePersonalWorkflow,
+    #[cfg(not(feature = "warp_lite"))]
     CreateTeamWorkflow,
+    #[cfg(not(feature = "warp_lite"))]
     CreatePersonalFolder,
+    #[cfg(not(feature = "warp_lite"))]
     CreateTeamFolder,
+    #[cfg(not(feature = "warp_lite"))]
     CreateTeamEnvVarCollection,
+    #[cfg(not(feature = "warp_lite"))]
     CreatePersonalEnvVarCollection,
+    #[cfg(not(feature = "warp_lite"))]
     CreatePersonalAIPrompt,
+    #[cfg(not(feature = "warp_lite"))]
     CreateTeamAIPrompt,
     ToggleMouseReporting,
     ToggleScrollReporting,
@@ -384,9 +410,11 @@ pub enum WorkspaceAction {
     /// Warp Drive. This happens as explicit action from the user.
     ToggleLeftPanel,
     /// Toggles directly to the Warp Drive tab of the left panel in Code Mode V2
+    #[cfg(not(feature = "warp_lite"))]
     ToggleWarpDrive,
     /// Unconditionally opens Warp Drive. This is used in the case of user lifecycle
     /// events like new user onboarding or when the user joins a team.
+    #[cfg(not(feature = "warp_lite"))]
     OpenWarpDrive,
     /// Toggles the right panel. This happens as an explicit action from the user.
     ToggleRightPanel,
@@ -424,10 +452,13 @@ pub enum WorkspaceAction {
     Panic,
     /// Writes a heap profile to disk.
     DumpHeapProfile,
+    #[cfg(not(feature = "warp_lite"))]
     ShowAIAssistantWarmWelcome,
+    #[cfg(not(feature = "warp_lite"))]
     ClickedAIAssistantWarmWelcome,
     /// An action to open a new window with a view hierarchy debugger.
     OpenViewTreeDebugWindow,
+    #[cfg(not(feature = "warp_lite"))]
     DismissAIAssistantWarmWelcome,
     /// An action to either upgrade syncing status from none or just in one tab
     /// to syncing all tabs, or downgrade from syncing all tabs to no syncing
@@ -437,12 +468,16 @@ pub enum WorkspaceAction {
     ToggleSyncTerminalInputsInTab,
     /// An action to force terminal input syncing off
     DisableTerminalInputSync,
+    #[cfg(not(feature = "warp_lite"))]
     HandleConflictingWorkflow(SyncId),
+    #[cfg(not(feature = "warp_lite"))]
     HandleConflictingEnvVarCollection(SyncId),
     OpenPromptEditor {
         open_source: PromptEditorOpenSource,
     },
+    #[cfg(not(feature = "warp_lite"))]
     OpenAgentToolbarEditor,
+    #[cfg(not(feature = "warp_lite"))]
     OpenCLIAgentToolbarEditor,
     OpenHeaderToolbarEditor,
     ShowHeaderToolbarContextMenu {
@@ -478,12 +513,15 @@ pub enum WorkspaceAction {
     /// Moves focus to the panel on the right
     FocusRightPanel,
     /// An action to view a newly created/edited workflow in WD from the toast
+    #[cfg(not(feature = "warp_lite"))]
     ViewObjectInWarpDrive(WarpDriveItemId),
     /// Open the object's sharing settings in WD.
+    #[cfg(not(feature = "warp_lite"))]
     OpenObjectSharingSettings {
         object_id: CloudObjectTypeAndId,
         source: SharingDialogSource,
     },
+    #[cfg(not(feature = "warp_lite"))]
     UndoTrash(CloudObjectTypeAndId),
     /// Open a local path in the file explorer.
     OpenInExplorer {
@@ -503,6 +541,7 @@ pub enum WorkspaceAction {
     ToggleInBandGenerators,
     ToggleDebugNetworkStatus,
     ToggleShowMemoryStats,
+    #[cfg(not(feature = "warp_lite"))]
     RunAISuggestedCommand(String),
     RunCommand(String),
     InsertInInput {
@@ -512,6 +551,7 @@ pub enum WorkspaceAction {
         ensure_agent_mode: bool,
     },
     /// Open a new tab with its input in AI mode.
+    #[cfg(not(feature = "warp_lite"))]
     NewTabInAgentMode {
         /// The entrypoint that triggered this action.
         entrypoint: AgentModeEntrypoint,
@@ -519,15 +559,19 @@ pub enum WorkspaceAction {
         zero_state_prompt_suggestion_type: Option<ZeroStatePromptSuggestionType>,
     },
     /// Open a new pane with its input in AI mode.
+    #[cfg(not(feature = "warp_lite"))]
     NewPaneInAgentMode {
         /// The entrypoint that triggered this action.
         entrypoint: AgentModeEntrypoint,
         /// The type of zero state prompt suggestion to start with (optional).
         zero_state_prompt_suggestion_type: Option<ZeroStatePromptSuggestionType>,
     },
+    #[cfg(not(feature = "warp_lite"))]
     OpenCloudAgentSetupGuide,
+    #[cfg(not(feature = "warp_lite"))]
     AttemptLoginGatedAIUpgrade,
     /// Open the modal explaining Prompt Suggestions aren't available on the Free plan.
+    #[cfg(not(feature = "warp_lite"))]
     OpenPromptSuggestionsUnavailableModal,
     /// Dismisses the Wayland crash recovery banner and opens a link to our docs page with more
     /// information.
@@ -535,20 +579,27 @@ pub enum WorkspaceAction {
     DismissWaylandCrashRecoveryBannerAndOpenLink,
     /// Open a new pane with its input in AI mode
     /// with query "Fix this" with error name and details from AI summary.
+    #[cfg(not(feature = "warp_lite"))]
     FixInAgentMode {
         query: String,
     },
+    #[cfg(not(feature = "warp_lite"))]
     OpenAIFactCollection,
+    #[cfg(not(feature = "warp_lite"))]
     OpenMCPServerCollection,
     /// Open the Environment Management pane in Create mode.
+    #[cfg(not(feature = "warp_lite"))]
     OpenEnvironmentManagementPane,
+    #[cfg(not(feature = "warp_lite"))]
     ToggleAIDocumentPane {
         document_id: AIDocumentId,
         document_version: AIDocumentVersion,
     },
     /// Closes all visible AI document panes in the active pane group.
+    #[cfg(not(feature = "warp_lite"))]
     HideAIDocumentPanes,
     /// Closes any other ai document panes in the active pane group, and opens the specified document_id.
+    #[cfg(not(feature = "warp_lite"))]
     OpenAIDocumentPane {
         document_id: AIDocumentId,
         document_version: AIDocumentVersion,
@@ -560,16 +611,19 @@ pub enum WorkspaceAction {
     FocusPane(PaneViewLocator),
     /// Start a new AI conversation in a terminal view. This sets the pending query state
     /// to default and focuses the terminal view.
+    #[cfg(not(feature = "warp_lite"))]
     StartNewConversation {
         terminal_view_id: EntityId,
     },
     /// Jump to the terminal pane of the most recent agent toast
+    #[cfg(not(feature = "warp_lite"))]
     JumpToLatestToast,
     /// Open a file in a new tab with a code pane
     OpenFileInNewTab {
         full_path: PathBuf,
         line_and_column: Option<LineAndColumnArg>,
     },
+    #[cfg(not(feature = "warp_lite"))]
     OpenNotebook {
         id: SyncId,
     },
@@ -586,6 +640,7 @@ pub enum WorkspaceAction {
     /// Navigate to an existing AI conversation, focusing on its terminal view.
     ///
     /// If the conversation is not in an open pane, restore it based on the layout setting or override.
+    #[cfg(not(feature = "warp_lite"))]
     RestoreOrNavigateToConversation {
         pane_view_locator: Option<PaneViewLocator>,
         window_id: Option<WindowId>,
@@ -597,6 +652,7 @@ pub enum WorkspaceAction {
     },
     /// Fork an existing AI conversation.
     /// Optionally summarizes the conversation after forking and/or sends an initial prompt.
+    #[cfg(not(feature = "warp_lite"))]
     ForkAIConversation {
         conversation_id: AIConversationId,
         /// When Some, fork from the given response (or exchange if `fork_from_exact_exchange`
@@ -615,17 +671,18 @@ pub enum WorkspaceAction {
     },
     /// Fork an existing AI conversation into a new pane and prefill the input with a local
     /// continuation command (selecting all text).
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
     ContinueConversationLocally {
         conversation_id: AIConversationId,
     },
     /// Continue a completed third-party cloud harness run in a local split pane.
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
     ContinueThirdPartyConversationLocally {
         task_id: AmbientAgentTaskId,
         harness: AIAgentHarness,
     },
     /// Insert the /fork slash command into the active terminal's input.
+    #[cfg(not(feature = "warp_lite"))]
     InsertForkSlashCommand,
     /// Open a local-to-cloud handoff pane next to the active conversation
     /// (REMOTE-1486). Triggered by the `/move-to-cloud` slash command
@@ -635,6 +692,7 @@ pub enum WorkspaceAction {
     /// Falls through to splitting a fresh cloud-mode pane when the active
     /// conversation isn't handoff-able (no synced server token, empty, or no
     /// active conversation at all).
+    #[cfg(not(feature = "warp_lite"))]
     OpenLocalToCloudHandoffPane {
         #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
         launch: Option<crate::ai::blocklist::handoff::PendingCloudLaunch>,
@@ -645,6 +703,7 @@ pub enum WorkspaceAction {
     },
     /// Automatically hand off the active running local agent conversation in the
     /// given terminal view to Cloud Mode.
+    #[cfg(not(feature = "warp_lite"))]
     AutoHandoffActiveAgentToCloud {
         terminal_view_id: EntityId,
         conversation_id: AIConversationId,
@@ -652,14 +711,18 @@ pub enum WorkspaceAction {
     },
     /// Show the environment creation modal during `&` handoff compose when no
     /// environments exist.
+    #[cfg(not(feature = "warp_lite"))]
     ShowHandoffEnvironmentCreationModal,
+    #[cfg(not(feature = "warp_lite"))]
     ShowCloudModeV2EnvironmentCreationModal,
     /// Open the workspace modal for creating a new managed auth secret.
     /// Dispatched by orchestration card pickers' "New API key…" item.
+    #[cfg(not(feature = "warp_lite"))]
     OpenCreateAuthSecretModal {
         harness: warp_cli::agent::Harness,
     },
     /// Summarize the active AI conversation in the focused pane.
+    #[cfg(not(feature = "warp_lite"))]
     SummarizeAIConversation {
         prompt: Option<String>,
         /// Optional prompt to send after summarization completes successfully.
@@ -714,8 +777,11 @@ pub enum WorkspaceAction {
     ToggleGlobalSearch,
     ToggleHiddenFiles,
     OpenGlobalSearch,
+    #[cfg(not(feature = "warp_lite"))]
     ToggleConversationListView,
+    #[cfg(not(feature = "warp_lite"))]
     OpenConversationListView,
+    #[cfg(not(feature = "warp_lite"))]
     OpenAgentManagementView,
     /// Open the Build Plan Migration Modal (for debugging)
     #[cfg(debug_assertions)]
@@ -781,37 +847,45 @@ pub enum WorkspaceAction {
     /// Take a process sample of the app (equivalent to Activity Monitor > Sample Process).
     #[cfg(target_os = "macos")]
     SampleProcess,
+    #[cfg(not(feature = "warp_lite"))]
     ToggleNotificationMailbox {
         select_first: bool,
     },
+    #[cfg(not(feature = "warp_lite"))]
     ToggleAgentManagementView,
+    #[cfg(not(feature = "warp_lite"))]
     ViewAgentRunsForEnvironment {
         environment_id: String,
     },
     /// Show the rewind confirmation dialog before rewinding an AI conversation
+    #[cfg(not(feature = "warp_lite"))]
     ShowRewindConfirmationDialog {
         ai_block_view_id: EntityId,
         exchange_id: AIAgentExchangeId,
         conversation_id: AIConversationId,
     },
     /// Execute the actual rewind after confirmation
+    #[cfg(not(feature = "warp_lite"))]
     ExecuteRewindAIConversation {
         ai_block_view_id: EntityId,
         exchange_id: AIAgentExchangeId,
         conversation_id: AIConversationId,
     },
     /// Execute the actual deletion of a conversation after confirmation
+    #[cfg(not(feature = "warp_lite"))]
     ExecuteDeleteConversation {
         conversation_id: AIConversationId,
         terminal_view_id: Option<EntityId>,
     },
     /// Open the canonical ambient agent conversation pane and attach it to a live session.
+    #[cfg(not(feature = "warp_lite"))]
     OpenOrAttachAmbientAgentConversation {
         session_id: SessionId,
         task_id: AmbientAgentTaskId,
     },
     /// Load cloud conversation data into a transcript viewer.
     /// Used when CloudConversations is enabled and the sandbox is not running.
+    #[cfg(not(feature = "warp_lite"))]
     OpenConversationTranscriptViewer {
         conversation_id: ServerConversationToken,
         ambient_agent_task_id: Option<AmbientAgentTaskId>,
@@ -830,6 +904,7 @@ pub enum WorkspaceAction {
         index: usize,
         image: lightbox::LightboxImage,
     },
+    #[cfg(not(feature = "warp_lite"))]
     StartAgentOnboardingTutorial(OnboardingTutorial),
     ShowSessionConfigModal,
     DismissSessionConfigTabConfigChip,
@@ -875,6 +950,7 @@ pub enum WorkspaceAction {
     /// Opens the settings.toml file in a code editor pane.
     OpenSettingsFile,
     /// Opens a new agent session to fix settings.toml errors using the modify-settings skill.
+    #[cfg(not(feature = "warp_lite"))]
     FixSettingsWithOz {
         error_description: String,
     },
@@ -893,11 +969,17 @@ impl From<&WorkspaceAction> for LoginGatedFeature {
     fn from(val: &WorkspaceAction) -> LoginGatedFeature {
         use WorkspaceAction::*;
         match val {
+            #[cfg(not(feature = "warp_lite"))]
             ImportToTeamDrive => "Importing to a team drive",
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamNotebook => "Creating a team notebook",
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamWorkflow => "Creating a team workflow",
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamFolder => "Creating a team folder",
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamEnvVarCollection => "Creating a team environment variable collection",
+            #[cfg(not(feature = "warp_lite"))]
             CreateTeamAIPrompt => "Creating a team prompt",
             OpenShareSessionModal(_) => "Sharing a session",
             _ => "Unknown reason",
@@ -908,16 +990,17 @@ impl From<&WorkspaceAction> for LoginGatedFeature {
 impl WorkspaceAction {
     pub fn blocked_for_anonymous_user(&self) -> bool {
         use WorkspaceAction::*;
-        matches!(
-            self,
+        match self {
+            OpenShareSessionModal(_) => true,
+            #[cfg(not(feature = "warp_lite"))]
             ImportToTeamDrive
-                | CreateTeamNotebook
-                | CreateTeamWorkflow
-                | CreateTeamFolder
-                | CreateTeamEnvVarCollection
-                | CreateTeamAIPrompt
-                | OpenShareSessionModal(_)
-        )
+            | CreateTeamNotebook
+            | CreateTeamWorkflow
+            | CreateTeamFolder
+            | CreateTeamEnvVarCollection
+            | CreateTeamAIPrompt => true,
+            _ => false,
+        }
     }
 
     /// Matches what actions require the app state to be saved, and which don't. We match all
@@ -926,9 +1009,9 @@ impl WorkspaceAction {
     pub fn should_save_app_state_on_action(&self) -> bool {
         use WorkspaceAction::*;
         match self {
-            #[cfg(not(target_family = "wasm"))]
+            #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
             ContinueConversationLocally { .. } => true,
-            #[cfg(not(target_family = "wasm"))]
+            #[cfg(all(not(target_family = "wasm"), not(feature = "warp_lite")))]
             ContinueThirdPartyConversationLocally { .. } => true,
             ActivateTab(_)
             | ActivateTabByNumber(_)
@@ -989,27 +1072,30 @@ impl WorkspaceAction {
             | AddTerminalTab { .. }
             | AddTabWithShell { .. }
             | AddGetStartedTab
-            | AddAgentTab
-            | AddAmbientAgentTab
             | AddDockerSandboxTab
             | AddWindow
             | AddWindowWithShell { .. }
             | CloseWindow
             | ScrollToSettingsWidget { .. }
-            | NewTabInAgentMode { .. }
-            | NewPaneInAgentMode { .. }
-            | FixInAgentMode { .. }
-            | OpenNotebook { .. }
             | RunWorkflow { .. }
             | OpenFileInNewTab { .. }
-            | RestoreOrNavigateToConversation { .. }
             | NewCodeFile
-            | ForkAIConversation { .. }
-            | SummarizeAIConversation { .. }
             | OpenRepository { .. }
             | SelectTabConfig(_)
             | ToggleVerticalTabsPanel
-            | OpenVerticalTabsPanel => true, // actions that actually change a state of the state of user's
+            | OpenVerticalTabsPanel => true,
+            #[cfg(not(feature = "warp_lite"))]
+            AddAgentTab
+            | AddAmbientAgentTab
+            | NewTabInAgentMode { .. }
+            | NewPaneInAgentMode { .. }
+            | FixInAgentMode { .. }
+            | RestoreOrNavigateToConversation { .. }
+            | ForkAIConversation { .. }
+            | SummarizeAIConversation { .. } => true,
+            #[cfg(not(feature = "warp_lite"))]
+            OpenNotebook { .. } => true,
+            // actions that actually change a state of the state of user's
             // workspace would most likely require a save, so that if the app gets
             // restarted, the user can continue working
             AutoupdateFailureLink
@@ -1017,7 +1103,6 @@ impl WorkspaceAction {
             | CopyVersion(_)
             | DownloadNewVersion
             | ConfigureKeybindingSettings { .. }
-            | ExportAllWarpDriveObjects
             | ShowSettings
             | ShowSettingsPage(_)
             | ShowSettingsPageWithSearch { .. }
@@ -1058,35 +1143,17 @@ impl WorkspaceAction {
             | DispatchToSettingsTab { .. }
             | ToggleResourceCenter
             | ToggleUserMenu
-            | ClickedAIAssistantIcon
-            | ToggleAIAssistant
-            | OpenCloudAgentSetupGuide
-            | OpenPromptSuggestionsUnavailableModal
             | ToggleKeybindingsPage
             | ShowCommandSearch(_)
             | ToggleMouseReporting
             | ToggleScrollReporting
             | ToggleFocusReporting
-            | ImportToPersonalDrive
-            | ImportToTeamDrive
-            | CreatePersonalNotebook
-            | CreateTeamNotebook
-            | CreatePersonalWorkflow
-            | CreateTeamWorkflow
-            | CreatePersonalFolder
-            | CreateTeamFolder
-            | CreateTeamEnvVarCollection
-            | CreatePersonalEnvVarCollection
-            | CreatePersonalAIPrompt
-            | CreateTeamAIPrompt
             | OpenInExplorer { .. }
             | DragTab { .. }
             | StartTabDrag
             | DragGroup { .. }
             | StartGroupDrag(_)
             | ToggleLeftPanel
-            | ToggleWarpDrive
-            | OpenWarpDrive
             | ClosePanel
             | ToggleRightPanel
             | OpenCodeReviewPanel(..)
@@ -1112,18 +1179,11 @@ impl WorkspaceAction {
             | Panic
             | DumpHeapProfile
             | OpenViewTreeDebugWindow
-            | ShowAIAssistantWarmWelcome
-            | ClickedAIAssistantWarmWelcome
-            | DismissAIAssistantWarmWelcome
             | DismissWorkspaceBanner(..)
             | ToggleSyncAllTerminalInputsInAllTabs
             | ToggleSyncTerminalInputsInTab
             | DisableTerminalInputSync
-            | HandleConflictingWorkflow(_)
-            | HandleConflictingEnvVarCollection(_)
             | OpenPromptEditor { .. }
-            | OpenAgentToolbarEditor
-            | OpenCLIAgentToolbarEditor
             | OpenHeaderToolbarEditor
             | ShowHeaderToolbarContextMenu { .. }
             | Reauth
@@ -1144,30 +1204,20 @@ impl WorkspaceAction {
             | ToggleInBandGenerators
             | ToggleDebugNetworkStatus
             | ToggleShowMemoryStats
-            | RunAISuggestedCommand { .. }
             | RunCommand { .. }
             | InsertInInput { .. }
-            | InsertForkSlashCommand
-            | AttemptLoginGatedAIUpgrade
-            | UndoTrash(_)
             | OpenFilePath { .. }
-            | ViewObjectInWarpDrive(_)
-            | OpenObjectSharingSettings { .. }
             | TerminateApp
             | SignInAnonymousWebUser
             | TabHoverWidthStart { .. }
             | TabHoverWidthEnd
-            | OpenAIFactCollection
-            | OpenMCPServerCollection
             | FocusTerminalViewInWorkspace { .. }
             | FocusPane(..)
             | ShiftSelectTabRange { .. }
             | ToggleTabMultiSelection { .. }
             | ClearTabMultiSelection
             | CancelActiveRename
-            | StartNewConversation { .. }
             | UndoRevertInCodeReviewPane { .. }
-            | JumpToLatestToast
             | NavigatePrevPaneOrPanel
             | NavigateNextPaneOrPanel
             | ToggleProjectExplorer
@@ -1175,23 +1225,8 @@ impl WorkspaceAction {
             | ToggleGlobalSearch
             | ToggleHiddenFiles
             | OpenGlobalSearch
-            | ToggleConversationListView
-            | OpenConversationListView
-            | ToggleNotificationMailbox { .. }
-            | ToggleAgentManagementView
-            | OpenAgentManagementView
-            | ViewAgentRunsForEnvironment { .. }
-            | ToggleAIDocumentPane { .. }
-            | HideAIDocumentPanes
-            | OpenAIDocumentPane { .. }
-            | ShowRewindConfirmationDialog { .. }
-            | ExecuteRewindAIConversation { .. }
-            | ExecuteDeleteConversation { .. }
-            | OpenOrAttachAmbientAgentConversation { .. }
-            | OpenConversationTranscriptViewer { .. }
             | OpenLightbox { .. }
             | UpdateLightboxImage { .. }
-            | StartAgentOnboardingTutorial(_)
             | ShowSessionConfigModal
             | DismissSessionConfigTabConfigChip
             | DismissFeatureIntroModal
@@ -1202,15 +1237,44 @@ impl WorkspaceAction {
             | TabConfigSidecarEditConfig { .. }
             | TabConfigSidecarRemoveConfig { .. }
             | OpenSettingsFile
+            | OpenNetworkLogPane
+            | OpenNewWindowForTeam { .. }
+            | ShowTeamSwitcherMenu => false,
+            #[cfg(not(feature = "warp_lite"))]
+            ClickedAIAssistantIcon
+            | ToggleAIAssistant
+            | OpenCloudAgentSetupGuide
+            | OpenPromptSuggestionsUnavailableModal
+            | ShowAIAssistantWarmWelcome
+            | ClickedAIAssistantWarmWelcome
+            | DismissAIAssistantWarmWelcome
+            | OpenAgentToolbarEditor
+            | OpenCLIAgentToolbarEditor
+            | RunAISuggestedCommand { .. }
+            | InsertForkSlashCommand
+            | AttemptLoginGatedAIUpgrade
+            | OpenAIFactCollection
+            | OpenMCPServerCollection
+            | StartNewConversation { .. }
+            | JumpToLatestToast
+            | ToggleConversationListView
+            | OpenConversationListView
+            | ToggleNotificationMailbox { .. }
+            | ToggleAgentManagementView
+            | OpenAgentManagementView
+            | ViewAgentRunsForEnvironment { .. }
+            | ShowRewindConfirmationDialog { .. }
+            | ExecuteRewindAIConversation { .. }
+            | ExecuteDeleteConversation { .. }
+            | OpenOrAttachAmbientAgentConversation { .. }
+            | OpenConversationTranscriptViewer { .. }
+            | StartAgentOnboardingTutorial(_)
             | FixSettingsWithOz { .. }
             | OpenLocalToCloudHandoffPane { .. }
             | AutoHandoffActiveAgentToCloud { .. }
             | ShowHandoffEnvironmentCreationModal
             | ShowCloudModeV2EnvironmentCreationModal
-            | OpenCreateAuthSecretModal { .. }
-            | OpenNetworkLogPane
-            | OpenNewWindowForTeam { .. }
-            | ShowTeamSwitcherMenu => false,
+            | OpenCreateAuthSecretModal { .. } => false,
             #[cfg(debug_assertions)]
             ShowHoaOnboardingFlow => false,
             #[cfg(target_family = "wasm")]
@@ -1248,7 +1312,6 @@ impl WorkspaceAction {
             FileRenamed { .. } => false, // File rename doesn't change workspace state
             #[cfg(feature = "local_fs")]
             FileDeleted { .. } => false, // File deletion doesn't change workspace state
-            OpenEnvironmentManagementPane => false,
             #[cfg(target_os = "linux")]
             DismissWaylandCrashRecoveryBannerAndOpenLink => false,
             #[cfg(target_family = "wasm")]

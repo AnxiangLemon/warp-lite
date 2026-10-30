@@ -13,7 +13,9 @@ use crate::ai::blocklist::inline_action::inline_action_header::{
     self, INLINE_ACTION_HORIZONTAL_PADDING, INLINE_ACTION_VERTICAL_PADDING,
 };
 use crate::ai::blocklist::inline_action::inline_action_icons::icon_size;
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentModel, AIDocumentVersion};
+use ai::document::{AIDocumentId, AIDocumentVersion};
+#[cfg(not(feature = "warp_lite"))]
+use crate::ai::document::ai_document_model::{AIDocumentModel};
 
 pub struct CreateOrEditDocumentAction {
     document_id: AIDocumentId,

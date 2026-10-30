@@ -33,6 +33,7 @@ use crate::ai::blocklist::agent_view::orchestration_pill_bar::render_static_agen
 use crate::ai::blocklist::block::AIBlock;
 use crate::ai::blocklist::block::model::AIBlockModel;
 use crate::ai::blocklist::block::view_impl::WithContentItemSpacing;
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::blocklist::inline_action::create_environment_modal::{
     CreateEnvironmentModal, CreateEnvironmentModalEvent,
 };
@@ -252,6 +253,7 @@ pub struct RunAgentsCardView {
 
     action_model: ModelHandle<BlocklistAIActionModel>,
     block_model: Rc<dyn AIBlockModel<View = AIBlock>>,
+    #[cfg(not(feature = "warp_lite"))]
     create_environment_modal: ViewHandle<CreateEnvironmentModal>,
     /// Snapshot of the latest raw `RunAgentsRequest` from the LLM
     /// stream. Used at decision time to diff the run-wide config
@@ -522,15 +524,19 @@ impl RunAgentsCardView {
             },
         );
 
-        let create_environment_modal = ctx.add_typed_action_view(CreateEnvironmentModal::new);
-        ctx.subscribe_to_view(&create_environment_modal, |me, _, event, ctx| match event {
-            CreateEnvironmentModalEvent::Created { environment_id } => {
-                me.select_created_environment(environment_id.clone(), ctx);
-            }
-            CreateEnvironmentModalEvent::Cancelled => {
-                ctx.notify();
-            }
-        });
+        #[cfg(not(feature = "warp_lite"))]
+        let create_environment_modal = {
+            let create_environment_modal = ctx.add_typed_action_view(CreateEnvironmentModal::new);
+            ctx.subscribe_to_view(&create_environment_modal, |me, _, event, ctx| match event {
+                CreateEnvironmentModalEvent::Created { environment_id } => {
+                    me.select_created_environment(environment_id.clone(), ctx);
+                }
+                CreateEnvironmentModalEvent::Cancelled => {
+                    ctx.notify();
+                }
+            });
+            create_environment_modal
+        };
 
         ctx.subscribe_to_model(
             &ConnectedSelfHostedWorkersModel::handle(ctx),
@@ -565,6 +571,7 @@ impl RunAgentsCardView {
             position_id_prefix,
             action_model,
             block_model,
+            #[cfg(not(feature = "warp_lite"))]
             create_environment_modal,
             original_tool_call_request,
             entered_event_emitted: false,
@@ -778,6 +785,7 @@ impl RunAgentsCardView {
     /// change when the harness has no loaded secrets and selection is
     /// `Unset`. Cancelling leaves the picker on "+ New API key…"; the
     /// user can reopen the modal by clicking that item.
+    #[cfg(not(feature = "warp_lite"))]
     fn maybe_auto_open_create_modal(&mut self, ctx: &mut ViewContext<Self>) {
         if self.has_auto_opened_create_modal {
             return;
@@ -833,6 +841,9 @@ impl RunAgentsCardView {
             &crate::workspace::WorkspaceAction::OpenCreateAuthSecretModal { harness },
         );
     }
+
+    #[cfg(feature = "warp_lite")]
+    fn maybe_auto_open_create_modal(&mut self, _ctx: &mut ViewContext<Self>) {}
 
     /// Re-derives the Accept button's `disabled` + tooltip from the gate.
     /// Call after every code path that mutates `self.orchestration_edit_state.orchestration_config_state`.
@@ -1171,6 +1182,7 @@ impl RunAgentsCardView {
         );
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn open_create_environment_modal(&mut self, ctx: &mut ViewContext<Self>) {
         if let Some(environment_picker) = &self.handles.pickers.environment_picker {
             environment_picker.update(ctx, |dropdown, ctx| dropdown.close(ctx));
@@ -1181,6 +1193,7 @@ impl RunAgentsCardView {
         ctx.notify();
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn select_created_environment(&mut self, environment_id: String, ctx: &mut ViewContext<Self>) {
         self.orchestration_edit_state
             .orchestration_config_state
@@ -1190,6 +1203,9 @@ impl RunAgentsCardView {
         }
         ctx.notify();
     }
+
+    #[cfg(feature = "warp_lite")]
+    fn open_create_environment_modal(&mut self, _ctx: &mut ViewContext<Self>) {}
 
     fn toggle_accept_menu(&mut self, ctx: &mut ViewContext<Self>) {
         self.is_accept_menu_open = !self.is_accept_menu_open;
@@ -1300,6 +1316,7 @@ impl View for RunAgentsCardView {
             );
         }
 
+        #[cfg(not(feature = "warp_lite"))]
         if self.create_environment_modal.as_ref(app).is_visible() {
             root_stack.add_positioned_overlay_child(
                 ChildView::new(&self.create_environment_modal).finish(),
@@ -1434,6 +1451,7 @@ impl TypedActionView for RunAgentsCardView {
                         .orchestration_config_state
                         .harness_type,
                 ) {
+                    #[cfg(not(feature = "warp_lite"))]
                     ctx.dispatch_typed_action(
                         &crate::workspace::WorkspaceAction::OpenCreateAuthSecretModal { harness },
                     );

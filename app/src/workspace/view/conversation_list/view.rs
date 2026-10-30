@@ -34,8 +34,11 @@ use crate::ai::agent_management::telemetry::{AgentManagementTelemetryEvent, Open
 use crate::ai::blocklist::history_model::BlocklistAIHistoryModel;
 use crate::ai::conversation_rename::rename_conversation;
 use crate::appearance::Appearance;
-use crate::drive::sharing::ShareableObject;
+use crate::cloud_object::ShareableObject;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::sharing::dialog::SharingDialog;
+#[cfg(feature = "warp_lite")]
+use crate::pane_group::pane::view::header::SharingDialogLite as SharingDialog;
 use crate::editor::{
     EditorView, Event as EditorEvent, PropagateAndNoOpNavigationKeys,
     PropagateHorizontalNavigationKeys, SingleLineEditorOptions, TextOptions,

@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+PROFILE_ARGS=()
+if [[ "${1:-}" == "--release" ]]; then
+  PROFILE_ARGS=(--release)
+  shift
+fi
+
+exec cargo run "${PROFILE_ARGS[@]}" --bin warp-lite --no-default-features --features "warp_lite" -- "$@"

@@ -27,7 +27,7 @@ use crate::ai::agent::{
     TodoOperation, UserQueryMode, WebFetchStatus, WebSearchStatus,
 };
 use crate::ai::artifact_download::sanitized_basename;
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
+use ai::document::{AIDocumentId, AIDocumentVersion};
 
 impl TryFrom<api::Attachment> for AIAgentAttachment {
     type Error = anyhow::Error;

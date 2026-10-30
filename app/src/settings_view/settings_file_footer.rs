@@ -246,16 +246,19 @@ pub fn render_settings_error_alert(
 
     if ai_enabled {
         let error_description = error.to_string();
-        let fix_with_oz_button = render_alert_action_button(
-            ui_font_family,
-            text_color,
-            mouse_states.alert_fix_with_oz_button.clone(),
-            "Fix with Oz",
-            Some(Icon::Agent),
-            /*bordered=*/ false,
-            WorkspaceAction::FixSettingsWithOz { error_description },
-        );
-        buttons_row.add_child(fix_with_oz_button);
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            let fix_with_oz_button = render_alert_action_button(
+                ui_font_family,
+                text_color,
+                mouse_states.alert_fix_with_oz_button.clone(),
+                "Fix with Oz",
+                Some(Icon::Agent),
+                /*bordered=*/ false,
+                WorkspaceAction::FixSettingsWithOz { error_description },
+            );
+            buttons_row.add_child(fix_with_oz_button);
+        }
     }
 
     // ── Assemble ─────────────────────────────────────────────────────────

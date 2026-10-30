@@ -1,6 +1,8 @@
 mod ai_queries;
+#[cfg(not(feature = "warp_lite"))]
 mod env_var_collections;
 mod history;
+#[cfg(not(feature = "warp_lite"))]
 mod notebooks;
 pub mod projects;
 pub mod searcher;

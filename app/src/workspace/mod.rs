@@ -1,5 +1,6 @@
 mod action;
 mod active_session;
+pub mod sidebar_constants;
 pub(crate) mod auto_handoff;
 pub mod bonus_grant_notification_model;
 #[cfg(target_os = "macos")]
@@ -44,15 +45,20 @@ use warpui::accessibility::AccessibilityVerbosity;
 use warpui::elements::DropTargetData;
 use warpui::keymap::{BindingDescription, EditableBinding, FixedBinding};
 
-use crate::ai::blocklist::NEW_AGENT_PANE_LABEL;
 use crate::channel::{Channel, ChannelState};
 use crate::features::FeatureFlag;
 use crate::palette::PaletteMode;
-use crate::server::telemetry::{AgentModeEntrypoint, PaletteSource};
+use crate::server::telemetry::PaletteSource;
+#[cfg(not(feature = "warp_lite"))]
+use crate::ai::blocklist::NEW_AGENT_PANE_LABEL;
+#[cfg(not(feature = "warp_lite"))]
+use crate::server::telemetry::AgentModeEntrypoint;
 use crate::settings_view::{self, SettingsSection, flags};
 use crate::tab::{NewSessionMenuItem, uses_vertical_tabs};
 use crate::util::bindings::{self, CustomAction, cmd_or_ctrl_shift, is_binding_pty_compliant};
-use crate::{code, modal, notebooks, tab_configs};
+#[cfg(not(feature = "warp_lite"))]
+use crate::notebooks;
+use crate::{code, modal, tab_configs};
 
 // Helper function to access panel header corner radius from other modules
 pub fn panel_header_corner_radius() -> warpui::elements::CornerRadius {
@@ -83,7 +89,9 @@ pub fn init(app: &mut AppContext) {
     modal::init(app);
     native_modal::init(app);
     lightbox_view::init(app);
+    #[cfg(not(feature = "warp_lite"))]
     rewind_confirmation_dialog::init(app);
+    #[cfg(not(feature = "warp_lite"))]
     delete_conversation_confirmation_dialog::init(app);
     crate::tab_configs::remove_confirmation_dialog::init(app);
     hoa_onboarding::init(app);
@@ -100,12 +108,14 @@ pub fn init(app: &mut AppContext) {
     view::global_search::view::GlobalSearchView::init(app);
     view::right_panel::RightPanelView::init(app);
     header_toolbar_editor::init(app);
+    #[cfg(not(feature = "warp_lite"))]
     view::conversation_list::view::register_conversation_list_view_bindings(app);
 
     settings_view::init_actions_from_parent_view(app, &id!("Workspace"), |settings_action| {
         WorkspaceAction::DispatchToSettingsTab(settings_action)
     });
     global_actions::init_global_actions(app);
+    #[cfg(not(feature = "warp_lite"))]
     notebooks::init(app);
     code::init(app);
     sync_inputs::init(app);
@@ -650,6 +660,7 @@ pub fn init(app: &mut AppContext) {
         .with_context_predicate(id!("Workspace"))
         .with_group(bindings::BindingGroup::Navigation.as_str())
         .with_custom_action(CustomAction::ActivateNextPane),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             "workspace:create_team_notebook",
             BindingDescription::new("Create a new team notebook")
@@ -664,6 +675,7 @@ pub fn init(app: &mut AppContext) {
                 & id!("IsOnline"),
         )
         .with_group(bindings::BindingGroup::Notebooks.as_str()),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             "workspace:create_personal_notebook",
             BindingDescription::new("Create a new personal notebook")
@@ -673,6 +685,7 @@ pub fn init(app: &mut AppContext) {
         .with_group(bindings::BindingGroup::Notebooks.as_str())
         .with_custom_action(CustomAction::NewPersonalNotebook)
         .with_context_predicate(id!("Workspace") & id!(flags::ENABLE_WARP_DRIVE)),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             "workspace:create_team_workflow",
             BindingDescription::new("Create a new team workflow")
@@ -687,6 +700,7 @@ pub fn init(app: &mut AppContext) {
                 & id!("WarpDrive_BelongsToTeam"),
         )
         .with_group(bindings::BindingGroup::Workflow.as_str()),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             "workspace:create_personal_workflow",
             BindingDescription::new("Create a new personal workflow")
@@ -696,6 +710,7 @@ pub fn init(app: &mut AppContext) {
         .with_group(bindings::BindingGroup::Workflow.as_str())
         .with_custom_action(CustomAction::NewPersonalWorkflow)
         .with_context_predicate(id!("Workspace") & id!(flags::ENABLE_WARP_DRIVE)),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             "workspace:create_team_folder",
             BindingDescription::new("Create a new team folder")
@@ -709,6 +724,7 @@ pub fn init(app: &mut AppContext) {
                 & id!("WarpDrive_BelongsToTeam"),
         )
         .with_group(bindings::BindingGroup::Folders.as_str()),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             "workspace:create_personal_folder",
             BindingDescription::new("Create a new personal folder")
@@ -735,6 +751,7 @@ pub fn init(app: &mut AppContext) {
         .with_context_predicate(id!("Workspace") & !id!("Workspace_PaneDragging"))
         .with_custom_action(CustomAction::NewTerminalTab)
         .with_enabled(|| ContextFlag::CreateNewSession.is_enabled()),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             NEW_AGENT_TAB_BINDING_NAME,
             BindingDescription::new("New Agent Tab"),
@@ -745,6 +762,7 @@ pub fn init(app: &mut AppContext) {
         .with_context_predicate(
             id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED) & !id!("Workspace_PaneDragging"),
         ),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             NEW_AMBIENT_AGENT_TAB_BINDING_NAME,
             BindingDescription::new("New Cloud Agent Tab"),
@@ -792,6 +810,7 @@ pub fn init(app: &mut AppContext) {
         .with_group(bindings::BindingGroup::Navigation.as_str())
         .with_context_predicate(id!("Workspace") & id!(flags::SHOW_PROJECT_EXPLORER))
         .with_custom_action(CustomAction::ToggleProjectExplorer),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             LEFT_PANEL_AGENT_CONVERSATIONS_BINDING_NAME,
             BindingDescription::new("Left Panel: Agent conversations"),
@@ -820,15 +839,6 @@ pub fn init(app: &mut AppContext) {
         .with_mac_key_binding("cmd-shift->")
         .with_linux_or_windows_key_binding("ctrl-shift->"),
         EditableBinding::new(
-            LEFT_PANEL_WARP_DRIVE_BINDING_NAME,
-            BindingDescription::new("Left Panel: Warp Drive"),
-            WorkspaceAction::ToggleWarpDrive,
-        )
-        .with_group(bindings::BindingGroup::Navigation.as_str())
-        .with_context_predicate(id!("Workspace") & id!(flags::ENABLE_WARP_DRIVE))
-        .with_mac_key_binding("ctrl-4")
-        .with_linux_or_windows_key_binding("alt-4"),
-        EditableBinding::new(
             TOGGLE_PROJECT_EXPLORER_BINDING_NAME,
             BindingDescription::new("Toggle project explorer")
                 .with_custom_description(bindings::MAC_MENUS_CONTEXT, "Project Explorer"),
@@ -843,8 +853,18 @@ pub fn init(app: &mut AppContext) {
         )
         .with_context_predicate(id!("Workspace") & id!(flags::SHOW_GLOBAL_SEARCH))
         .with_mac_key_binding("cmd-shift-F")
-        // we use alt because we use ctrl-shift-f for find because ctrl-f needs to be reserved for the shell
         .with_linux_or_windows_key_binding("alt-shift-F"),
+        #[cfg(not(feature = "warp_lite"))]
+        EditableBinding::new(
+            LEFT_PANEL_WARP_DRIVE_BINDING_NAME,
+            BindingDescription::new("Left Panel: Warp Drive"),
+            WorkspaceAction::ToggleWarpDrive,
+        )
+        .with_group(bindings::BindingGroup::Navigation.as_str())
+        .with_context_predicate(id!("Workspace") & id!(flags::ENABLE_WARP_DRIVE))
+        .with_mac_key_binding("ctrl-4")
+        .with_linux_or_windows_key_binding("alt-4"),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             TOGGLE_WARP_DRIVE_BINDING_NAME,
             BindingDescription::new("Toggle Warp Drive")
@@ -852,6 +872,7 @@ pub fn init(app: &mut AppContext) {
             WorkspaceAction::ToggleWarpDrive,
         )
         .with_context_predicate(id!("Workspace") & id!(flags::ENABLE_WARP_DRIVE)),
+        #[cfg(not(feature = "warp_lite"))]
         EditableBinding::new(
             TOGGLE_CONVERSATION_LIST_VIEW_BINDING_NAME,
             BindingDescription::new("Toggle Agent conversation list view").with_custom_description(
@@ -1237,6 +1258,7 @@ pub fn init(app: &mut AppContext) {
     }
 
     if cfg!(not(target_family = "wasm")) {
+        #[cfg(not(feature = "warp_lite"))]
         app.register_editable_bindings([EditableBinding::new(
             "workspace:export_all_warp_drive_objects",
             "Export all Warp Drive objects",
@@ -1315,6 +1337,7 @@ pub fn init(app: &mut AppContext) {
 
     // We use the same binding name for the AI Assistant and block list AI to preserve custom
     // keybindings between them.
+    #[cfg(not(feature = "warp_lite"))]
     app.register_editable_bindings([
         EditableBinding::new(
             "workspace:toggle_ai_assistant",
@@ -1341,6 +1364,7 @@ pub fn init(app: &mut AppContext) {
         .with_custom_action(CustomAction::NewAgentModePane),
     ]);
 
+    #[cfg(not(feature = "warp_lite"))]
     app.register_editable_bindings([
         EditableBinding::new(
             "workspace:create_team_env_vars",
@@ -1416,6 +1440,7 @@ pub fn init(app: &mut AppContext) {
         .with_key_binding("cmdorctrl-shift-)"),
     ]);
 
+    #[cfg(not(feature = "warp_lite"))]
     app.register_editable_bindings([
         EditableBinding::new(
             "workspace:import_to_personal_drive",
@@ -1462,6 +1487,10 @@ pub fn init(app: &mut AppContext) {
         .with_context_predicate(id!("Workspace"))
         .with_custom_action(CustomAction::OpenRepository)
         .with_group(bindings::BindingGroup::Folders.as_str()),
+    ]);
+
+    #[cfg(not(feature = "warp_lite"))]
+    app.register_editable_bindings([
         EditableBinding::new(
             "workspace:open_ai_fact_collection",
             BindingDescription::new("Open AI Rules")
@@ -1474,6 +1503,7 @@ pub fn init(app: &mut AppContext) {
         .with_group(bindings::BindingGroup::WarpAi.as_str()),
     ]);
 
+    #[cfg(not(feature = "warp_lite"))]
     app.register_editable_bindings([EditableBinding::new(
         "workspace:open_mcp_servers",
         BindingDescription::new("Open MCP Servers")
@@ -1487,6 +1517,7 @@ pub fn init(app: &mut AppContext) {
     .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))
     .with_group(bindings::BindingGroup::WarpAi.as_str())]);
 
+    #[cfg(not(feature = "warp_lite"))]
     app.register_editable_bindings([EditableBinding::new(
         "workspace:jump_to_latest_toast",
         "Jump to latest agent task",
@@ -1498,6 +1529,7 @@ pub fn init(app: &mut AppContext) {
     .with_linux_or_windows_key_binding("ctrl-shift-G")
     .with_group(bindings::BindingGroup::WarpAi.as_str())]);
 
+    #[cfg(not(feature = "warp_lite"))]
     app.register_editable_bindings([EditableBinding::new(
         TOGGLE_NOTIFICATION_MAILBOX_BINDING_NAME,
         "Toggle notification mailbox",
@@ -1512,6 +1544,7 @@ pub fn init(app: &mut AppContext) {
     add_open_setting_pages_as_editable_binding(app);
     add_overflow_menu_items_as_editable_binding(app);
 
+    #[cfg(not(feature = "warp_lite"))]
     app.register_editable_bindings([EditableBinding::new(
         "workspace:toggle_agent_management_view",
         "Toggle the agent management view",

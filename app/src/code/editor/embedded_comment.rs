@@ -62,7 +62,9 @@ impl EmbeddedItem for EmbeddedCommentSpace {
         };
 
         let size = comment_editor
-            .and_then(|editor| editor.read(app, |editor, _ctx| editor.get_laid_out_size()))
+            .and_then(|editor| {
+                Some(editor.read(app, |editor, _ctx| editor.get_laid_out_size()))
+            })
             .unwrap_or_else(|| {
                 report_error!(
                     "Didn't find laid out size for editor",

@@ -96,6 +96,7 @@ impl PaneGroup {
                 None,
                 ctx,
             ) {
+                #[cfg(not(feature = "warp_lite"))]
                 Some(WorkspaceAction::OpenOrAttachAmbientAgentConversation {
                     session_id,
                     task_id: _,
@@ -117,6 +118,7 @@ impl PaneGroup {
                     );
                     self.replace_pane(pane_id, new_pane, false, ctx);
                 }
+                #[cfg(not(feature = "warp_lite"))]
                 Some(WorkspaceAction::OpenConversationTranscriptViewer {
                     conversation_id,
                     ambient_agent_task_id,

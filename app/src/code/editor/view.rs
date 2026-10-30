@@ -76,7 +76,7 @@ use crate::code::{
 use crate::code_review::comments::{CommentId, CommentOrigin};
 use crate::editor::InteractionState;
 use crate::features::FeatureFlag;
-use crate::notebooks::editor::rich_text_styles;
+use crate::code::editor::text_styles::rich_text_styles;
 use crate::settings::{AppEditorSettings, CodeEditorLineNumberMode, FontSettings};
 use crate::view_components::find::FindDirection;
 
@@ -1151,6 +1151,7 @@ impl CodeEditorView {
                 // Handle comment content changes if needed
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             CommentEditorEvent::CommentSaved {
                 id,
                 comment_text,
@@ -1162,6 +1163,8 @@ impl CodeEditorView {
                 };
                 self.save_comment(*id, comment_text, line, ctx);
             }
+            #[cfg(feature = "warp_lite")]
+            CommentEditorEvent::CommentSaved { .. } => {}
             CommentEditorEvent::CloseEditor => {
                 // Close the comment editor by updating the pending comment state to Closed
                 self.model.update(ctx, |model, ctx| {

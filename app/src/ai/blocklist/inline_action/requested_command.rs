@@ -202,6 +202,7 @@ pub(crate) enum McpRenderable {
 /// text content as JSON; falls back to wrapping the raw text as a JSON string value.
 pub(crate) fn mcp_result_to_renderable(result: &CallMCPToolResult) -> McpRenderable {
     match result {
+        #[cfg(feature = "mcp_client")]
         CallMCPToolResult::Success { result } => {
             if let Some(v) = &result.structured_content {
                 return McpRenderable::Tree(v.clone());
@@ -222,6 +223,14 @@ pub(crate) fn mcp_result_to_renderable(result: &CallMCPToolResult) -> McpRendera
                 McpRenderable::Tree(v)
             } else {
                 McpRenderable::Tree(serde_json::Value::String(text))
+            }
+        }
+        #[cfg(not(feature = "mcp_client"))]
+        CallMCPToolResult::Success { result } => {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(result) {
+                McpRenderable::Tree(v)
+            } else {
+                McpRenderable::Tree(serde_json::Value::String(result.clone()))
             }
         }
         CallMCPToolResult::Error(e) => McpRenderable::Error(e.clone()),

@@ -649,6 +649,7 @@ pub fn render_citation(
     let theme = appearance.theme();
 
     let (icon, name) = match citation {
+        #[cfg(not(feature = "warp_lite"))]
         AIAgentCitation::WarpDriveObject { uid } => {
             let item = CloudModel::as_ref(app)
                 .get_by_uid(uid)?
@@ -658,6 +659,8 @@ pub fn render_citation(
                 item.display_name().unwrap_or(String::from("Untitled")),
             )
         }
+        #[cfg(feature = "warp_lite")]
+        AIAgentCitation::WarpDriveObject { .. } => return None,
         AIAgentCitation::WarpDocumentation { .. } => {
             let icon = Icon::Warp.to_warpui_icon(theme.foreground()).finish();
             let name = String::from("Warp Docs");

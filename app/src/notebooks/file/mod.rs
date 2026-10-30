@@ -69,12 +69,7 @@ use crate::workflows::{WorkflowSource, WorkflowType};
 use crate::workspace::ActiveSession;
 use crate::{cmd_or_ctrl_shift, safe_warn, send_telemetry_from_ctx};
 
-/// Display mode for markdown files shown via the header segmented control.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MarkdownDisplayMode {
-    Rendered,
-    Raw,
-}
+pub use crate::view_components::MarkdownDisplayMode;
 
 /// View for a read-only notebook backed by a file, rather than Warp Drive.
 pub struct FileNotebookView {

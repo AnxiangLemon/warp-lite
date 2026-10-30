@@ -248,6 +248,7 @@ impl<P: BackingView> PaneView<P> {
                 });
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_lite"))]
             PaneConfigurationEvent::ShareableObjectChanged(object) => {
                 self.header.update(ctx, |header, ctx| {
                     header.set_shareable_object(object.clone(), ctx);

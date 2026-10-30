@@ -19,7 +19,7 @@ use crate::ai::blocklist::{
     BlocklistAIContextModel, BlocklistAIHistoryEvent, BlocklistAIHistoryModel,
     BlocklistAIInputEvent, BlocklistAIInputModel,
 };
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
+use ai::document::{AIDocumentId, AIDocumentVersion};
 use crate::completer::SessionContext;
 use crate::context_chips::display_chip::{DisplayChipAction, PromptChipShellCommand};
 use crate::settings::InputSettings;

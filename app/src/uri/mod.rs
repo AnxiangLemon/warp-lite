@@ -25,9 +25,11 @@ use crate::ai::active_agent_views_model::{ActiveAgentViewsModel, ConversationOrT
 use crate::ai::agent::api::ServerConversationToken;
 use crate::ai::ambient_agents::github_auth_notifier::GitHubAuthNotifier;
 use crate::cloud_object::ObjectType;
-use crate::drive::{OpenWarpDriveObjectArgs, OpenWarpDriveObjectSettings};
+#[cfg(not(feature = "warp_lite"))]
+use crate::cloud_object::{OpenWarpDriveObjectArgs, OpenWarpDriveObjectSettings};
 use crate::features::FeatureFlag;
 use crate::launch_configs::launch_config::LaunchConfig;
+#[cfg(not(feature = "warp_lite"))]
 use crate::linear::{LinearAction, LinearIssueWork};
 use crate::root_view::{
     NewWorkspaceSource, OpenLaunchConfigArg, open_new_window_get_handles,
@@ -35,9 +37,9 @@ use crate::root_view::{
 };
 use crate::server::ids::ServerId;
 use crate::server::telemetry::{LaunchConfigUiLocation, TelemetryEvent};
-use crate::settings_view::{
-    OpenTeamsSettingsModalArgs, SettingsSection, settings_widget_deeplink_target,
-};
+use crate::settings_view::{SettingsSection, settings_widget_deeplink_target};
+#[cfg(not(feature = "warp_lite"))]
+use crate::settings_view::OpenTeamsSettingsModalArgs;
 use crate::tab_configs::TabConfig;
 use crate::user_config::{load_launch_configs, load_tab_configs, tab_configs_dir};
 use crate::util::openable_file_type::{
@@ -301,6 +303,7 @@ impl UriHost {
                     log::warn!("Failed to open conversation with uri={url}");
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             UriHost::Drive => {
                 // We expect the uri to have the ID of the object we are trying to open and the object_type.
                 // e.g. warp://drive/{object_type}?id={UID}
@@ -341,10 +344,6 @@ impl UriHost {
                     };
                     // If there's an existing window, open the object in that window, otherwise open a new window
                     if let Some((primary_window_id, root_view_id)) = primary_window_and_view {
-                        // `args` may contain user-identifiable fields
-                        // (e.g. `invitee_email`), so avoid writing the full
-                        // debug representation to `warp.log` on non-dogfood
-                        // release channels.
                         safe_info!(
                             safe: (
                                 "Opening drive object in existing window: object_type={:?} server_id={}",
@@ -366,8 +365,11 @@ impl UriHost {
                     log::warn!("Failed to open drive object with uri={url}");
                 }
             }
+            #[cfg(feature = "warp_lite")]
+            UriHost::Drive => {
+                log::warn!("Warp Drive URIs are not supported in warp_lite builds");
+            }
             UriHost::Settings => {
-                // We support opening different settings pages through URI:
                 // - warp://settings - opens a settings tab on the default page
                 // - warp://settings?q={query} - opens settings with the search bar pre-filled
                 // - warp://settings?widget={widget_id} - opens settings scrolled to a widget
@@ -391,6 +393,7 @@ impl UriHost {
                     .map(|s| s.to_string());
 
                 match settings_sub_page.as_deref() {
+                    #[cfg(not(feature = "warp_lite"))]
                     Some("teams") => {
                         let invite_email = query_string.get("invite").map(|s| s.to_string());
                         let args = OpenTeamsSettingsModalArgs { invite_email };
@@ -402,6 +405,7 @@ impl UriHost {
                             ctx,
                         );
                     }
+                    #[cfg(not(feature = "warp_lite"))]
                     Some("environments") => {
                         // Notify that GitHub auth completed so views can refresh
                         GitHubAuthNotifier::handle(ctx).update(ctx, |notifier, ctx| {
@@ -519,21 +523,26 @@ impl UriHost {
                     ctx,
                 );
             }
-            UriHost::Linear => match LinearAction::parse(url) {
-                Ok(LinearAction::WorkOnIssue) => {
-                    let args = LinearIssueWork::from_url(url);
-                    dispatch_action_in_new_or_existing_window(
-                        primary_window_id,
-                        "root_view:open_linear_issue_work_in_existing_window",
-                        "root_view:open_linear_issue_work_in_new_window",
-                        &args,
-                        ctx,
-                    );
+            UriHost::Linear => {
+                #[cfg(not(feature = "warp_lite"))]
+                match LinearAction::parse(url) {
+                    Ok(LinearAction::WorkOnIssue) => {
+                        let args = LinearIssueWork::from_url(url);
+                        dispatch_action_in_new_or_existing_window(
+                            primary_window_id,
+                            "root_view:open_linear_issue_work_in_existing_window",
+                            "root_view:open_linear_issue_work_in_new_window",
+                            &args,
+                            ctx,
+                        );
+                    }
+                    Err(err) => {
+                        log::warn!("{err}");
+                    }
                 }
-                Err(err) => {
-                    log::warn!("{err}");
-                }
-            },
+                #[cfg(feature = "warp_lite")]
+                log::warn!("Linear deep links are not supported in warp lite");
+            }
             UriHost::Session => {
                 let uuid_hex = url
                     .path_segments()
@@ -1064,6 +1073,7 @@ impl Action {
                 match workspaces.pop() {
                     Some(workspace) => {
                         workspace.update(ctx, |workspace, ctx| {
+                            #[cfg(not(feature = "warp_lite"))]
                             workspace
                                 .handle_action(&WorkspaceAction::OpenCloudAgentSetupGuide, ctx);
                         });
@@ -1075,6 +1085,9 @@ impl Action {
                     }
                 }
             }
+            #[cfg(feature = "warp_lite")]
+            Action::NewCloudAgentConversation | Action::NewAgentConversation => {}
+            #[cfg(not(feature = "warp_lite"))]
             Action::NewCloudAgentConversation => {
                 let Some(window_id) = primary_window_id else {
                     open_new_with_workspace_source(NewWorkspaceSource::AmbientAgent, ctx);
@@ -1101,6 +1114,7 @@ impl Action {
                     }
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             Action::NewAgentConversation => {
                 let window_id =
                     primary_window_id.or_else(|| Some(open_new_window_get_handles(None, ctx).0));
@@ -1191,11 +1205,20 @@ impl Action {
                 GitHubAuthNotifier::handle(ctx).update(ctx, |notifier, ctx| {
                     notifier.notify_auth_completed(ctx);
                 });
+                #[cfg(not(feature = "warp_lite"))]
                 dispatch_action_in_new_or_existing_window(
                     primary_window_id,
                     "root_view:open_settings_page_in_existing_window",
                     "root_view:open_settings_page_in_new_window",
                     &SettingsSection::CloudEnvironments,
+                    ctx,
+                );
+                #[cfg(feature = "warp_lite")]
+                dispatch_action_in_new_or_existing_window(
+                    primary_window_id,
+                    "root_view:open_settings_page_in_existing_window",
+                    "root_view:open_settings_page_in_new_window",
+                    &SettingsSection::Appearance,
                     ctx,
                 );
             }
@@ -1676,9 +1699,12 @@ fn dispatch_action_in_new_or_existing_window<T: 'static>(
 
 fn settings_section_for_simple_subpage(subpage: &str) -> Option<SettingsSection> {
     match subpage {
+        #[cfg(not(feature = "warp_lite"))]
         "billing_and_usage" => Some(SettingsSection::BillingAndUsage),
+        #[cfg(not(feature = "warp_lite"))]
         "platform" => Some(SettingsSection::OzCloudAPIKeys),
         "appearance" => Some(SettingsSection::Appearance),
+        #[cfg(not(feature = "warp_lite"))]
         "warp_agent" => Some(SettingsSection::WarpAgent),
         _ => None,
     }

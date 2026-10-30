@@ -267,6 +267,7 @@ impl ConversationEndedTombstoneView {
                         },
                         ctx
                     );
+                    #[cfg(not(feature = "warp_lite"))]
                     ctx.dispatch_typed_action(&WorkspaceAction::OpenNotebook {
                         id: SyncId::ServerId((*notebook_uid).into()),
                     });
@@ -647,6 +648,7 @@ impl TypedActionView for ConversationEndedTombstoneView {
                     AgentManagementTelemetryEvent::TombstoneContinueLocally,
                     ctx
                 );
+                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ContinueConversationLocally {
                     conversation_id: *conversation_id,
                 });

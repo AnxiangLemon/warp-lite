@@ -83,6 +83,7 @@ use crate::ai::blocklist::block::{
 use crate::ai::blocklist::history_model::BlocklistAIHistoryModel;
 use crate::ai::blocklist::inline_action::ask_user_question_view::AskUserQuestionView;
 use crate::ai::blocklist::inline_action::aws_bedrock_credentials_error::AwsBedrockCredentialsErrorView;
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::blocklist::inline_action::create_or_edit_document::CreateOrEditDocumentAction;
 use crate::ai::blocklist::inline_action::gemini_enterprise_credentials_error::GeminiEnterpriseCredentialsErrorView;
 use crate::ai::blocklist::inline_action::inline_action_header::{
@@ -2123,6 +2124,13 @@ fn maybe_render_document(
     action: &AIAgentActionType,
     app: &AppContext,
 ) -> Option<Box<dyn Element>> {
+    #[cfg(feature = "warp_lite")]
+    {
+        let _ = (props, id, action, app);
+        return None;
+    }
+    #[cfg(not(feature = "warp_lite"))]
+    {
     let status = props.action_model.as_ref(app).get_action_status(id);
 
     // Document operations are always auto-executed for now
@@ -2144,6 +2152,7 @@ fn maybe_render_document(
         app,
     )?;
     Some(action.render(app))
+    }
 }
 
 fn render_stopped_output(props: Props, app: &AppContext) -> Box<dyn Element> {

@@ -155,7 +155,7 @@ warp_logging.workspace = true
 sentry = { workspace = true, optional = true }
 lz4_flex = "0.11"
 markdown_parser.workspace = true
-mcp.workspace = true
+mcp = { workspace = true, optional = true }
 memchr.workspace = true
 memo-map.workspace = true
 mermaid_to_svg.workspace = true
@@ -272,7 +272,7 @@ warp_multi_agent_api.workspace = true
 remote_server.workspace = true
 repo_metadata.workspace = true
 vim.workspace = true
-rmcp.workspace = true
+rmcp = { workspace = true, optional = true }
 warp_isolation_platform.workspace = true
 warp_ripgrep.workspace = true
 warp_managed_secrets.workspace = true
@@ -516,6 +516,7 @@ cross_repo_context = []
 codebase_index_persistence = ["full_source_code_embedding"]
 default = [
     "agent_mode",
+    "mcp_client",
     "osc_hyperlinks",
     "viewing_shared_sessions",
     "render_continuous_block_selections_with_single_border",
@@ -813,6 +814,7 @@ jupyter_notebook_rendering = []
 markdown_tables = []
 markdown_mermaid = []
 mcp_server = []
+mcp_client = ["dep:mcp", "dep:rmcp", "ai/mcp"]
 mcp_oauth = []
 mcp_debugging_ids = []
 notebook_parameter = []
@@ -854,7 +856,25 @@ sequential_storage = []
 session_sharing = []
 session_sharing_acls = []
 skip_login = ["warp_server_client/skip_login"]
-warp_lite = ["skip_login", "skip_firebase_anonymous_user"]
+# Minimal, local-only terminal build: no login, no cloud, no AI. Enables the
+# UI features that matter for a local terminal (groups, default-shell selector,
+# clean minimal UI) and leaves everything else off.
+warp_lite = [
+    "skip_login",
+    "skip_firebase_anonymous_user",
+    "shell_selector",
+    "grouped_tabs",
+    "vertical_tabs",
+    "tab_configs",
+    "pinned_tabs",
+    "minimalist_ui",
+    "tab_close_button_on_left",
+    "osc_hyperlinks",
+    "resize_fix",
+    "ligatures",
+    "rect_selection",
+    "system_theme",
+]
 # This feature should only be enabled when building a self-contained binary with the bundle script.
 standalone = ["warp_assets/standalone", "warp_core/standalone"]
 prompt_suggestions_via_maa = []

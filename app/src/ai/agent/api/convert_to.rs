@@ -902,8 +902,9 @@ impl From<Suggestions> for api::Suggestions {
     }
 }
 
-// Convert rmcp resource to proto format.
-fn convert_mcp_resource(resource: rmcp::model::Resource) -> api::request::mcp_context::McpResource {
+// Convert MCP resource to proto format.
+#[cfg(feature = "mcp_client")]
+fn convert_mcp_resource(resource: crate::ai::mcp::Resource) -> api::request::mcp_context::McpResource {
     let rmcp::model::RawResource {
         uri,
         name,
@@ -919,8 +920,19 @@ fn convert_mcp_resource(resource: rmcp::model::Resource) -> api::request::mcp_co
     }
 }
 
-// Convert rmcp tool to proto format, skipping tools with invalid schemas.
-fn convert_mcp_tool(tool: rmcp::model::Tool) -> Option<api::request::mcp_context::McpTool> {
+#[cfg(not(feature = "mcp_client"))]
+fn convert_mcp_resource(_resource: crate::ai::mcp::Resource) -> api::request::mcp_context::McpResource {
+    api::request::mcp_context::McpResource {
+        uri: String::new(),
+        name: String::new(),
+        description: String::new(),
+        mime_type: String::new(),
+    }
+}
+
+// Convert MCP tool to proto format, skipping tools with invalid schemas.
+#[cfg(feature = "mcp_client")]
+fn convert_mcp_tool(tool: crate::ai::mcp::Tool) -> Option<api::request::mcp_context::McpTool> {
     let Ok(prost_types::Value {
         kind: Some(prost_types::value::Kind::StructValue(input_schema)),
     }) = serde_json_to_prost(tool.input_schema.as_ref().clone().into())
@@ -933,6 +945,11 @@ fn convert_mcp_tool(tool: rmcp::model::Tool) -> Option<api::request::mcp_context
         description: tool.description.map(|d| d.to_string()).unwrap_or_default(),
         input_schema: Some(input_schema),
     })
+}
+
+#[cfg(not(feature = "mcp_client"))]
+fn convert_mcp_tool(_tool: crate::ai::mcp::Tool) -> Option<api::request::mcp_context::McpTool> {
+    None
 }
 
 impl From<MCPContext> for api::request::McpContext {

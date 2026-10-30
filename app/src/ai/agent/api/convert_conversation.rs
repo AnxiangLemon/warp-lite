@@ -44,7 +44,7 @@ use crate::ai::agent::{
     UpdatedFileContext, UploadArtifactResult, UserQueryMode, WriteToLongRunningShellCommandResult,
 };
 use crate::ai::block_context::BlockContext;
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
+use ai::document::{AIDocumentId, AIDocumentVersion};
 use crate::ai::llms::LLMId;
 use crate::ai_assistant::execution_context::{WarpAiExecutionContext, WarpAiOsContext};
 use crate::terminal::model::block::BlockId;
@@ -909,6 +909,7 @@ pub(crate) fn convert_tool_call_result_to_input(
         }
         Some(ToolCallResultType::ReadMcpResource(result)) => {
             let mcp_result = match &result.result {
+                #[cfg(feature = "mcp_client")]
                 Some(api::read_mcp_resource_result::Result::Success(success)) => {
                     let resource_contents = success
                         .contents
@@ -946,6 +947,10 @@ pub(crate) fn convert_tool_call_result_to_input(
 
                     ReadMCPResourceResult::Success { resource_contents }
                 }
+                #[cfg(not(feature = "mcp_client"))]
+                Some(api::read_mcp_resource_result::Result::Success(_)) => {
+                    ReadMCPResourceResult::Error("MCP client is disabled".to_owned())
+                }
                 Some(api::read_mcp_resource_result::Result::Error(error)) => {
                     ReadMCPResourceResult::Error(error.message.clone())
                 }
@@ -963,6 +968,7 @@ pub(crate) fn convert_tool_call_result_to_input(
         }
         Some(ToolCallResultType::CallMcpTool(result)) => {
             let mcp_tool_result = match &result.result {
+                #[cfg(feature = "mcp_client")]
                 Some(api::call_mcp_tool_result::Result::Success(success)) => {
                     let results = success
                         .results
@@ -1012,6 +1018,10 @@ pub(crate) fn convert_tool_call_result_to_input(
                     let result = rmcp::model::CallToolResult::success(results);
 
                     CallMCPToolResult::Success { result }
+                }
+                #[cfg(not(feature = "mcp_client"))]
+                Some(api::call_mcp_tool_result::Result::Success(_)) => {
+                    CallMCPToolResult::Error("MCP client is disabled".to_owned())
                 }
                 Some(api::call_mcp_tool_result::Result::Error(error)) => {
                     CallMCPToolResult::Error(error.message.clone())

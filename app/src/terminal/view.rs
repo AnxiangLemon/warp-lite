@@ -3,12 +3,20 @@ mod agent_view;
 pub mod ambient_agent;
 mod block_banner;
 pub mod block_onboarding;
+#[cfg(not(feature = "warp_lite"))]
+pub(crate) mod blocklist_filter;
+#[cfg(feature = "warp_lite")]
+#[path = "view/blocklist_filter_lite.rs"]
 pub(crate) mod blocklist_filter;
 mod bookmarks;
 mod context_menu;
 pub mod init;
 pub mod inline_banner;
 pub mod load_ai_conversation;
+#[cfg(not(feature = "warp_lite"))]
+pub(crate) mod queued_prompts_panel;
+#[cfg(feature = "warp_lite")]
+#[path = "view/queued_prompts_panel_lite.rs"]
 pub(crate) mod queued_prompts_panel;
 #[cfg(test)]
 #[path = "view/queued_prompts_tests.rs"]
@@ -49,7 +57,15 @@ mod tab_metadata;
 #[cfg(any(test, feature = "integration_tests"))]
 mod testing;
 mod tooltips;
+#[cfg(not(feature = "warp_lite"))]
 pub mod use_agent_footer;
+#[cfg(feature = "warp_lite")]
+#[path = "view/use_agent_footer_lite.rs"]
+pub mod use_agent_footer;
+#[cfg(not(feature = "warp_lite"))]
+mod zero_state_block;
+#[cfg(feature = "warp_lite")]
+#[path = "view/zero_state_block_lite.rs"]
 mod zero_state_block;
 
 use std::any::Any;
@@ -75,6 +91,7 @@ use async_channel::{Receiver, Sender};
 use base64::Engine as _;
 pub use block_banner::{BLOCK_BANNER_HEIGHT, WithinBlockBanner};
 use block_banner::{WarpifyBannerState, render_warpification_banner};
+#[cfg(not(feature = "warp_lite"))]
 use block_onboarding::onboarding_drive_sharing_block::OnboardingDriveSharingBlock;
 use bookmarks::render_floating_block_snapshot;
 use chrono::{DateTime, Local, NaiveDateTime};
@@ -222,7 +239,7 @@ use crate::ai::ambient_agents::{
 use crate::ai::blocklist::agent_view::agent_input_footer::toolbar_item::AgentToolbarItemKind;
 use crate::ai::blocklist::agent_view::orchestration_conversation_links::pane_group_id_containing_terminal_view;
 use crate::ai::blocklist::agent_view::{
-    AgentViewController, AgentViewControllerEvent, AgentViewConversationSelection,
+    AgentInputFooter, AgentViewController, AgentViewControllerEvent, AgentViewConversationSelection,
     AgentViewDisplayMode, AgentViewEntryBlockParams, AgentViewEntryOrigin,
     AgentViewHeaderDisabledTheme, AgentViewHeaderTheme, AgentViewZeroStateBlock,
     AgentViewZeroStateEvent, ENTER_OR_EXIT_CONFIRMATION_WINDOW, EphemeralMessageModel,
@@ -270,7 +287,9 @@ use crate::ai::blocklist::{
 };
 use crate::ai::conversation_details_panel::ConversationDetailsPanelEvent;
 use crate::ai::conversation_utils;
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentModel, AIDocumentVersion};
+use ai::document::{AIDocumentId, AIDocumentVersion};
+#[cfg(not(feature = "warp_lite"))]
+use crate::ai::document::ai_document_model::{AIDocumentModel};
 use crate::ai::execution_profiles::ExecutionProfileId;
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
 use crate::ai::get_relevant_files::controller::GetRelevantFilesController;
@@ -288,7 +307,7 @@ use crate::antivirus::AntivirusInfo;
 use crate::appearance::{Appearance, AppearanceEvent};
 use crate::auth::auth_manager::AuthManager;
 use crate::auth::auth_state::AuthState;
-use crate::auth::auth_view_modal::AuthViewVariant;
+use crate::auth::AuthViewVariant;
 use crate::auth::{AuthStateProvider, UserUid};
 use crate::autoupdate::{self, AutoupdateStage, get_update_state};
 use crate::banner::{
@@ -319,9 +338,9 @@ use crate::code_review::telemetry_event::CodeReviewPaneEntrypoint;
 use crate::context_chips::ContextChipKind;
 use crate::context_chips::prompt::{Prompt, PromptSelection};
 use crate::context_chips::prompt_type::PromptType;
-use crate::drive::CloudObjectTypeAndId;
-use crate::drive::settings::WarpDriveSettings;
-use crate::drive::sharing::ShareableObject;
+use crate::cloud_object::CloudObjectTypeAndId;
+use crate::settings::WarpDriveSettings;
+use crate::cloud_object::ShareableObject;
 use crate::editor::{AutosuggestionType, CrdtOperation, EditorAction};
 use crate::env_vars::env_var_collection_block::{
     EnvVarCollectionBlock, EnvVarCollectionBlockEvent,
@@ -367,6 +386,7 @@ use crate::settings::{
     PrivacySettingsSnapshot, SelectionSettings, VimBannerSettings,
 };
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
+#[cfg(feature = "mcp_client")]
 use crate::settings_view::mcp_servers_page::MCPServersSettingsPage;
 use crate::settings_view::{SettingsSection, flags};
 use crate::shell_indicator::ShellIndicatorType;
@@ -1938,6 +1958,7 @@ pub enum Event {
 
     OpenThemeChooser,
     OpenConversationHistory,
+    #[cfg(feature = "mcp_client")]
     OpenMCPSettingsPage {
         page: Option<MCPServersSettingsPage>,
     },
@@ -2882,6 +2903,7 @@ pub struct TerminalView {
     ambient_agent_cancel_mouse_state: warpui::elements::MouseStateHandle,
 
     /// First-time cloud agent setup view (full-screen overlay for creating initial environment).
+    #[cfg(not(feature = "warp_lite"))]
     first_time_cloud_agent_setup_view: ViewHandle<ambient_agent::FirstTimeCloudAgentSetupView>,
 
     /// Environment setup mode selector modal for /create-environment command.
@@ -3737,6 +3759,7 @@ impl TerminalView {
         let menu_positioning_provider = Arc::new(TerminalViewMenuPositioningProvider {
             parent: ctx.handle(),
         });
+        let menu_positioning_provider_for_footer = menu_positioning_provider.clone();
 
         let cli_subagent_controller = ctx.add_model(|ctx| {
             CLISubagentController::new(
@@ -3783,6 +3806,7 @@ impl TerminalView {
                 // `attach_ambient_agent_view_model` (the same setter the lazy viewer path uses).
                 ambient_agent_view_model.clone(),
                 active_session.clone(),
+                #[cfg(not(feature = "warp_lite"))]
                 ephemeral_message_model.clone(),
                 ctx,
             )
@@ -3802,16 +3826,19 @@ impl TerminalView {
             me.handle_input_event(event, ctx);
         });
 
-        let ai_status_bar = input.as_ref(ctx).agent_status_bar().clone();
-        ctx.subscribe_to_view(&ai_status_bar, |me, _, event, ctx| match event {
-            BlocklistAIStatusBarEvent::SummarizationCancelDialogToggled { is_open } => {
-                me.pane_configuration.update(ctx, |pane_config, ctx| {
-                    pane_config.set_has_open_modal(*is_open, ctx)
-                });
-                ctx.emit(Event::SummarizationCancelDialogToggled { is_open: *is_open });
-            }
-            BlocklistAIStatusBarEvent::Stop => me.ctrl_c(ctx),
-        });
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            let ai_status_bar = input.as_ref(ctx).agent_status_bar().clone();
+            ctx.subscribe_to_view(&ai_status_bar, |me, _, event, ctx| match event {
+                BlocklistAIStatusBarEvent::SummarizationCancelDialogToggled { is_open } => {
+                    me.pane_configuration.update(ctx, |pane_config, ctx| {
+                        pane_config.set_has_open_modal(*is_open, ctx)
+                    });
+                    ctx.emit(Event::SummarizationCancelDialogToggled { is_open: *is_open });
+                }
+                BlocklistAIStatusBarEvent::Stop => me.ctrl_c(ctx),
+            });
+        }
 
         let ai_render_context = Rc::new(RefCell::new(BlocklistAIRenderContext {
             block_ids: HashMap::from_iter([
@@ -4175,9 +4202,11 @@ impl TerminalView {
             }
         });
 
+        #[cfg(not(feature = "warp_lite"))]
         let first_time_cloud_agent_setup_view =
             ctx.add_typed_action_view(ambient_agent::FirstTimeCloudAgentSetupView::new);
 
+        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&first_time_cloud_agent_setup_view, |me, _, event, ctx| {
             me.handle_first_time_cloud_agent_setup_event(event, ctx);
         });
@@ -4219,6 +4248,52 @@ impl TerminalView {
         let agent_todos_popup = Self::build_agent_todos_popup(ai_context_model.clone(), ctx);
 
         let terminal_view_id = ctx.view_id();
+        #[cfg(feature = "warp_lite")]
+        let agent_input_footer = {
+            use crate::completer::SessionContext;
+            use crate::context_chips::display_chip::DisplayChipConfig;
+            use crate::terminal::input::handoff_compose::HandoffComposeState;
+            use crate::terminal::input::CompleterData;
+            use warp_completer::signatures::CommandRegistry;
+
+            let handoff_compose_state = ctx.add_model(|_| HandoffComposeState::default());
+            let is_shared_session_viewer = model.lock().shared_session_status().is_viewer();
+            let session_context = {
+                let completer_data = CompleterData::new(
+                    sessions.clone(),
+                    None,
+                    CommandRegistry::global_instance(),
+                    None,
+                );
+                completer_data.completion_session_context(ctx)
+            };
+            let footer_display_chip_config = DisplayChipConfig {
+                ai_input_model: ai_input_model.clone(),
+                ai_context_model: ai_context_model.clone(),
+                terminal_view_id,
+                menu_positioning_provider: menu_positioning_provider_for_footer.clone(),
+                session_context,
+                current_repo_path: None,
+                model_events: model_events_handle.clone(),
+                is_shared_session_viewer,
+                agent_view_controller: agent_view_controller.clone(),
+                ambient_agent_view_model: None,
+            };
+            ctx.add_typed_action_view(|ctx| {
+                AgentInputFooter::new(
+                    menu_positioning_provider_for_footer.clone(),
+                    terminal_view_id,
+                    ai_input_model.clone(),
+                    model.clone(),
+                    None,
+                    handoff_compose_state.clone(),
+                    current_prompt.clone(),
+                    footer_display_chip_config,
+                    ctx,
+                )
+            })
+        };
+        #[cfg(not(feature = "warp_lite"))]
         let agent_input_footer = input.as_ref(ctx).agent_input_footer().clone();
         let use_agent_button_bar = ctx.add_typed_action_view(|ctx| {
             UseAgentToolbar::new(
@@ -4434,6 +4509,7 @@ impl TerminalView {
             active_init_project_model: None,
             is_pending_aws_login: false,
             manual_pty_shutdown_requested: false,
+            #[cfg(not(feature = "warp_lite"))]
             first_time_cloud_agent_setup_view,
             environment_setup_mode_selector,
             is_environment_setup_mode_selector_open: false,
@@ -9039,10 +9115,13 @@ impl TerminalView {
             });
         }
 
-        let status_bar = self.input.as_ref(ctx).agent_status_bar().clone();
-        status_bar.update(ctx, |status_bar, ctx| {
-            status_bar.handle_ctrl_c(ctx);
-        });
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            let status_bar = self.input.as_ref(ctx).agent_status_bar().clone();
+            status_bar.update(ctx, |status_bar, ctx| {
+                status_bar.handle_ctrl_c(ctx);
+            });
+        }
     }
 
     /// If there is an active rich content block that is set up to handle ctrl-c
@@ -13791,6 +13870,7 @@ impl TerminalView {
         None
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn insert_drive_sharing_onboarding_block(
         &mut self,
         object_id: CloudObjectTypeAndId,
@@ -13816,6 +13896,15 @@ impl TerminalView {
         );
 
         send_telemetry_from_ctx!(TelemetryEvent::DriveSharingOnboardingBlockShown, ctx);
+    }
+
+    #[cfg(feature = "warp_lite")]
+    pub fn insert_drive_sharing_onboarding_block(
+        &mut self,
+        _object_id: CloudObjectTypeAndId,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        self.reset_onboarding_blocks(ctx);
     }
 
     fn should_display_vim_banner(
@@ -20703,6 +20792,7 @@ impl TerminalView {
                     });
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             AIBlockEvent::OpenAIDocumentPane {
                 document_id,
                 document_version,
@@ -22036,9 +22126,11 @@ impl TerminalView {
                 );
             }
             InputEvent::OpenHandoffEnvironmentCreationModal => {
+                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ShowHandoffEnvironmentCreationModal);
             }
             InputEvent::OpenCloudModeV2EnvironmentCreationModal => {
+                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(
                     &WorkspaceAction::ShowCloudModeV2EnvironmentCreationModal,
                 );
@@ -23150,6 +23242,7 @@ impl TerminalView {
             .auth_secret_delete_confirmation_dialog_element(ctx)
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn summarization_cancel_dialog_handle(
         &self,
         ctx: &AppContext,
@@ -23162,6 +23255,14 @@ impl TerminalView {
                     .summarization_cancel_dialog_handle()
                     .clone()
             })
+    }
+
+    #[cfg(feature = "warp_lite")]
+    pub fn summarization_cancel_dialog_handle(
+        &self,
+        _ctx: &AppContext,
+    ) -> Option<ViewHandle<SummarizationCancelDialog>> {
+        None
     }
 
     pub fn send_inline_review(
@@ -25132,6 +25233,7 @@ impl TerminalView {
             TelemetryEvent::AgentModeRewindDialogOpened { entrypoint },
             ctx
         );
+        #[cfg(not(feature = "warp_lite"))]
         ctx.dispatch_typed_action(&WorkspaceAction::ShowRewindConfirmationDialog {
             ai_block_view_id,
             exchange_id,
@@ -27155,10 +27257,13 @@ impl TypedActionView for TerminalView {
                 // the regular editor, fall back to the editor-based flow.
                 let has_cli_agent = self.use_agent_footer.as_ref(ctx).has_cli_agent(ctx);
                 if has_cli_agent {
-                    let footer = self.input.as_ref(ctx).agent_input_footer().clone();
-                    footer.update(ctx, |footer, ctx| {
-                        footer.toggle_cli_voice_input(source, ctx);
-                    });
+                    #[cfg(not(feature = "warp_lite"))]
+                    {
+                        let footer = self.input.as_ref(ctx).agent_input_footer().clone();
+                        footer.update(ctx, |footer, ctx| {
+                            footer.toggle_cli_voice_input(source, ctx);
+                        });
+                    }
                 } else {
                     self.input.update(ctx, |input, ctx| {
                         input.toggle_voice_input(source, ctx);
@@ -27380,6 +27485,7 @@ impl TypedActionView for TerminalView {
                         )
                     };
                     if let Some(exchange_id) = exchange_id {
+                        #[cfg(not(feature = "warp_lite"))]
                         ctx.dispatch_typed_action(&WorkspaceAction::ForkAIConversation {
                             conversation_id,
                             fork_from_exchange: Some(ForkFromExchange {
@@ -27395,6 +27501,7 @@ impl TypedActionView for TerminalView {
                     }
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             ToggleAIDocumentPane => {
                 if let Some(conversation) =
                     BlocklistAIHistoryModel::as_ref(ctx).active_conversation(self.id())
@@ -27435,6 +27542,8 @@ impl TypedActionView for TerminalView {
                     }
                 }
             }
+            #[cfg(feature = "warp_lite")]
+            ToggleAIDocumentPane => {}
             ToggleTodoPopup => {
                 self.is_todo_popup_visible = !self.is_todo_popup_visible;
                 // Focus the todos popup for esc key handling
@@ -27520,16 +27629,20 @@ impl TypedActionView for TerminalView {
                     });
                 }
             }
+            #[cfg(feature = "mcp_client")]
             OpenViewMCPPane => {
                 ctx.emit(Event::OpenMCPSettingsPage {
                     page: Some(MCPServersSettingsPage::List),
                 });
             }
+            #[cfg(feature = "mcp_client")]
             OpenAddMCPPane => {
                 ctx.emit(Event::OpenMCPSettingsPage {
                     page: Some(MCPServersSettingsPage::Edit { item_id: None }),
                 });
             }
+            #[cfg(not(feature = "mcp_client"))]
+            OpenViewMCPPane | OpenAddMCPPane => {}
             OpenBillingAndUsagePane => {
                 ctx.emit(Event::OpenSettings(SettingsSection::BillingAndUsage));
             }
@@ -28262,6 +28375,7 @@ impl View for TerminalView {
             .as_ref()
             .is_some_and(|model| model.as_ref(app).is_in_setup())
         {
+            #[cfg(not(feature = "warp_lite"))]
             stack.add_child(ChildView::new(&self.first_time_cloud_agent_setup_view).finish());
         }
 

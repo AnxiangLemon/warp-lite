@@ -8,7 +8,7 @@ use crate::appearance::Appearance;
 use crate::cloud_object::CloudObjectMetadata;
 use crate::drive::index::DriveIndexAction;
 use crate::drive::{CloudObjectTypeAndId, DriveObjectType};
-use crate::notebooks::CloudNotebook;
+use crate::cloud_object::CloudNotebook;
 use crate::themes::theme::Fill;
 
 #[derive(Clone)]

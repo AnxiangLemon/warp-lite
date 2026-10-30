@@ -6,7 +6,8 @@ use super::{ActionExecution, AnyActionExecution, ExecuteActionInput, PreprocessA
 use crate::ai::agent::{
     AIAgentAction, AIAgentActionType, DocumentContext, ReadDocumentsRequest, ReadDocumentsResult,
 };
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentModel};
+use ai::document::{AIDocumentId};
+use crate::ai::document::ai_document_model::AIDocumentModel;
 
 pub struct ReadDocumentsExecutor;
 

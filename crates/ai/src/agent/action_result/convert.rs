@@ -468,6 +468,7 @@ impl TryFrom<ReadMCPResourceResult> for api::request::input::tool_call_result::R
 
     fn try_from(result: ReadMCPResourceResult) -> Result<Self, Self::Error> {
         match result {
+            #[cfg(feature = "mcp")]
             ReadMCPResourceResult::Success { resource_contents } => Ok(
                 api::request::input::tool_call_result::Result::ReadMcpResource(
                     api::ReadMcpResourceResult {
@@ -482,6 +483,8 @@ impl TryFrom<ReadMCPResourceResult> for api::request::input::tool_call_result::R
                     },
                 ),
             ),
+            #[cfg(not(feature = "mcp"))]
+            ReadMCPResourceResult::Success { .. } => Err(ConvertToAPITypeError::Ignore),
             ReadMCPResourceResult::Error(error) => Ok(
                 api::request::input::tool_call_result::Result::ReadMcpResource(
                     api::ReadMcpResourceResult {
@@ -501,6 +504,7 @@ impl TryFrom<CallMCPToolResult> for api::request::input::tool_call_result::Resul
 
     fn try_from(result: CallMCPToolResult) -> Result<Self, Self::Error> {
         match result {
+            #[cfg(feature = "mcp")]
             CallMCPToolResult::Success { result } => {
                 Ok(api::request::input::tool_call_result::Result::CallMcpTool(
                     api::CallMcpToolResult {
@@ -508,6 +512,8 @@ impl TryFrom<CallMCPToolResult> for api::request::input::tool_call_result::Resul
                     },
                 ))
             }
+            #[cfg(not(feature = "mcp"))]
+            CallMCPToolResult::Success { .. } => Err(ConvertToAPITypeError::Ignore),
             CallMCPToolResult::Error(error) => {
                 Ok(api::request::input::tool_call_result::Result::CallMcpTool(
                     api::CallMcpToolResult {
@@ -921,6 +927,7 @@ impl From<DocumentContext> for Vec<api::DocumentContent> {
     }
 }
 
+#[cfg(feature = "mcp")]
 fn convert_mcp_resource_content(val: rmcp::model::ResourceContents) -> api::McpResourceContent {
     use api::mcp_resource_content::*;
     match val {
@@ -1112,6 +1119,7 @@ fn convert_platform(
     }
 }
 
+#[cfg(feature = "mcp")]
 fn convert_mcp_tool_call_result(
     val: rmcp::model::CallToolResult,
 ) -> api::call_mcp_tool_result::Result {

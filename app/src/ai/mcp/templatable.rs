@@ -2,6 +2,7 @@ pub use cloud_object_models::{
     CloudTemplatableMCPServer, CloudTemplatableMCPServerModel, GalleryData, JsonTemplate,
     TemplatableMCPServer, TemplateVariable,
 };
+#[cfg(not(feature = "warp_lite"))]
 use warp_core::ui::appearance::Appearance;
 
 use crate::cloud_object::model::generic_string_model::StringModel;
@@ -10,7 +11,9 @@ use crate::cloud_object::{
     CloudObjectUuid, GenericStringObjectFormat, GenericStringObjectUniqueKey, JsonObjectType,
     Revision, UniquePer,
 };
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::WarpDriveItem;
+#[cfg(not(feature = "warp_lite"))]
 use crate::server::ids::SyncId;
 use crate::server::sync_queue::QueueItem;
 
@@ -68,10 +71,12 @@ impl StringModel for TemplatableMCPServer {
         })
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool {
         false
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn to_warp_drive_item(
         &self,
         _id: SyncId,

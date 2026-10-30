@@ -12,7 +12,9 @@ use warpui::ui_components::components::UiComponent;
 use warpui::{AppContext, Element, SingletonEntity};
 
 use crate::appearance::Appearance;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::DriveObjectType;
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::cloud_object_styling::warp_drive_icon_color;
 use crate::features::FeatureFlag;
 use crate::search::command_palette::mixer::CommandPaletteItemAction;
@@ -216,16 +218,25 @@ impl SearchItemIcon for BindingGroup {
                 ColorU::from_u32(colors::WARP_AI)
             }
             Self::WarpAi => appearance.theme().foreground().into_solid(),
+            #[cfg(not(feature = "warp_lite"))]
             Self::Workflow => warp_drive_icon_color(appearance, DriveObjectType::Workflow),
+            #[cfg(feature = "warp_lite")]
+            Self::Workflow => appearance.theme().foreground().into_solid(),
+            #[cfg(not(feature = "warp_lite"))]
             Self::Notebooks => warp_drive_icon_color(
                 appearance,
                 DriveObjectType::Notebook {
                     is_ai_document: false,
                 },
             ),
+            #[cfg(feature = "warp_lite")]
+            Self::Notebooks => appearance.theme().foreground().into_solid(),
+            #[cfg(not(feature = "warp_lite"))]
             Self::EnvVarCollection => {
                 warp_drive_icon_color(appearance, DriveObjectType::EnvVarCollection)
             }
+            #[cfg(feature = "warp_lite")]
+            Self::EnvVarCollection => appearance.theme().foreground().into_solid(),
         }
     }
 }

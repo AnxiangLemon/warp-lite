@@ -925,6 +925,7 @@ impl TerminalView {
     }
 
     /// Handles events from the first-time cloud agent setup view.
+    #[cfg(not(feature = "warp_lite"))]
     pub(in crate::terminal::view) fn handle_first_time_cloud_agent_setup_event(
         &mut self,
         event: &super::FirstTimeCloudAgentSetupViewEvent,

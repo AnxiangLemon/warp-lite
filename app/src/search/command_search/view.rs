@@ -27,21 +27,25 @@ use warpui::{
 };
 
 use super::ai_queries::AIQueriesDataSource;
+#[cfg(not(feature = "warp_lite"))]
 use super::env_var_collections::EnvVarCollectionDataSource;
 use super::history::history_data_source_for_session;
+#[cfg(not(feature = "warp_lite"))]
 use super::notebooks::notebooks_data_source;
 use super::warp_ai::WarpAIDataSource;
-use super::workflows::{WorkflowsDataSource, cloud_workflows_data_source};
+use super::workflows::{WorkflowsDataSource, WorkflowIdentity, WorkflowSearchItem};
+#[cfg(not(feature = "warp_lite"))]
+use super::workflows::cloud_workflows_data_source;
 use super::zero_state::{CommandSearchZeroStateEvent, CommandSearchZeroStateView};
 use crate::ai_assistant::GenerateCommandsFromNaturalLanguageError;
 use crate::ai_assistant::execution_context::WarpAiExecutionContext;
 use crate::appearance::Appearance;
 use crate::auth::auth_manager::AuthManager;
 use crate::auth::auth_state::AuthState;
-use crate::auth::auth_view_modal::AuthViewVariant;
+use crate::auth::AuthViewVariant;
 use crate::auth::{AuthStateProvider, UserUid};
 use crate::completer::SessionContext;
-use crate::drive::settings::WarpDriveSettings;
+use crate::settings::WarpDriveSettings;
 use crate::search::QueryFilter;
 use crate::search::command_search::searcher::{CommandSearchItemAction, CommandSearchMixer};
 use crate::search::mixer::AddAsyncSourceOptions;
@@ -247,12 +251,13 @@ impl CommandSearchView {
                 );
             }
 
-            if WarpDriveSettings::is_warp_drive_enabled(ctx) {
-                mixer.add_sync_source(
-                    WorkflowsDataSource::new(session_context.as_ref(), ctx),
-                    HashSet::from([QueryFilter::Workflows]),
-                );
+            mixer.add_sync_source(
+                WorkflowsDataSource::new(session_context.as_ref(), ctx),
+                HashSet::from([QueryFilter::Workflows]),
+            );
 
+            #[cfg(not(feature = "warp_lite"))]
+            if WarpDriveSettings::is_warp_drive_enabled(ctx) {
                 let mut workflows_filters = HashSet::from([QueryFilter::Workflows]);
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
                     workflows_filters.insert(QueryFilter::AgentModeWorkflows);

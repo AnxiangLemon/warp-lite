@@ -35,7 +35,8 @@ use crate::auth::auth_view_modal::AuthRedirectPayload;
 use crate::auth::auth_view_shared_helpers::{
     PrivacySettingsActions, PrivacySettingsHandles, render_privacy_settings_toggles,
 };
-use crate::auth::login_failure_notification::{self, LoginFailureReason};
+use crate::auth::login_failure_notification;
+use crate::auth::login_failure_reason::LoginFailureReason;
 use crate::editor::{EditorView, SingleLineEditorOptions, TextColors, TextOptions};
 use crate::server::telemetry::{LoginEventSource, TelemetryEvent};
 use crate::settings::PrivacySettings;

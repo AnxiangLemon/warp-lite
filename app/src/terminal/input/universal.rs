@@ -145,6 +145,7 @@ impl Input {
             );
         }
 
+        #[cfg(not(feature = "warp_lite"))]
         maybe_add_buy_credits_banner(
             &mut stack,
             &self.buy_credits_banner,
@@ -204,8 +205,10 @@ impl Input {
 
         if input_mode.is_pinned_to_top() {
             column.add_child(input);
+            #[cfg(not(feature = "warp_lite"))]
             column.add_child(ChildView::new(&self.agent_status_view).finish());
         } else {
+            #[cfg(not(feature = "warp_lite"))]
             column.add_child(ChildView::new(&self.agent_status_view).finish());
             column.add_child(input);
         }

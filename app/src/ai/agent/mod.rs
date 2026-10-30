@@ -2207,9 +2207,9 @@ impl AIAgentOutputMessage {
 pub struct MCPContext {
     // Old flat structure (deprecated but kept for backward compatibility)
     #[deprecated]
-    pub resources: Vec<rmcp::model::Resource>,
+    pub resources: Vec<crate::ai::mcp::Resource>,
     #[deprecated]
-    pub tools: Vec<rmcp::model::Tool>,
+    pub tools: Vec<crate::ai::mcp::Tool>,
     // New grouped structure
     pub servers: Vec<MCPServer>,
 }
@@ -2220,8 +2220,8 @@ pub struct MCPServer {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub resources: Vec<rmcp::model::Resource>,
-    pub tools: Vec<rmcp::model::Tool>,
+    pub resources: Vec<crate::ai::mcp::Resource>,
+    pub tools: Vec<crate::ai::mcp::Tool>,
 }
 
 /// Contains context that may be attached to a user query.

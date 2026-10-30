@@ -6,7 +6,7 @@ use warpui::{Element, Entity, ModelHandle, View, ViewContext, ViewHandle};
 
 use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::blocklist::agent_view::AgentViewController;
-use crate::ai::document::ai_document_model::AIDocumentVersion;
+use ai::document::AIDocumentVersion;
 use crate::search::data_source::Query;
 use crate::search::mixer::SearchMixer;
 use crate::terminal::input::buffer_model::{InputBufferModel, InputBufferUpdateEvent};

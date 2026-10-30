@@ -34,6 +34,7 @@ use crate::pricing::{PricingInfoModel, PricingInfoModelEvent};
 use crate::send_telemetry_from_ctx;
 use crate::server::ids::ServerId;
 use crate::server::telemetry::{OutOfCreditsBannerAction, TelemetryEvent};
+#[cfg(not(feature = "warp_lite"))]
 use crate::settings_view::create_discount_badge;
 use crate::view_components::{Dropdown, DropdownAction};
 use crate::workspaces::user_workspaces::{UserWorkspaces, UserWorkspacesEvent};
@@ -431,15 +432,27 @@ impl BuyCreditsBanner {
                             .with_color(text_color.into())
                             .finish();
 
-                            let discount_badge = create_discount_badge(discount_percent, appearance);
-
-                            Flex::row()
+                            #[cfg(not(feature = "warp_lite"))]
+                            let row = {
+                                let discount_badge =
+                                    create_discount_badge(discount_percent, appearance);
+                                Flex::row()
+                                    .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                                    .with_main_axis_alignment(MainAxisAlignment::SpaceBetween)
+                                    .with_main_axis_size(MainAxisSize::Max)
+                                    .with_child(main_text)
+                                    .with_child(discount_badge)
+                                    .finish()
+                            };
+                            #[cfg(feature = "warp_lite")]
+                            let row = Flex::row()
                                 .with_cross_axis_alignment(CrossAxisAlignment::Center)
                                 .with_main_axis_alignment(MainAxisAlignment::SpaceBetween)
                                 .with_main_axis_size(MainAxisSize::Max)
                                 .with_child(main_text)
-                                .with_child(discount_badge)
-                                .finish()
+                                .finish();
+
+                            row
                         })),
                         Some(primary_text)
                     )

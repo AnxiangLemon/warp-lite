@@ -56,15 +56,16 @@ use crate::ai::agent_events::AgentMessageEventMetadata;
 #[cfg(not(target_family = "wasm"))]
 use crate::ai::agent_sdk::ClaudeHarness;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
-use crate::ai::document::ai_document_model::{
-    AIDocumentId, AIDocumentModel, AIDocumentUserEditStatus,
-};
+use ai::document::{AIDocumentId};
+#[cfg(not(feature = "warp_lite"))]
+use crate::ai::document::ai_document_model::{AIDocumentModel, AIDocumentUserEditStatus, };
 use crate::ai::llms::{LLMId, LLMPreferences};
 use crate::ai::skills::{ActiveSkillLookupError, SkillManager};
 use crate::cloud_object::model::persistence::CloudModel;
 use crate::features::FeatureFlag;
 use crate::global_resource_handles::GlobalResourceHandlesProvider;
 use crate::network::NetworkStatus;
+#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::editor::model::FileLinkResolutionContext;
 use crate::persistence::ModelEvent;
 use crate::send_telemetry_from_ctx;
@@ -823,15 +824,18 @@ impl BlocklistAIController {
         inputs.push(ai_input);
 
         // Piggyback any pending orchestration config updates for this conversation.
-        let taken_dirty_events = AIDocumentModel::handle(ctx).update(ctx, |model, _| {
-            model.take_dirty_orchestration_events(&conversation_id)
-        });
-        for dirty_event in &taken_dirty_events {
-            inputs.push(AIAgentInput::OrchestrationConfigUpdate {
-                plan_id: dirty_event.plan_id.clone(),
-                config: dirty_event.config.clone(),
-                status: dirty_event.status,
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            let taken_dirty_events = AIDocumentModel::handle(ctx).update(ctx, |model, _| {
+                model.take_dirty_orchestration_events(&conversation_id)
             });
+            for dirty_event in &taken_dirty_events {
+                inputs.push(AIAgentInput::OrchestrationConfigUpdate {
+                    plan_id: dirty_event.plan_id.clone(),
+                    config: dirty_event.config.clone(),
+                    status: dirty_event.status,
+                });
+            }
         }
 
         let send_result = self.send_request_input(
@@ -858,6 +862,7 @@ impl BlocklistAIController {
         // silently lost.
         if let Err(e) = &send_result {
             report_error!(e);
+            #[cfg(not(feature = "warp_lite"))]
             if !taken_dirty_events.is_empty() {
                 AIDocumentModel::handle(ctx).update(ctx, |model, _| {
                     model.set_dirty_orchestration_events(conversation_id, taken_dirty_events);
@@ -869,6 +874,7 @@ impl BlocklistAIController {
     /// Populates plan documents from user query to AIDocumentModel if not already present.
     /// Parses attachments from query and creates AI documents for any user-attached plans.
     /// This is split from parse_context_attachments to run later in the pipeline when new conversations are created.
+    #[cfg(not(feature = "warp_lite"))]
     fn maybe_populate_plans_for_ai_document_model(
         &self,
         referenced_attachments: &HashMap<String, AIAgentAttachment>,
@@ -2523,6 +2529,7 @@ impl BlocklistAIController {
                 ..
             } = input
             {
+                #[cfg(not(feature = "warp_lite"))]
                 self.maybe_populate_plans_for_ai_document_model(
                     referenced_attachments,
                     conversation_data.id,
@@ -2575,6 +2582,7 @@ impl BlocklistAIController {
             });
 
             // Update the document status to UpToDate after query submission
+            #[cfg(not(feature = "warp_lite"))]
             if let Some(doc_id) = pending_document_id {
                 AIDocumentModel::handle(ctx).update(ctx, |model, mctx| {
                     model.set_user_edit_status(&doc_id, AIDocumentUserEditStatus::UpToDate, mctx);

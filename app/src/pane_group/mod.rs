@@ -49,6 +49,7 @@ use crate::ai::agent_conversations_model::{
     AgentConversationEntryId, AgentConversationNavigationSubject, AgentConversationsModel,
     AgentConversationsModelEvent,
 };
+#[cfg(not(feature = "warp_lite"))]
 use crate::ai::ai_document_view::AIDocumentView;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 #[cfg(not(target_family = "wasm"))]
@@ -59,7 +60,9 @@ use crate::ai::blocklist::inline_action::code_diff_view::CodeDiffView;
 use crate::ai::blocklist::suggested_agent_mode_workflow_modal::SuggestedAgentModeWorkflowAndId;
 use crate::ai::blocklist::suggested_rule_modal::SuggestedRuleAndId;
 use crate::ai::blocklist::{BlocklistAIHistoryModel, InputConfig, SerializedBlockListItem};
-use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentModel, AIDocumentVersion};
+use ai::document::{AIDocumentId, AIDocumentVersion};
+#[cfg(not(feature = "warp_lite"))]
+use crate::ai::document::ai_document_model::{AIDocumentModel};
 use crate::ai::execution_profiles::ExecutionProfileId;
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
 use crate::ai::llms::LLMId;
@@ -68,14 +71,17 @@ use crate::ai_assistant::AskAIType;
 #[cfg(feature = "local_fs")]
 use crate::app_state::CodePaneSnapShot;
 use crate::app_state::{
-    self, AIFactPaneSnapshot, BranchSnapshot, EnvVarCollectionPaneSnapshot, LeafContents,
-    LeafSnapshot, NotebookPaneSnapshot, PaneNodeSnapshot, PaneUuid, SettingsPaneSnapshot,
-    TerminalPaneSnapshot, WorkflowPaneSnapshot,
+    self, BranchSnapshot, LeafContents, LeafSnapshot, PaneNodeSnapshot, PaneUuid,
+    SettingsPaneSnapshot, TerminalPaneSnapshot,
+};
+#[cfg(not(feature = "warp_lite"))]
+use crate::app_state::{
+    AIFactPaneSnapshot, EnvVarCollectionPaneSnapshot, NotebookPaneSnapshot, WorkflowPaneSnapshot,
 };
 use crate::appearance::Appearance;
 use crate::auth::AuthStateProvider;
 use crate::auth::auth_manager::AuthManager;
-use crate::auth::auth_view_modal::AuthViewVariant;
+use crate::auth::AuthViewVariant;
 use crate::banner::{Banner, BannerEvent, BannerState, BannerTextContent, DismissalType};
 use crate::channel::{Channel, ChannelState};
 use crate::cloud_object::Space;
@@ -86,11 +92,14 @@ use crate::code::editor_management::CodeSource;
 use crate::code::view::{CodeView, CodeViewAction};
 use crate::code_review::comments::{AttachedReviewComment, PendingImportedReviewComment};
 use crate::code_review::diff_state::DiffMode;
+use crate::cloud_object::{CloudObjectTypeAndId, OpenWarpDriveObjectArgs};
+#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::WarpDriveItemId;
-use crate::drive::{CloudObjectTypeAndId, OpenWarpDriveObjectArgs};
+#[cfg(not(feature = "warp_lite"))]
 use crate::env_vars::EnvVarCollectionType;
 use crate::features::FeatureFlag;
 use crate::launch_configs::launch_config::{self, PaneMode, PaneTemplateType};
+#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::file::FileNotebookView;
 use crate::palette::PaletteMode;
 use crate::pane_group::focus_state::PaneGroupFocusEvent;
@@ -115,6 +124,7 @@ use crate::server::telemetry::{
 use crate::session_management::SessionNavigationData;
 use crate::settings::{AISettings, DefaultSessionMode, PaneSettings};
 use crate::settings_view::SettingsSection;
+#[cfg(feature = "mcp_client")]
 use crate::settings_view::mcp_servers_page::MCPServersSettingsPage;
 use crate::shell_indicator::ShellIndicatorType;
 use crate::terminal::available_shells::{AvailableShell, AvailableShells};
@@ -184,19 +194,26 @@ use focus_state::PaneGroupFocusState;
 #[path = "mod_tests.rs"]
 mod tests;
 
+#[cfg(not(feature = "warp_lite"))]
 pub use pane::ai_document_pane::AIDocumentPane;
+#[cfg(not(feature = "warp_lite"))]
 pub use pane::ai_fact_pane::AIFactPane;
 pub use pane::code_diff_pane::CodeDiffPane;
 pub use pane::code_pane::CodePane;
 pub use pane::custom_router_editor_pane::CustomRouterEditorPane;
+#[cfg(not(feature = "warp_lite"))]
 pub use pane::env_var_collection_pane::EnvVarCollectionPane;
+#[cfg(not(feature = "warp_lite"))]
 pub use pane::environment_management_pane::EnvironmentManagementPane;
 pub use pane::execution_profile_editor_pane::ExecutionProfileEditorPane;
+#[cfg(not(feature = "warp_lite"))]
 pub use pane::file_pane::FilePane;
 pub use pane::network_log_pane::NetworkLogPane;
+#[cfg(not(feature = "warp_lite"))]
 pub use pane::notebook_pane::NotebookPane;
 pub use pane::settings_pane::SettingsPane;
 pub use pane::terminal_pane::TerminalPane;
+#[cfg(not(feature = "warp_lite"))]
 pub use pane::workflow_pane::WorkflowPane;
 pub use pane::{
     AnyPaneContent, BackingView, PaneConfiguration, PaneConfigurationEvent, PaneContent, PaneEvent,
@@ -579,6 +596,7 @@ pub enum Event {
         argument_override: Option<HashMap<String, String>>,
     },
     /// Invoke env var from pane
+    #[cfg(not(feature = "warp_lite"))]
     InvokeEnvVarCollection {
         env_var_collection: Arc<EnvVarCollectionType>,
         in_subshell: bool,
@@ -601,6 +619,7 @@ pub enum Event {
     FocusPaneInWorkspace {
         locator: PaneViewLocator,
     },
+    #[cfg(not(feature = "warp_lite"))]
     ViewInWarpDrive(WarpDriveItemId),
     MoveToSpace {
         cloud_object_type_and_id: CloudObjectTypeAndId,
@@ -691,6 +710,7 @@ pub enum Event {
     OpenThemeChooser,
     InvalidatedActiveConversation,
     OpenConversationHistory,
+    #[cfg(feature = "mcp_client")]
     OpenMCPSettingsPage {
         page: Option<MCPServersSettingsPage>,
     },
@@ -1090,6 +1110,7 @@ type InitialLayoutCallback = Box<
     ) -> (PaneData, InitialFocus),
 >;
 
+#[cfg(not(feature = "warp_lite"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AIDocumentPaneVisibilityAction {
     /// Ensure the requested AI document pane is visible.
@@ -1589,6 +1610,7 @@ impl PaneGroup {
     ) -> anyhow::Result<(PaneData, InitialFocus)> {
         let custom_vertical_tabs_title = leaf.custom_vertical_tabs_title.clone();
         let result = match leaf.contents {
+            #[cfg(not(feature = "warp_lite"))]
             LeafContents::AIDocument(_) => {
                 // Defer AI document pane restoration until after terminal panes are restored.
                 // We do this because the terminal view seeds the AIDocumentModel as part of
@@ -1742,6 +1764,7 @@ impl PaneGroup {
 
                 Ok((PaneData::new(pane_id), focus))
             }
+            #[cfg(not(feature = "warp_lite"))]
             LeafContents::Notebook(snapshot) => {
                 let pane: Box<dyn AnyPaneContent + 'static> = match snapshot {
                     NotebookPaneSnapshot::CloudNotebook {
@@ -1796,6 +1819,7 @@ impl PaneGroup {
             LeafContents::Code(_) => Err(anyhow::anyhow!(
                 "Code pane restoration not supported on this platform"
             )),
+            #[cfg(not(feature = "warp_lite"))]
             LeafContents::EnvVarCollection(snapshot) => {
                 let pane: Box<dyn AnyPaneContent + 'static> = match snapshot {
                     EnvVarCollectionPaneSnapshot::CloudEnvVarCollection {
@@ -1812,6 +1836,7 @@ impl PaneGroup {
 
                 Ok((PaneData::new(pane_id), focus))
             }
+            #[cfg(not(feature = "warp_lite"))]
             LeafContents::Workflow(snapshot) => {
                 let pane: Box<dyn AnyPaneContent + 'static> = match snapshot {
                     WorkflowPaneSnapshot::CloudWorkflow {
@@ -1850,6 +1875,7 @@ impl PaneGroup {
                 };
                 Ok((PaneData::new(pane_id), focus))
             }
+            #[cfg(not(feature = "warp_lite"))]
             LeafContents::AIFact(snapshot) => {
                 if !FeatureFlag::AIRules.is_enabled() {
                     return Err(anyhow::anyhow!("AI fact pane not enabled"));
@@ -1882,6 +1908,7 @@ impl PaneGroup {
                             None,
                             ctx,
                         ) {
+                            #[cfg(not(feature = "warp_lite"))]
                             Some(WorkspaceAction::OpenOrAttachAmbientAgentConversation {
                                 session_id,
                                 ..
@@ -1992,6 +2019,7 @@ impl PaneGroup {
                     Ok((PaneData::new(pane_id), focus))
                 }
             }
+            #[cfg(not(feature = "warp_lite"))]
             LeafContents::EnvironmentManagement(_) => {
                 // Environment management panes are not restored from persistence.
                 // They are opened on-demand via workspace actions.
@@ -2025,6 +2053,7 @@ impl PaneGroup {
         for (placeholder_id, leaf) in deferred_panes {
             let custom_vertical_tabs_title = leaf.custom_vertical_tabs_title.clone();
             match leaf.contents {
+                #[cfg(not(feature = "warp_lite"))]
                 LeafContents::AIDocument(aidocument_snapshot) => {
                     match aidocument_snapshot {
                         crate::app_state::AIDocumentPaneSnapshot::Local {
@@ -2248,6 +2277,7 @@ impl PaneGroup {
             .map(move |pane| (pane.id(), pane.file_view(app)))
     }
     /// Iterate over the file notebook panes in this pane group.
+    #[cfg(not(feature = "warp_lite"))]
     pub fn file_notebook_panes<'a>(
         &'a self,
         app: &'a AppContext,
@@ -2256,10 +2286,12 @@ impl PaneGroup {
             .map(move |pane| (pane.id(), pane.file_view(app)))
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn ai_document_panes(&self) -> impl Iterator<Item = PaneId> + '_ {
         self.panes_of::<AIDocumentPane>().map(|pane| pane.id())
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn visible_ai_document_panes(&self, ctx: &AppContext) -> Vec<(PaneId, AIDocumentId)> {
         self.panes_of::<AIDocumentPane>()
             .filter(|pane| !self.is_pane_hidden_for_close(pane.id()))
@@ -2277,6 +2309,7 @@ impl PaneGroup {
     }
 
     /// Checks if this pane group contains a visible AI document pane with the given document ID.
+    #[cfg(not(feature = "warp_lite"))]
     pub fn contains_ai_document(&self, document_id: &AIDocumentId, ctx: &AppContext) -> bool {
         self.panes_of::<AIDocumentPane>()
             .filter(|pane| !self.is_pane_hidden_for_close(pane.id()))
@@ -2285,8 +2318,7 @@ impl PaneGroup {
 
     /// Closes all visible AI document panes that are *not* for `document_id`, then applies the
     /// requested `action` to the pane for `document_id`.
-    ///
-    /// This enforces the UI invariant that only one AI document pane should be visible at a time.
+    #[cfg(not(feature = "warp_lite"))]
     fn set_ai_document_pane_visibility(
         &mut self,
         conversation_id: AIConversationId,
@@ -2373,6 +2405,7 @@ impl PaneGroup {
     }
 
     /// Closes any other ai document panes, and opens the specified document_id.
+    #[cfg(not(feature = "warp_lite"))]
     pub fn open_ai_document_pane(
         &mut self,
         conversation_id: AIConversationId,
@@ -2389,6 +2422,7 @@ impl PaneGroup {
         );
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn close_all_ai_document_panes(&mut self, ctx: &mut ViewContext<Self>) {
         let pane_ids: Vec<_> = self
             .visible_ai_document_panes(ctx)
@@ -2398,6 +2432,7 @@ impl PaneGroup {
         self.close_panes(pane_ids, ctx);
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn toggle_ai_document_pane(
         &mut self,
         conversation_id: AIConversationId,
@@ -2452,24 +2487,32 @@ impl PaneGroup {
 
         // Finds the active pane type outof (NotebookPane, AIDocumentPane, TerminalPane)
         // and extracts selected text from it.
-        let text = if let Some(pane) = self.downcast_pane_by_id::<NotebookPane>(focused_pane_id) {
-            pane.notebook_view(ctx).as_ref(ctx).selected_text(ctx)
-        } else if let Some(pane) = self.downcast_pane_by_id::<AIDocumentPane>(focused_pane_id) {
-            pane.document_view(ctx).as_ref(ctx).selected_text(ctx)
-        } else {
-            match self.terminal_view_from_pane_id(focused_pane_id, ctx) {
-                Some(terminal_view) => {
-                    // NOTE: We currently don't have a way to track recency of selection events.
-                    // In lieu of this, we prefer selections to the input editor over the terminal view.
-                    // TODO(vkodithala): Once we have a way to track recency of selection events, we should use that instead.
-                    terminal_view
-                        .as_ref(ctx)
-                        .selected_text_from_input(ctx)
-                        .or_else(|| terminal_view.as_ref(ctx).selected_text(ctx))
+        let text = {
+            #[cfg(not(feature = "warp_lite"))]
+            {
+                if let Some(pane) = self.downcast_pane_by_id::<NotebookPane>(focused_pane_id) {
+                    pane.notebook_view(ctx).as_ref(ctx).selected_text(ctx)
+                } else if let Some(pane) = self.downcast_pane_by_id::<AIDocumentPane>(focused_pane_id)
+                {
+                    pane.document_view(ctx).as_ref(ctx).selected_text(ctx)
+                } else {
+                    None
                 }
+            }
+            #[cfg(feature = "warp_lite")]
+            {
+                None
+            }
+        }
+        .or_else(|| {
+            match self.terminal_view_from_pane_id(focused_pane_id, ctx) {
+                Some(terminal_view) => terminal_view
+                    .as_ref(ctx)
+                    .selected_text_from_input(ctx)
+                    .or_else(|| terminal_view.as_ref(ctx).selected_text(ctx)),
                 _ => None,
             }
-        };
+        });
 
         text.filter(|text: &String| !text.is_empty())
     }
@@ -2482,6 +2525,7 @@ impl PaneGroup {
     pub fn path_from_focused_pane(&self, ctx: &AppContext) -> Option<String> {
         let focused_pane_id = self.focused_pane_id(ctx);
 
+        #[cfg(not(feature = "warp_lite"))]
         if let Some(file_pane) = self.downcast_pane_by_id::<FilePane>(focused_pane_id) {
             return file_pane
                 .file_view(ctx)
@@ -4361,10 +4405,12 @@ impl PaneGroup {
         pane_content
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn notebook_pane_by_pane_id(&self, pane_id: Option<PaneId>) -> Option<&NotebookPane> {
         self.downcast_pane_by_id(pane_id?)
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn env_var_collection_pane_by_pane_id(
         &self,
         pane_id: Option<PaneId>,
@@ -4372,10 +4418,12 @@ impl PaneGroup {
         self.downcast_pane_by_id(pane_id?)
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn workflow_pane_by_pane_id(&self, pane_id: Option<PaneId>) -> Option<&WorkflowPane> {
         self.downcast_pane_by_id(pane_id?)
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn ai_fact_pane_by_pane_id(&self, pane_id: Option<PaneId>) -> Option<&AIFactPane> {
         self.downcast_pane_by_id(pane_id?)
     }
@@ -5030,7 +5078,7 @@ impl PaneGroup {
         }
     }
 
-    #[cfg(feature = "local_fs")]
+    #[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
     fn replace_code_pane_with_file_pane(
         &mut self,
         code_pane_id: PaneId,
@@ -5109,10 +5157,12 @@ impl PaneGroup {
             PaneEvent::ReplaceWithCodePane { path, source } => {
                 self.replace_file_pane_with_code_pane(pane_id, path.clone(), source.clone(), ctx);
             }
-            #[cfg(feature = "local_fs")]
+            #[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
             PaneEvent::ReplaceWithFilePane { path, source } => {
                 self.replace_code_pane_with_file_pane(pane_id, path.clone(), source.clone(), ctx);
             }
+            #[cfg(all(feature = "local_fs", feature = "warp_lite"))]
+            PaneEvent::ReplaceWithFilePane { .. } => {}
             PaneEvent::RepoChanged => {
                 ctx.emit(Event::RepoChanged);
             }
@@ -7752,6 +7802,7 @@ impl PaneGroup {
             .collect()
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn file_notebook_views(&self, ctx: &AppContext) -> Vec<ViewHandle<FileNotebookView>> {
         self.panes_of::<FilePane>()
             .map(|p| p.file_view(ctx))
@@ -7798,6 +7849,7 @@ impl PaneGroup {
         })
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn file_notebook_paths<'a>(
         &'a self,
         ctx: &'a AppContext,
@@ -8174,13 +8226,20 @@ impl View for PaneGroup {
                         .cloned()
                 })
                 .or_else(|| {
-                    self.downcast_pane_by_id::<EnvironmentManagementPane>(pane_id)
-                        .and_then(|emp| {
-                            emp.environments_page_view(app)
-                                .as_ref(app)
-                                .environment_setup_mode_selector_handle()
-                                .cloned()
-                        })
+                    #[cfg(not(feature = "warp_lite"))]
+                    {
+                        self.downcast_pane_by_id::<EnvironmentManagementPane>(pane_id)
+                            .and_then(|emp| {
+                                emp.environments_page_view(app)
+                                    .as_ref(app)
+                                    .environment_setup_mode_selector_handle()
+                                    .cloned()
+                            })
+                    }
+                    #[cfg(feature = "warp_lite")]
+                    {
+                        None
+                    }
                 });
             if let Some(handle) = selector_handle {
                 stack.add_child(ChildView::new(&handle).finish());
@@ -8199,6 +8258,7 @@ impl View for PaneGroup {
             stack.add_child(dialog);
         }
         // Render agent-assisted environment modal at tab level when open.
+        #[cfg(not(feature = "warp_lite"))]
         if let Some(pane_id) = self.pane_with_open_agent_assisted_environment_modal
             && let Some(handle) = self
                 .downcast_pane_by_id::<EnvironmentManagementPane>(pane_id)

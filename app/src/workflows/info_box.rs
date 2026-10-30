@@ -28,6 +28,7 @@ use super::command_parser::{
     WorkflowArgumentIndex, WorkflowDisplayData, compute_workflow_display_data,
 };
 use super::workflow::Argument;
+#[cfg(not(feature = "warp_lite"))]
 use super::workflow_view::env_var_selector::{EnvVarSelector, EnvVarSelectorEvent};
 use super::{AIWorkflowOrigin, CloudWorkflow};
 use crate::ai::blocklist::ai_brand_color;
@@ -128,6 +129,7 @@ pub struct WorkflowsMoreInfoView {
     /// View for selecting environment variables to apply to the workflow.
     ///
     /// This is `None` for AI workflows.
+    #[cfg(not(feature = "warp_lite"))]
     environment_variables_dropdown: Option<ViewHandle<EnvVarSelector>>,
 
     scroll_state: ClippedScrollStateHandle,
@@ -159,8 +161,9 @@ impl WorkflowsMoreInfoView {
             ..
         } = compute_workflow_display_data(workflow.as_workflow());
 
-        let environment_variables_dropdown = (!workflow.as_workflow().is_agent_mode_workflow())
-            .then(|| {
+        #[cfg(not(feature = "warp_lite"))]
+        let environment_variables_dropdown =
+            (!workflow.as_workflow().is_agent_mode_workflow()).then(|| {
                 let dropdown = ctx.add_typed_action_view(|ctx| {
                     let mut dropdown = EnvVarSelector::new(ctx);
                     dropdown.set_orientation(FilterableDropdownOrientation::Up, ctx);
@@ -185,6 +188,7 @@ impl WorkflowsMoreInfoView {
                 argument_cycling_enabled: true,
             },
             show_shift_tab_treatment,
+            #[cfg(not(feature = "warp_lite"))]
             environment_variables_dropdown,
             scroll_state: Default::default(),
         }
@@ -208,13 +212,17 @@ impl WorkflowsMoreInfoView {
         env_vars_id: Option<SyncId>,
         ctx: &mut ViewContext<Self>,
     ) {
+        #[cfg(not(feature = "warp_lite"))]
         if let Some(dropdown) = self.environment_variables_dropdown.as_ref() {
             dropdown.update(ctx, |dropdown, ctx| {
                 dropdown.set_selected_env_vars(env_vars_id, ctx)
             });
         }
+        #[cfg(feature = "warp_lite")]
+        let _ = (env_vars_id, ctx);
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     fn handle_env_var_selector_event(
         &mut self,
         event: &EnvVarSelectorEvent,
@@ -565,6 +573,11 @@ impl WorkflowsMoreInfoView {
         appearance: &Appearance,
         app: &AppContext,
     ) -> Option<Box<dyn Element>> {
+        #[cfg(feature = "warp_lite")]
+        return None;
+
+        #[cfg(not(feature = "warp_lite"))]
+        {
         let span = Container::new(
             Align::new(
                 appearance
@@ -641,6 +654,7 @@ impl WorkflowsMoreInfoView {
             .with_height(ENV_VAR_ROW_HEIGHT)
             .finish(),
         )
+        }
     }
 
     fn render_info_box(

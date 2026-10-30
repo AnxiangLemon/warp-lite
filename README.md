@@ -1,129 +1,64 @@
-## Warp Lite fork
+# Warp Lite
 
-这是基于 `warpdotdev/warp` 上游源码的本地 fork，不是重新实现的终端 UI。
+基于 [warpdotdev/warp](https://github.com/warpdotdev/warp) 的本地优先终端分支，保留 Warp 的终端模型、GPU 渲染与工作区交互，精简内置 AI、账户、计费与云服务入口。
 
-当前上游基线：`b076027d`。
+本仓库提供源码，`dist/` 分发包和 `target*/` 构建缓存不纳入版本控制。当前源码仍在模块拆分阶段，请以本地检查结果为准；已有分发包不能代表当前源码已通过构建。
 
-`warp-lite` 使用独立的 Lite crate root 和 Lite root view，使用 `--no-default-features` 构建。Lite 构建不会编译完整 Warp 的 `ai/auth/billing/cloud/drive/mcp/notebooks/agent/collaboration` 启动模块：
+## 功能范围
+
+- 本地 shell：PowerShell、CMD、Git Bash、WSL，可用项取决于本机安装情况。
+- 标签页、标签分组、固定标签、垂直标签栏和分屏。
+- 工作区与会话恢复，本地字体、主题、默认 shell 等设置。
+- Lite 设置界面的中文标签。
+- `WarpLite` 独立应用标识及 `warp-lite.log` 日志名。
+
+Lite 入口不配置 telemetry、crash reporting、自动更新和静态 MCP 服务。Warp 与 Oz 服务配置使用 loopback 端点。不提供内置云 AI 服务；shell 中运行的 CLI 工具仍由相应工具决定网络行为。
+
+## Windows 构建与运行
+
+需要 Git、Rust toolchain（仓库固定为 `1.92.0`）、MSVC C++ Build Tools 与 Windows SDK，以及 CMake、Protobuf、LLVM 等原生构建依赖。首次准备环境可运行上游脚本，它会按需安装开发工具：
 
 ```powershell
-$env:RUSTUP_TOOLCHAIN = "1.92.0-x86_64-pc-windows-msvc"
-cargo run --bin warp-lite --no-default-features --features "local_tty,warp_lite"
+git clone https://github.com/AnxiangLemon/warp-lite.git
+cd warp-lite
+.\script\windows\bootstrap.ps1
 ```
 
-Lite UI 只包含本地 shell、Tabs、Groups、Split Pane、Session Restore 和 Local Settings。Shell 使用本地进程管道，支持 PowerShell、CMD、Git Bash；WSL 仅在本机存在时启动。会话保存到本地 `WarpLite/session.json`，不读取 Warp 登录凭据。Warp/Oz endpoint 固定到 `127.0.0.1:9`，telemetry、crash reporting、autoupdate 配置均为 `None`。
+从仓库根目录运行：
 
-上游完整实现保留在 `app/src/lib_full.rs`，Lite 逻辑集中在 `app/src/lib.rs`、`app/src/lite.rs`、`app/src/bin/lite.rs` 和 `WarpServerConfig::local_only()` / `OzConfig::local_only()`。
+```powershell
+# 开发运行
+.\script\run-lite.ps1
 
-<a href="https://www.warp.dev">
-    <img width="1024" alt="Warp Agentic Development Environment product preview" src="https://github.com/user-attachments/assets/9976b2da-2edd-4604-a36c-8fd53719c6d4" />
-</a>
-&nbsp;
-<p align="center">
-  <a href="https://www.warp.dev"><img height="20" alt="Built with Warp" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/main/Github/Built-With-Warp-Export@2x.png" /></a>
-  &nbsp;
-  <a href="https://oz.warp.dev"><img height="20" alt="Powered by Oz" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/main/Github/Powered-By-Oz-Export@2x.png" /></a>
-</p>
+# Release 运行
+.\script\run-lite.ps1 -Release
 
-<p align="center">
-  <a href="https://www.warp.dev">Website</a>
-  ·
-  <a href="https://www.warp.dev/code">Code</a>
-  ·
-  <a href="https://www.warp.dev/agents">Agents</a>
-  ·
-  <a href="https://www.warp.dev/terminal">Terminal</a>
-  ·
-  <a href="https://www.warp.dev/drive">Drive</a>
-  ·
-  <a href="https://docs.warp.dev">Docs</a>
-  ·
-  <a href="https://www.warp.dev/blog/how-warp-works">How Warp Works</a>
-</p>
+# 仅构建 Lite binary
+cargo build -p warp --release --bin warp-lite --no-default-features --features warp_lite --locked
 
-> [!NOTE]
-> OpenAI is the founding sponsor of the new, open-source Warp repository, and the new agentic management workflows are powered by GPT models.
-
-<h1></h1>
-
-## About
-
-[Warp](https://www.warp.dev) is an agentic development environment, born out of the terminal. Use Warp's built-in coding agent, or bring your own CLI agent (Claude Code, Codex, Gemini CLI, and others).
-
-## Installation
-
-You can [download Warp](https://www.warp.dev/download) and [read our docs](https://docs.warp.dev/) for platform-specific instructions.
-
-## Warp Contributions Overview Dashboard
-
-Explore [build.warp.dev](https://build.warp.dev) to:
-- Watch thousands of Oz agents triage issues, write specs, implement changes, and review PRs
-- View top contributors and in-flight features
-- Track your own issues with GitHub sign-in
-- Click into active agent sessions in a web-compiled Warp terminal
-
-## Oz for OSS
-
-Maintaining a popular open-source project? [Apply for Oz credits](https://tally.so/r/LZWxqG) to explore [Oz for OSS](https://github.com/warpdotdev/oz-for-oss).
-
-Oz for OSS is our partner program for bringing the same agentic open-source management workflows used in this repository to select partner repositories. We work directly with maintainers to implement workflows for issue triage, PR review, community management, and contributor coordination in a way that fits each project.
-
-## Licensing
-
-Warp's UI framework (the `warpui_core` and `warpui` crates) are licensed under the [MIT license](LICENSE-MIT).
-
-The rest of the code in this repository is licensed under the [AGPL v3](LICENSE-AGPL).
-
-## Open Source & Contributing
-
-Warp's client codebase is open source and lives in this repository. We welcome community contributions and have designed a lightweight workflow to help new contributors get started. For the full contribution flow, read our [CONTRIBUTING.md](CONTRIBUTING.md) guide.
-
-> [!TIP]
-> **Chat with contributors and the Warp team** in the [`#oss-contributors`](https://warpcommunity.slack.com/archives/C0B0LM8N4DB) Slack channel — a good place for ad-hoc questions, design discussion, and pairing with maintainers. New here? [Join the Warp Slack community](https://go.warp.dev/join-preview) first, then jump into `#oss-contributors`.
-
-### Issue to PR
-
-Before filing, [search existing issues](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+sort%3Areactions-%2B1-desc) for your bug or feature request. If nothing exists, [file an issue](https://github.com/warpdotdev/warp/issues/new/choose) using our templates. Security vulnerabilities should be reported privately as described in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-security-issues).
-
-Once filed, a Warp maintainer reviews the issue and may apply a readiness label: [`ready-to-spec`](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+label%3Aready-to-spec) signals the design is open for contributors to spec out, and [`ready-to-implement`](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+label%3Aready-to-implement) signals the design is settled and code PRs are welcome. Anyone can pick up a labeled issue — mention **@oss-maintainers** on an issue if you'd like it considered for a readiness label.
-
-### Building the Repo Locally
-
-To build and run Warp from source:
-
-```bash
-./script/bootstrap   # platform-specific setup
-./script/run         # build and run Warp
-./script/presubmit   # fmt, clippy, and tests
+# 查看版本
+.\target\release\warp-lite.exe --version
 ```
 
-See [AGENTS.md](AGENTS.md) for the full engineering guide, including coding style, testing, and platform-specific notes.
+`cargo run` 默认入口是上游 `warp-oss`，Lite 必须指定 `--bin warp-lite --no-default-features --features warp_lite`。设置了 `CARGO_TARGET_DIR` 时，产物写入指定目录。
 
-## Joining the Team
+Git Bash 可用 `./script/run-lite` 或 `./script/run-lite --release`。macOS / Linux 依赖安装沿用 `./script/bootstrap`，本分支尚未据此声明跨平台验证通过。
 
-Interested in joining the team? See our [open roles](https://www.warp.dev/careers).
+## 开发与文档
 
-## Support and Questions
+- [开发说明](docs/development.md)：源码结构、检查命令、资源与提交规则。
+- [上游贡献指南](CONTRIBUTING.md)：上游开发流程。
+- [工程约定](AGENTS.md)：仓库编码与验证要求。
 
-1. See our [docs](https://docs.warp.dev/) for a comprehensive guide to Warp's features.
-2. Join our [Slack Community](https://go.warp.dev/join-preview) to connect with other users and get help from the Warp team — contributors hang out in [`#oss-contributors`](https://warpcommunity.slack.com/archives/C0B0LM8N4DB).
-3. Try our [Preview build](https://www.warp.dev/download-preview) to test the latest experimental features.
-4. Mention **@oss-maintainers** on any issue to escalate to the team — for example, if you encounter problems with the automated agents.
+Lite 通过 `warp_lite` Cargo feature 选择精简模块与兼容接口。源码仍保留上游完整实现，部分共享依赖与数据类型仍参与编译，因此仓库大小和缓存大小不等于最终程序大小。默认 `release` 不等于经过专门体积优化与打包的分发版本。
 
-## Code of Conduct
+## 许可与来源
 
-We ask everyone to be respectful and empathetic. Warp follows the [Code of Conduct](CODE_OF_CONDUCT.md). To report violations, email warp-coc at warp.dev.
+本项目是 Warp 的独立 fork，保留原作者与第三方版权声明。
 
-## Open Source Dependencies
+- `warpui` 与 `warpui_core` 使用 [MIT](LICENSE-MIT)。
+- 其余仓库代码使用 [AGPL v3](LICENSE-AGPL)。
 
-We'd like to call out a few of the [open source dependencies](https://docs.warp.dev/help/licenses) that have helped Warp to get off the ground:
+分发时同时保留对应许可证、第三方许可与所需运行资源。
 
-- [Tokio](https://github.com/tokio-rs/tokio)
-- [NuShell](https://github.com/nushell/nushell)
-- [Fig Completion Specs](https://github.com/withfig/autocomplete)
-- [Warp Server Framework](https://github.com/seanmonstar/warp)
-- [Alacritty](https://github.com/alacritty/alacritty)
-- [Hyper HTTP library](https://github.com/hyperium/hyper)
-- [FontKit](https://github.com/servo/font-kit)
-- [Core-foundation](https://github.com/servo/core-foundation-rs)
-- [Smol](https://github.com/smol-rs/smol)
+本次源码检查结果见 [验证记录](docs/validation.md)。

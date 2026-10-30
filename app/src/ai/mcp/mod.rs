@@ -21,7 +21,7 @@ use crate::cloud_object::{
     CloudObjectUuid, GenericStringObjectFormat, GenericStringObjectUniqueKey, JsonObjectType,
     Revision,
 };
-use crate::drive::CloudObjectTypeAndId;
+use crate::cloud_object::CloudObjectTypeAndId;
 use crate::drive::items::WarpDriveItem;
 use crate::drive::items::mcp_server::WarpDriveMCPServer;
 #[cfg(not(target_family = "wasm"))]
@@ -59,6 +59,10 @@ pub use cloud_object_models::{
 pub use cloud_object_models::{
     CloudMCPServer, CloudMCPServerModel, MCPServer, MCPServerState, TransportType,
 };
+#[cfg(not(target_family = "wasm"))]
+pub use mcp::TemplatableMCPServerInfo;
+#[cfg(not(target_family = "wasm"))]
+pub use rmcp::model::{Resource, Tool};
 pub use templatable::{JsonTemplate, TemplatableMCPServer, TemplateVariable};
 pub mod logs;
 pub mod templatable_installation;

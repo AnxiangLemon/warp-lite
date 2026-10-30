@@ -181,25 +181,19 @@ impl Input {
             .should_hide_inline_menu_for_pane_size(app);
         match input_mode {
             InputMode::PinnedToBottom => {
+                let inline_menu = self.terminal_inline_menu_overlay(
+                    hide_menu,
+                    is_slash_commands,
+                    is_prompts_menu,
+                    is_conversation_menu,
+                    is_skill_menu,
+                    is_inline_history_menu,
+                    is_repos_menu,
+                );
                 column.add_children(
                     [
-                        if hide_menu {
-                            None
-                        } else if is_slash_commands {
-                            Some(ChildView::new(&self.inline_slash_commands_view).finish())
-                        } else if is_prompts_menu {
-                            Some(ChildView::new(&self.inline_prompts_menu_view).finish())
-                        } else if is_conversation_menu {
-                            Some(ChildView::new(&self.inline_conversation_menu_view).finish())
-                        } else if FeatureFlag::ListSkills.is_enabled() && is_skill_menu {
-                            Some(ChildView::new(&self.inline_skill_selector_view).finish())
-                        } else if is_inline_history_menu {
-                            Some(ChildView::new(&self.inline_history_menu_view).finish())
-                        } else if is_repos_menu {
-                            Some(ChildView::new(&self.inline_repos_menu_view).finish())
-                        } else {
-                            None
-                        },
+                        inline_menu,
+                        #[cfg(not(feature = "warp_lite"))]
                         Some(ChildView::new(&self.agent_status_view).finish()),
                         Some(input),
                     ]
@@ -208,27 +202,21 @@ impl Input {
                 );
             }
             InputMode::PinnedToTop => {
+                let inline_menu = self.terminal_inline_menu_overlay(
+                    hide_menu,
+                    is_slash_commands,
+                    is_prompts_menu,
+                    is_conversation_menu,
+                    is_skill_menu,
+                    is_inline_history_menu,
+                    is_repos_menu,
+                );
                 column.add_children(
                     [
                         Some(input),
+                        #[cfg(not(feature = "warp_lite"))]
                         Some(ChildView::new(&self.agent_status_view).finish()),
-                        if hide_menu {
-                            None
-                        } else if is_slash_commands {
-                            Some(ChildView::new(&self.inline_slash_commands_view).finish())
-                        } else if is_prompts_menu {
-                            Some(ChildView::new(&self.inline_prompts_menu_view).finish())
-                        } else if is_conversation_menu {
-                            Some(ChildView::new(&self.inline_conversation_menu_view).finish())
-                        } else if FeatureFlag::ListSkills.is_enabled() && is_skill_menu {
-                            Some(ChildView::new(&self.inline_skill_selector_view).finish())
-                        } else if is_inline_history_menu {
-                            Some(ChildView::new(&self.inline_history_menu_view).finish())
-                        } else if is_repos_menu {
-                            Some(ChildView::new(&self.inline_repos_menu_view).finish())
-                        } else {
-                            None
-                        },
+                        inline_menu,
                     ]
                     .into_iter()
                     .flatten(),
@@ -243,50 +231,98 @@ impl Input {
                 if !hide_menu {
                     if is_slash_commands && !should_render_below {
                         column.add_child(ChildView::new(&self.inline_slash_commands_view).finish());
-                    } else if is_prompts_menu && !should_render_below {
-                        column.add_child(ChildView::new(&self.inline_prompts_menu_view).finish());
-                    } else if is_conversation_menu && !should_render_below {
-                        column.add_child(
-                            ChildView::new(&self.inline_conversation_menu_view).finish(),
-                        );
-                    } else if FeatureFlag::ListSkills.is_enabled()
-                        && is_skill_menu
-                        && !should_render_below
-                    {
-                        column.add_child(ChildView::new(&self.inline_skill_selector_view).finish());
                     } else if is_inline_history_menu && !should_render_below {
                         column.add_child(ChildView::new(&self.inline_history_menu_view).finish());
-                    } else if is_repos_menu && !should_render_below {
-                        column.add_child(ChildView::new(&self.inline_repos_menu_view).finish());
+                    }
+                    #[cfg(not(feature = "warp_lite"))]
+                    {
+                        if is_prompts_menu && !should_render_below {
+                            column.add_child(ChildView::new(&self.inline_prompts_menu_view).finish());
+                        } else if is_conversation_menu && !should_render_below {
+                            column.add_child(
+                                ChildView::new(&self.inline_conversation_menu_view).finish(),
+                            );
+                        } else if FeatureFlag::ListSkills.is_enabled()
+                            && is_skill_menu
+                            && !should_render_below
+                        {
+                            column.add_child(ChildView::new(&self.inline_skill_selector_view).finish());
+                        } else if is_repos_menu && !should_render_below {
+                            column.add_child(ChildView::new(&self.inline_repos_menu_view).finish());
+                        }
                     }
                 }
 
+                #[cfg(not(feature = "warp_lite"))]
                 column.add_children([ChildView::new(&self.agent_status_view).finish(), input]);
+                #[cfg(feature = "warp_lite")]
+                column.add_child(input);
 
                 if !hide_menu {
                     if is_slash_commands && should_render_below {
                         column.add_child(ChildView::new(&self.inline_slash_commands_view).finish());
-                    } else if is_prompts_menu && should_render_below {
-                        column.add_child(ChildView::new(&self.inline_prompts_menu_view).finish());
-                    } else if is_conversation_menu && should_render_below {
-                        column.add_child(
-                            ChildView::new(&self.inline_conversation_menu_view).finish(),
-                        );
-                    } else if FeatureFlag::ListSkills.is_enabled()
-                        && is_skill_menu
-                        && should_render_below
-                    {
-                        column.add_child(ChildView::new(&self.inline_skill_selector_view).finish());
                     } else if is_inline_history_menu && should_render_below {
                         column.add_child(ChildView::new(&self.inline_history_menu_view).finish());
-                    } else if is_repos_menu && should_render_below {
-                        column.add_child(ChildView::new(&self.inline_repos_menu_view).finish());
+                    }
+                    #[cfg(not(feature = "warp_lite"))]
+                    {
+                        if is_prompts_menu && should_render_below {
+                            column.add_child(ChildView::new(&self.inline_prompts_menu_view).finish());
+                        } else if is_conversation_menu && should_render_below {
+                            column.add_child(
+                                ChildView::new(&self.inline_conversation_menu_view).finish(),
+                            );
+                        } else if FeatureFlag::ListSkills.is_enabled()
+                            && is_skill_menu
+                            && should_render_below
+                        {
+                            column.add_child(ChildView::new(&self.inline_skill_selector_view).finish());
+                        } else if is_repos_menu && should_render_below {
+                            column.add_child(ChildView::new(&self.inline_repos_menu_view).finish());
+                        }
                     }
                 }
             }
         }
 
         SavePosition::new(column.finish(), &self.save_position_id()).finish()
+    }
+
+    fn terminal_inline_menu_overlay(
+        &self,
+        hide_menu: bool,
+        is_slash_commands: bool,
+        is_prompts_menu: bool,
+        is_conversation_menu: bool,
+        is_skill_menu: bool,
+        is_inline_history_menu: bool,
+        is_repos_menu: bool,
+    ) -> Option<Box<dyn Element>> {
+        if hide_menu {
+            return None;
+        }
+        if is_slash_commands {
+            return Some(ChildView::new(&self.inline_slash_commands_view).finish());
+        }
+        if is_inline_history_menu {
+            return Some(ChildView::new(&self.inline_history_menu_view).finish());
+        }
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            if is_prompts_menu {
+                return Some(ChildView::new(&self.inline_prompts_menu_view).finish());
+            }
+            if is_conversation_menu {
+                return Some(ChildView::new(&self.inline_conversation_menu_view).finish());
+            }
+            if FeatureFlag::ListSkills.is_enabled() && is_skill_menu {
+                return Some(ChildView::new(&self.inline_skill_selector_view).finish());
+            }
+            if is_repos_menu {
+                return Some(ChildView::new(&self.inline_repos_menu_view).finish());
+            }
+        }
+        None
     }
 }
 
