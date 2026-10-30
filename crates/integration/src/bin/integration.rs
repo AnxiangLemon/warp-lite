@@ -92,8 +92,10 @@ pub fn main() -> Result<()> {
             "test_lite_terminal_smoke"
                 | "test_lite_terminal_management"
                 | "test_lite_chinese_settings"
+                | "test_lite_wsl_directory_search"
                 | "test_lite_close_confirmation"
                 | "test_lite_fixed_background"
+                | "test_lite_jpeg_background"
                 | "test_lite_missing_background"
                 | "test_lite_corrupt_background"
                 | "test_lite_oversized_background"
@@ -172,12 +174,20 @@ fn register_tests() -> HashMap<&'static str, BoxedBuilderFn> {
                 Box::new(test_lite_chinese_settings) as BoxedBuilderFn,
             ),
             (
+                "test_lite_wsl_directory_search",
+                Box::new(test_lite_wsl_directory_search) as BoxedBuilderFn,
+            ),
+            (
                 "test_lite_close_confirmation",
                 Box::new(test_lite_close_confirmation) as BoxedBuilderFn,
             ),
             (
                 "test_lite_fixed_background",
                 Box::new(test_lite_fixed_background) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_jpeg_background",
+                Box::new(test_lite_jpeg_background) as BoxedBuilderFn,
             ),
             (
                 "test_lite_missing_background",
@@ -228,6 +238,8 @@ fn register_tests() -> HashMap<&'static str, BoxedBuilderFn> {
     register_test!(test_lite_terminal_management);
     #[cfg(windows)]
     register_test!(test_lite_chinese_settings);
+    #[cfg(windows)]
+    register_test!(test_lite_wsl_directory_search);
     #[cfg(target_os = "windows")]
     register_test!(test_lite_restore_named_tabs);
     #[cfg(target_os = "windows")]

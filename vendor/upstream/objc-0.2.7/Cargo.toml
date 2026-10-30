@@ -1,0 +1,32 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+"example" = [{"name" = "example", "path" = "examples/example.rs"}]
+
+["package"]
+"name" = "objc"
+"version" = "0.2.7"
+"authors" = ["Steven Sheldon"]
+"build" = false
+"exclude" = [".gitignore", ".travis.yml", "doc.sh", "travis_install.sh", "travis_test.sh", "tests-ios/**"]
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "Objective-C Runtime bindings and wrapper for Rust."
+"documentation" = "http://ssheldon.github.io/rust-objc/objc/"
+"readme" = "README.md"
+"keywords" = ["objective-c", "osx", "ios", "cocoa", "uikit"]
+"license" = "MIT"
+"repository" = "http://github.com/SSheldon/rust-objc"
+
+["features"]
+"exception" = ["objc_exception"]
+"verify_message" = []
+
+["lib"]
+"name" = "objc"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"malloc_buf" = "0.0"
+"objc_exception" = {"version" = "0.1", "optional" = true}

@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Rename local git branch"####.into(),command: r####"git branch -m {{oldname}} {{newname}}"####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Renames a local git branch while keeping the name of the upstream branch unchanged."####.into()),arguments: vec![Argument {name: r####"oldname"####.into(),description: Some(r####"The old name of the branch"####.into()),default_value: None,},Argument {name: r####"newname"####.into(),description: Some(r####"The name the branch should be renamed to"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/6591213/how-do-i-rename-a-local-git-branch"####.into()),author: Some(r####"siride"####.into()),author_url: Some(r####"https://stackoverflow.com/users/394487/siride"####.into()),shells: vec![].into_iter().collect(),}
+}

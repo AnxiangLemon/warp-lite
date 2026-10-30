@@ -1640,11 +1640,16 @@ impl crate::platform::Window for Window {
         self.inner
             .borrow()
             .as_ref()
-            .and_then(|inner| inner.rendering_resources.as_ref())
-            .map(|resources| {
+            .and_then(|inner| {
+                inner
+                    .rendering_resources
+                    .as_ref()
+                    .map(|resources| (inner, resources))
+            })
+            .map(|(inner, resources)| {
                 resources
                     .resources
-                    .supported_backends
+                    .supported_backends(inner.window.clone())
                     .iter()
                     .map(|backend| from_wgpu_backend(*backend))
                     .collect_vec()

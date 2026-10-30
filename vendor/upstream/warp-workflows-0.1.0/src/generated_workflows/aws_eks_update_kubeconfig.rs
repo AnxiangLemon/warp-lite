@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Set AWS EKS kubeconfig"####.into(),command: r####"aws eks update-kubeconfig --region {{region}} --name {{cluster}}  --alias {{alias}}"####.into(),tags: vec![r####"kubeconfig"####.into()].into_iter().collect(),description: None,arguments: vec![Argument {name: r####"region"####.into(),description: Some(r####"AWS region of the cluster"####.into()),default_value: None,},Argument {name: r####"cluster"####.into(),description: Some(r####"The EKS cluster name"####.into()),default_value: None,},Argument {name: r####"alias"####.into(),description: Some(r####"Alias for the cluster"####.into()),default_value: None,}].into_iter().collect(),source_url: None,author: None,author_url: None,shells: vec![].into_iter().collect(),}
+}

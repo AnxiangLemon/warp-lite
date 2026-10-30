@@ -200,3 +200,7 @@ pub trait Stream: futures::Stream<Item = Result<Message, Error>> + Send + Unpin 
 impl<T> Sink for T where T: futures::Sink<Message, Error = Error> + Send + Unpin + 'static {}
 impl<T> Stream for T where T: futures::Stream<Item = Result<Message, Error>> + Send + Unpin + 'static
 {}
+
+#[cfg(all(test, not(feature = "network_transport"), not(target_family = "wasm")))]
+#[path = "offline_tests.rs"]
+mod offline_tests;

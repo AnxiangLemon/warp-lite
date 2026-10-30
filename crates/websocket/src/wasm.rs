@@ -1,4 +1,5 @@
 use futures::{Sink, Stream, StreamExt};
+#[cfg(feature = "network_transport")]
 use itertools::Itertools;
 pub use ws_stream_wasm::WsMessage as Message;
 use ws_stream_wasm::{WsErr, WsMessage, WsMeta};
@@ -9,9 +10,18 @@ pub async fn connect(
     url: impl AsRef<str>,
     protocols: impl IntoIterator<Item = &str>,
 ) -> anyhow::Result<WebSocket> {
-    let protocols = protocols.into_iter().collect_vec();
-    let (meta, stream) = WsMeta::connect(url, (!protocols.is_empty()).then_some(protocols)).await?;
-    Ok(WebSocket { stream, meta })
+    #[cfg(not(feature = "network_transport"))]
+    {
+        drop((url, protocols));
+        anyhow::bail!("WebSocket transport is disabled in this build");
+    }
+    #[cfg(feature = "network_transport")]
+    {
+        let protocols = protocols.into_iter().collect_vec();
+        let (meta, stream) =
+            WsMeta::connect(url, (!protocols.is_empty()).then_some(protocols)).await?;
+        Ok(WebSocket { stream, meta })
+    }
 }
 
 pub type Error = WsErr;

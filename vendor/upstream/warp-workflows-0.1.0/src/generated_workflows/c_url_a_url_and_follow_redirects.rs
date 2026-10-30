@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"cURL a URL and follow redirects"####.into(),command: r####"curl -L {{url}}"####.into(),tags: vec![r####"curl"####.into()].into_iter().collect(),description: Some(r####"Curls a URL and follows redirects by using the -L flag. To limit the number of redirects, append `--max-redirects <num>`."####.into()),arguments: vec![Argument {name: r####"url"####.into(),description: Some(r####"The url where the request should be sent."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/18474690/is-there-a-way-to-follow-redirects-with-command-line-curl"####.into()),author: Some(r####"freedev"####.into()),author_url: Some(r####"https://stackoverflow.com/users/336827/freedev"####.into()),shells: vec![].into_iter().collect(),}
+}

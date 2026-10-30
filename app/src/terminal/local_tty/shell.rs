@@ -572,8 +572,8 @@ impl WslShellStarter {
     }
 
     /// Gives the Windows path to the WSL home directory (e.g. `\\WSL$\home\user`).
-    pub(super) fn home_directory(&self) -> Option<PathBuf> {
-        let command_result = command::blocking::Command::new("wsl")
+    pub(super) async fn home_directory(&self) -> Option<PathBuf> {
+        let command_result = command::r#async::Command::new("wsl")
             .arg("--distribution")
             .arg(&self.distribution)
             .arg("--shell-type")
@@ -581,7 +581,8 @@ impl WslShellStarter {
             .arg("--")
             .arg("printenv")
             .arg("HOME")
-            .output();
+            .output()
+            .await;
         let home_dir =
             decode_wsl_path_result(command_result).filter(|s| !s.as_bytes().is_empty())?;
         warp_util::path::convert_wsl_to_windows_host_path(

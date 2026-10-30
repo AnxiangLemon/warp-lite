@@ -2774,7 +2774,9 @@ impl FeaturesPageView {
 
         features_page_view.refresh_tab_behavior_state(ctx);
         features_page_view.refresh_tab_behavior_dropdown(ctx);
-        features_page_view.refresh_preferred_graphics_backend_dropdown(ctx);
+        if !cfg!(feature = "warp_lite") {
+            features_page_view.refresh_preferred_graphics_backend_dropdown(ctx);
+        }
         features_page_view
     }
 
@@ -3652,6 +3654,9 @@ impl FeaturesPageView {
         &mut self,
         ctx: &mut ViewContext<Self>,
     ) {
+        if cfg!(feature = "warp_lite") {
+            return;
+        }
         self.graphics_backend_dropdown.update(ctx, |dropdown, ctx| {
             if let Some(window) = ctx.windows().platform_window(ctx.window_id()) {
                 let mut items = vec![DropdownItem::new(
@@ -7201,7 +7206,9 @@ impl SmartSelectWidget {
         Flex::column()
             .with_child(
                 ui_builder
-                    .label("Characters considered part of a word".to_string())
+                    .label(super::lite_i18n::label(
+                        "Characters considered part of a word",
+                    ))
                     .with_style(UiComponentStyles {
                         margin: Some(Coords {
                             top: 10.0,

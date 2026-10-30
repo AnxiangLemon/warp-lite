@@ -1,16 +1,17 @@
 use std::fs::File;
 use std::io::{Cursor, Read};
 use std::path::Path;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use anyhow::{Result, anyhow, ensure};
 use bytes::Bytes;
+use image::codecs::jpeg::JpegDecoder;
 use image::codecs::png::PngDecoder;
-use image::{DynamicImage, Limits};
+use image::{DynamicImage, ImageDecoder as _, ImageFormat, Limits};
 use warpui::assets::asset_cache::{AssetSource, AsyncAssetId, AsyncAssetType};
 use warpui::image_cache::{CustomImageFormat, CustomImageHeader};
 
-use super::theme::{Image, WarpTheme};
+use super::theme::Image;
 
 const MAX_FILE_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_INPUT_DIMENSION: u32 = 4096;
@@ -40,12 +41,25 @@ fn load_background(path: &Path) -> Result<Image> {
     limits.max_image_width = Some(MAX_INPUT_DIMENSION);
     limits.max_image_height = Some(MAX_INPUT_DIMENSION);
     limits.max_alloc = Some(96 * 1024 * 1024);
-    let decoder = PngDecoder::with_limits(Cursor::new(bytes), limits)?;
-    ensure!(
-        !decoder.is_apng()?,
-        "Animated backgrounds are not supported"
-    );
-    let decoded = DynamicImage::from_decoder(decoder)?;
+    let decoded = match image::guess_format(&bytes)? {
+        ImageFormat::Png => {
+            let decoder = PngDecoder::with_limits(Cursor::new(bytes), limits)?;
+            ensure!(
+                !decoder.is_apng()?,
+                "Animated backgrounds are not supported"
+            );
+            DynamicImage::from_decoder(decoder)?
+        }
+        ImageFormat::Jpeg => {
+            let mut decoder = JpegDecoder::new(Cursor::new(bytes))?;
+            decoder.set_limits(limits)?;
+            let orientation = decoder.orientation()?;
+            let mut decoded = DynamicImage::from_decoder(decoder)?;
+            decoded.apply_orientation(orientation);
+            decoded
+        }
+        _ => return Err(anyhow!("Background must be a static PNG or JPEG image")),
+    };
     let decoded =
         if decoded.width() > MAX_TEXTURE_DIMENSION || decoded.height() > MAX_TEXTURE_DIMENSION {
             decoded.thumbnail(MAX_TEXTURE_DIMENSION, MAX_TEXTURE_DIMENSION)
@@ -76,33 +90,29 @@ fn load_background(path: &Path) -> Result<Image> {
     })
 }
 
-fn startup_background() -> Option<Image> {
-    static BACKGROUND: OnceLock<Option<Image>> = OnceLock::new();
-    BACKGROUND
-        .get_or_init(|| {
-            // Recovery must not reload the optional image that may have caused a crash.
-            if std::env::args_os().skip(1).any(|argument| {
-                let argument = argument.to_string_lossy();
-                argument == "--crash-recovery-mechanism"
-                    || argument.starts_with("--crash-recovery-mechanism=")
-            }) {
-                return None;
-            }
-            #[cfg(feature = "integration_tests")]
-            let directory = std::env::var_os("WARP_LITE_TEST_BACKGROUND_DIR")
-                .map(std::path::PathBuf::from)
-                .map(Ok)
-                .unwrap_or_else(warp_assets::background_directory);
-            #[cfg(not(feature = "integration_tests"))]
-            let directory = warp_assets::background_directory();
-            let path = directory.ok()?.join("background.png");
-            load_background(&path).ok()
-        })
-        .clone()
+fn load_background_from_directory(directory: &Path) -> Option<Image> {
+    ["background.png", "background.jpg", "background.jpeg"]
+        .into_iter()
+        .find_map(|name| load_background(&directory.join(name)).ok())
 }
 
-pub fn apply_lite_background(theme: &mut WarpTheme) {
-    theme.set_background_image(startup_background());
+pub(crate) fn load_startup_background() -> Option<Image> {
+    // Recovery must not reload the optional image that may have caused a crash.
+    if std::env::args_os().skip(1).any(|argument| {
+        let argument = argument.to_string_lossy();
+        argument == "--crash-recovery-mechanism"
+            || argument.starts_with("--crash-recovery-mechanism=")
+    }) {
+        return None;
+    }
+    #[cfg(feature = "integration_tests")]
+    let directory = std::env::var_os("WARP_LITE_TEST_BACKGROUND_DIR")
+        .map(std::path::PathBuf::from)
+        .map(Ok)
+        .unwrap_or_else(warp_assets::background_directory);
+    #[cfg(not(feature = "integration_tests"))]
+    let directory = warp_assets::background_directory();
+    load_background_from_directory(&directory.ok()?)
 }
 
 #[cfg(test)]

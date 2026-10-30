@@ -1,0 +1,5 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Delete local and remote git branch"####.into(),command: r####"git push -d {{remote_name}} {{branch_name}}
+git branch -d {{branch_name}}"####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Deletes a branch both locally and remotely. The first command deletes the remote branch, whereas the second command deletes the command locally."####.into()),arguments: vec![Argument {name: r####"remote_name"####.into(),description: Some(r####"The name of the remote where the branch lives"####.into()),default_value: None,},Argument {name: r####"branch_name"####.into(),description: Some(r####"The name of the branch to delete"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/2003505/how-do-i-delete-a-git-branch-locally-and-remotely"####.into()),author: Some(r####"Matthew Rankin"####.into()),author_url: Some(r####"https://stackoverflow.com/users/95592/matthew-rankin"####.into()),shells: vec![].into_iter().collect(),}
+}

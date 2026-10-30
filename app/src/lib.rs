@@ -1372,7 +1372,10 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
             }
         }
         #[cfg(feature = "warp_lite")]
-        log::info!("Using system FXC for DirectX shader compilation");
+        {
+            app_builder.use_memory_efficient_gpu_allocations();
+            log::info!("Using system FXC for DirectX shader compilation");
+        }
     }
 
     // Override any bindings that have a `Custom` trigger to a `Keystroke`-based trigger. In theory,
@@ -2055,6 +2058,17 @@ pub(crate) fn initialize_app(
 
     let user_is_logged_in = auth_state.is_logged_in();
 
+    #[cfg(feature = "warp_lite")]
+    ctx.on_first_frame_drawn(|ctx| {
+        let timing_data = IntervalTimer::handle(ctx).update(ctx, |timer, _| {
+            timer.mark_interval_end("FIRST_FRAME_DRAWN");
+            timer.compute_stats()
+        });
+        if let Ok(timing_data) = serde_json::to_string(&timing_data) {
+            log::debug!("Lite startup timings: {timing_data}");
+        }
+    });
+
     if user_is_logged_in {
         // Set the first frame callback to record the app's startup time.
         // This is only sent for logged-in users so that new users don't skew performance metrics.
@@ -2133,7 +2147,9 @@ pub(crate) fn initialize_app(
     {
         let imported_config_model = ctx.add_singleton_model(ImportedConfigModel::new);
 
-        if ChannelState::channel() != warp_core::channel::Channel::Integration {
+        if !cfg!(feature = "warp_lite")
+            && ChannelState::channel() != warp_core::channel::Channel::Integration
+        {
             imported_config_model.update(ctx, |model, ctx| {
                 model.search_for_settings_to_import(ctx);
             });
@@ -2830,7 +2846,7 @@ pub(crate) fn initialize_app(
     });
     ctx.add_singleton_model(move |_| persistence_writer);
 
-    ctx.add_singleton_model(input_classifier::InputClassifierModel::new);
+    ctx.add_singleton_model(|_| input_classifier::InputClassifierModel::default());
 
     ctx.add_singleton_model(move |_| IgnoredSuggestionsModel::new(persisted_ignored_suggestions));
 

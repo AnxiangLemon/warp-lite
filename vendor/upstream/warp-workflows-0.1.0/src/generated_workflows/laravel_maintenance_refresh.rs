@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Automatically refresh Laravel maintenance mode"####.into(),command: r####"php artisan down --refresh={{refresh_duration}}"####.into(),tags: vec![r####"laravel"####.into(),r####"php"####.into()].into_iter().collect(),description: Some(r####"Refresh Laravel maintenance mode automatically after the specified number of seconds is due."####.into()),arguments: vec![Argument {name: r####"refresh_duration"####.into(),description: Some(r####"Specify the number of seconds the page should be refreshed."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://laravel.com/docs/5.4/installation"####.into()),author: Some(r####"Charles Adu Boakye"####.into()),author_url: Some(r####"https://www.linkedin.com/in/charles-adu-boakye/"####.into()),shells: vec![].into_iter().collect(),}
+}

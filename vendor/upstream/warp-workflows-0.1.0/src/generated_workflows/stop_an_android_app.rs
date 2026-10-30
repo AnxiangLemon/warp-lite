@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Stop an Android app"####.into(),command: r####"adb shell am force-stop {{package_name}}"####.into(),tags: vec![r####"android"####.into(),r####"adb"####.into()].into_iter().collect(),description: Some(r####"Force stops an Android app using adb by using the package name."####.into()),arguments: vec![Argument {name: r####"package_name"####.into(),description: Some(r####"The package name for the application"####.into()),default_value: Some(r####"com.my.app.package"####.into()),}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/3117095/stopping-an-android-app-from-console"####.into()),author: Some(r####"Enrico Ros"####.into()),author_url: Some(r####"https://stackoverflow.com/users/1304251/enrico-ros"####.into()),shells: vec![].into_iter().collect(),}
+}

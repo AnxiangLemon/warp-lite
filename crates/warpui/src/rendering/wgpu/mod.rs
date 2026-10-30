@@ -15,6 +15,27 @@ use crate::{rendering::GPUPowerPreference, windowing};
 
 static WGPU_INSTANCE: LazyLock<Mutex<Option<Arc<wgpu::Instance>>>> = LazyLock::new(Mutex::default);
 
+struct DeferredInstance {
+    display_handle: Arc<dyn WgpuHasDisplayHandle>,
+    instance: Option<Arc<wgpu::Instance>>,
+}
+
+static DEFERRED_INSTANCE: LazyLock<Mutex<Option<DeferredInstance>>> = LazyLock::new(Mutex::default);
+
+fn defer_unused_backends() -> bool {
+    #[cfg(windows)]
+    {
+        crate::platform::windows::MEMORY_EFFICIENT_GPU_ALLOCATIONS
+            .get()
+            .is_some()
+            && wgpu::Backends::from_env().is_none()
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
 /// Drops and recreates the global shared [`wgpu::Instance`].
 pub fn reset_wgpu_instance(display_handle: Box<dyn wgpu::wgt::WgpuHasDisplayHandle>) {
     // Drop the existing wgpu instance.
@@ -31,35 +52,21 @@ pub fn reset_wgpu_instance(display_handle: Box<dyn wgpu::wgt::WgpuHasDisplayHand
 
 /// Initializes the global wgpu instance.  This MUST be called before [`get_wgpu_instance()`].
 pub fn init_wgpu_instance(display_handle: Box<dyn WgpuHasDisplayHandle>) {
-    // Check whether DirectComposition should be explicitly disabled on Windows.
-    let disable_dcomp = std::env::var("WARP_USE_DIRECT_COMPOSITION")
-        .ok()
-        .is_some_and(|val| {
-            let val = val.to_lowercase();
-            val == "0" || val == "false"
+    let display_handle: Arc<dyn WgpuHasDisplayHandle> = display_handle.into();
+    *DEFERRED_INSTANCE
+        .lock()
+        .expect("wgpu instance lock should not be poisoned") =
+        defer_unused_backends().then(|| DeferredInstance {
+            display_handle: display_handle.clone(),
+            instance: None,
         });
-
-    // A helper function to create a wgpu instance with the appropriate configuration.
     let create_instance = move || {
-        let dx12_shader_compiler = get_dx12_shader_compiler();
-        Arc::new(wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu_backend_options(),
-            backend_options: wgpu::BackendOptions {
-                dx12: wgpu::Dx12BackendOptions {
-                    presentation_system: if disable_dcomp {
-                        wgpu::wgt::Dx12SwapchainKind::DxgiFromHwnd
-                    } else {
-                        wgpu::wgt::Dx12SwapchainKind::DxgiFromVisual
-                    },
-                    shader_compiler: dx12_shader_compiler.unwrap_or(wgpu::Dx12Compiler::Fxc),
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-            flags: wgpu::InstanceFlags::empty(),
-            memory_budget_thresholds: Default::default(),
-            display: Some(display_handle),
-        }))
+        let backends = if defer_unused_backends() {
+            wgpu::Backends::DX12
+        } else {
+            wgpu_backend_options()
+        };
+        create_wgpu_instance(display_handle.clone(), backends)
     };
 
     // A helper function for initializing the WGPU_INSTANCE static variable.
@@ -67,7 +74,7 @@ pub fn init_wgpu_instance(display_handle: Box<dyn WgpuHasDisplayHandle>) {
     // If `lock_acquired_tx` is provided, it will be used to signal when the lock has been acquired, allowing
     // for asynchronous initialization in a dedicated thread while ensuring that `get_wgpu_instance()` cannot
     // race with the initialization.
-    let init_static_var = |lock_acquired_tx: Option<std::sync::mpsc::Sender<()>>| {
+    let init_static_var = move |lock_acquired_tx: Option<std::sync::mpsc::Sender<()>>| {
         let mut instance_lock_guard = WGPU_INSTANCE
             .lock()
             .expect("wgpu instance lock should not be poisoned");
@@ -129,6 +136,50 @@ pub fn init_wgpu_instance(display_handle: Box<dyn WgpuHasDisplayHandle>) {
     }
 }
 
+fn create_wgpu_instance(
+    display_handle: Arc<dyn WgpuHasDisplayHandle>,
+    backends: wgpu::Backends,
+) -> Arc<wgpu::Instance> {
+    let disable_dcomp = std::env::var("WARP_USE_DIRECT_COMPOSITION")
+        .ok()
+        .is_some_and(|val| matches!(val.to_lowercase().as_str(), "0" | "false"));
+    let dx12_shader_compiler = get_dx12_shader_compiler();
+    Arc::new(wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends,
+        backend_options: wgpu::BackendOptions {
+            dx12: wgpu::Dx12BackendOptions {
+                presentation_system: if disable_dcomp {
+                    wgpu::wgt::Dx12SwapchainKind::DxgiFromHwnd
+                } else {
+                    wgpu::wgt::Dx12SwapchainKind::DxgiFromVisual
+                },
+                shader_compiler: dx12_shader_compiler.unwrap_or(wgpu::Dx12Compiler::Fxc),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        flags: wgpu::InstanceFlags::empty(),
+        memory_budget_thresholds: Default::default(),
+        display: Some(Box::new(display_handle)),
+    }))
+}
+
+fn get_full_wgpu_instance() -> Arc<wgpu::Instance> {
+    let primary = get_wgpu_instance();
+    let mut deferred = DEFERRED_INSTANCE
+        .lock()
+        .expect("wgpu instance lock should not be poisoned");
+    let Some(deferred) = deferred.as_mut() else {
+        return primary;
+    };
+    deferred
+        .instance
+        .get_or_insert_with(|| {
+            create_wgpu_instance(deferred.display_handle.clone(), wgpu_backend_options())
+        })
+        .clone()
+}
+
 /// Helper function to get a [`wgpu::Instance`].
 ///
 /// This should always be used over [`wgpu::Instance::new`] or
@@ -154,7 +205,7 @@ pub async fn print_wgpu_adapters(
     backend_preference: Option<GraphicsBackend>,
     windowing_system: Option<windowing::System>,
 ) {
-    let instance = get_wgpu_instance();
+    let instance = get_full_wgpu_instance();
     let backends = wgpu_backend_options();
     let adapters = instance.enumerate_adapters(backends).await;
 

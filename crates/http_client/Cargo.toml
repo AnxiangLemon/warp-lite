@@ -7,7 +7,7 @@ license.workspace = true
 
 [features]
 default = ["network_transport"]
-network_transport = []
+network_transport = ["reqwest/default"]
 test-util = []
 
 [dependencies]

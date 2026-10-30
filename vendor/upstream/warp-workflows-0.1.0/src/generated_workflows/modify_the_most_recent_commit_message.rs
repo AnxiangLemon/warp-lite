@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Modify the most recent commit message"####.into(),command: r####"git commit --amend -m "{{new_commit_message}}""####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Amends the most recent git commit with a new message. This will not update the commit on a remote branch unless you force push the branch,"####.into()),arguments: vec![Argument {name: r####"new_commit_message"####.into(),description: Some(r####"The new commit message"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/179123/how-to-modify-existing-unpushed-commit-messages"####.into()),author: Some(r####"lfx_cool"####.into()),author_url: Some(r####"https://stackoverflow.com/users/268413/lfx-cool"####.into()),shells: vec![].into_iter().collect(),}
+}

@@ -1,0 +1,35 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+
+
+["package"]
+"edition" = "2018"
+"name" = "dwrote"
+"version" = "0.11.5"
+"authors" = ["The Servo Project Developers", "Vladimir Vukicevic <vladimir@pobox.com>"]
+"build" = false
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "Lightweight binding to DirectWrite."
+"readme" = "README.md"
+"license" = "MPL-2.0"
+"repository" = "https://github.com/servo/dwrote-rs"
+"metadata" = {"docs" = {"rs" = {"targets" = ["x86_64-pc-windows-msvc"]}}}
+
+["features"]
+"default" = ["serde_serialization"]
+"serde_serialization" = ["serde", "serde_derive"]
+
+["lib"]
+"name" = "dwrote"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"lazy_static" = "1"
+"libc" = "0.2"
+"wio" = "0.2"
+"serde" = {"version" = "1.0", "optional" = true}
+"serde_derive" = {"version" = "1.0", "optional" = true}
+"winapi" = {"version" = "0.3.6", "features" = ["dwrite", "dwrite_1", "dwrite_3", "winnt", "unknwnbase", "libloaderapi", "winnls"]}

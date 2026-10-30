@@ -1761,10 +1761,7 @@ impl PaneGroup {
                         }
                     });
 
-                let startup_directory = terminal_snapshot
-                    .cwd
-                    .map(PathBuf::from)
-                    .filter(|path| path.is_dir());
+                let startup_directory = terminal_snapshot.cwd.map(PathBuf::from);
 
                 // Filter conversation IDs to only include those that have task messages
                 // and are not entirely passive (ignored suggestions).

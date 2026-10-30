@@ -812,7 +812,7 @@ impl SettingsPageMeta for KeybindingsView {
 
         self.search_editor.update(ctx, |editor, ctx| {
             editor.clear_buffer_and_reset_undo_stack(ctx);
-            editor.set_placeholder_text(SEARCH_PLACEHOLDER, ctx);
+            editor.set_placeholder_text(super::lite_i18n::text(SEARCH_PLACEHOLDER), ctx);
         });
 
         if allow_steal_focus {

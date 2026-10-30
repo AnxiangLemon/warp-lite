@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Restore a dump file from a mysqldump"####.into(),command: r####"mysql -u {{user}} -p < {{dump_filepath}}"####.into(),tags: vec![r####"mysql"####.into()].into_iter().collect(),description: None,arguments: vec![Argument {name: r####"user"####.into(),description: None,default_value: None,},Argument {name: r####"dump_filepath"####.into(),description: Some(r####"The filepath to the dump file"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/105776/how-do-i-restore-a-dump-file-from-mysqldump"####.into()),author: Some(r####"Justin Bennett"####.into()),author_url: Some(r####"https://stackoverflow.com/users/271/justin-bennett"####.into()),shells: vec![].into_iter().collect(),}
+}

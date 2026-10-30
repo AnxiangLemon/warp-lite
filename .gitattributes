@@ -1,3 +1,5 @@
-*.pdb filter=lfs diff=lfs merge=lfs -text
-crates/input_classifier/models/** filter=lfs diff=lfs merge=lfs -text
-crates/input_classifier/models/**/*tokenizer.json -filter -diff -merge text linguist-generated=true
+# Preserve the bytes recorded in vendor/sources.json on every platform.
+/vendor/** -text whitespace=-blank-at-eol,-blank-at-eof linguist-vendored
+/script/run text eol=lf
+/script/run-lite text eol=lf
+/script/bootstrap text eol=lf

@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Search committed files"####.into(),command: r####"git grep {{pattern}} $(git rev-list --all)"####.into(),tags: vec![r####"search"####.into(),r####"git"####.into()].into_iter().collect(),description: Some(r####"Search for a pattern among all committed files in a repository."####.into()),arguments: vec![Argument {name: r####"pattern"####.into(),description: Some(r####"The pattern to search for"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/2928584/how-to-grep-search-committed-code-in-the-git-history"####.into()),author: Some(r####"Jeet"####.into()),author_url: Some(r####"https://stackoverflow.com/users/268330/jeet"####.into()),shells: vec![].into_iter().collect(),}
+}

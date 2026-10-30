@@ -82,3 +82,9 @@ __pycache__/
 .env.*
 !.env.example
 !.env.sample
+
+# Native debug symbols are build artifacts, not runtime dependencies.
+*.pdb
+
+# Windows PowerShell may create this cache when tests use an isolated profile.
+/Microsoft/Windows/PowerShell/ModuleAnalysisCache

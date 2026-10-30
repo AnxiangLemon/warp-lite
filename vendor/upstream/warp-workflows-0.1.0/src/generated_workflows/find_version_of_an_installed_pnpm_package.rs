@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Find version of an installed pnpm package"####.into(),command: r####"pnpm list {{package_name}}"####.into(),tags: vec![r####"pnpm"####.into()].into_iter().collect(),description: Some(r####"Lists the version name of an installed package. To see the versions of all installed packages, run `pnpm list` without passing a package name."####.into()),arguments: vec![Argument {name: r####"package_name"####.into(),description: Some(r####"The name of the package"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://pnpm.io/6.x/cli/list"####.into()),author: Some(r####"Tim Smith"####.into()),author_url: Some(r####"https://timsmith.tech"####.into()),shells: vec![].into_iter().collect(),}
+}

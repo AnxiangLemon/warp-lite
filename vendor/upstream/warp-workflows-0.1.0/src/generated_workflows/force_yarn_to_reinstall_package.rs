@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Force Yarn to reinstall package"####.into(),command: r####"yarn upgrade {{package_name}}"####.into(),tags: vec![r####"yarn"####.into()].into_iter().collect(),description: Some(r####"Force updates a package to the latest version based on the version based on the version range specified in the package.json file."####.into()),arguments: vec![Argument {name: r####"package_name"####.into(),description: Some(r####"The name of the package that should be reinstalled"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/41864099/how-do-i-force-yarn-to-reinstall-a-package"####.into()),author: Some(r####"Ilia Liachin"####.into()),author_url: Some(r####"https://stackoverflow.com/users/858602/ilia-liachin"####.into()),shells: vec![].into_iter().collect(),}
+}

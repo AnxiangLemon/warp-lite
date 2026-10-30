@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Squash last n commits together"####.into(),command: r####"git reset --soft HEAD~{{num_commits}} && git commit"####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Squashes the last n commits together. This approach requires rewriting a commit message for the new squashed changes, unlike running `git rebase`."####.into()),arguments: vec![Argument {name: r####"num_commits"####.into(),description: Some(r####"The number of commits that should be squashed together"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/5189560/squash-my-last-x-commits-together-using-git"####.into()),author: Some(r####"Chris Johnsen"####.into()),author_url: Some(r####"https://stackoverflow.com/users/193688/chris-johnsen"####.into()),shells: vec![].into_iter().collect(),}
+}

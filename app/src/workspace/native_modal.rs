@@ -1,6 +1,6 @@
 use settings::Setting as _;
 use warp_core::ui::theme::Fill;
-use warpui::elements::{Align, Container, Empty, Flex, MouseStateHandle, ParentElement};
+use warpui::elements::{Align, Container, Empty, Flex, MouseStateHandle, ParentElement, Text};
 use warpui::fonts::Weight;
 use warpui::keymap::FixedBinding;
 use warpui::modals::{AlertDialogWithCallbacks, AppModalCallback};
@@ -137,11 +137,17 @@ impl View for NativeModal {
             return Empty::new().finish();
         };
         let appearance = Appearance::as_ref(app);
+        let compact = cfg!(feature = "warp_lite");
         let button_style = UiComponentStyles {
-            font_size: Some(14.),
-            font_weight: Some(Weight::Bold),
-            width: Some(240.),
-            height: Some(40.),
+            font_family_id: Some(appearance.ui_font_family()),
+            font_size: Some(if compact { 13. } else { 14. }),
+            font_weight: Some(if compact {
+                Weight::Medium
+            } else {
+                Weight::Bold
+            }),
+            width: Some(if compact { 104. } else { 240. }),
+            height: Some(if compact { 34. } else { 40. }),
             ..Default::default()
         };
 
@@ -167,7 +173,37 @@ impl View for NativeModal {
             );
         }
 
-        for (i, modal_button) in alert_dialog.button_data.iter().enumerate() {
+        let mut dialog = Dialog::new(
+            alert_dialog.message_text.clone(),
+            (!compact).then(|| alert_dialog.info_text.clone()),
+            UiComponentStyles {
+                width: Some(if compact { 400. } else { 280. }),
+                padding: Some(Coords::uniform(24.)),
+                font_family_id: Some(if compact {
+                    appearance.ui_font_family()
+                } else {
+                    appearance.header_font_family()
+                }),
+                ..dialog_styles(appearance)
+            },
+        );
+        if compact {
+            dialog = dialog.with_child(
+                Text::new(
+                    alert_dialog.info_text.clone(),
+                    appearance.ui_font_family(),
+                    14.,
+                )
+                .with_color(appearance.theme().foreground().into_solid())
+                .finish(),
+            );
+        }
+
+        let mut buttons: Vec<_> = alert_dialog.button_data.iter().enumerate().collect();
+        if compact && buttons.len() > 1 {
+            buttons.rotate_left(1);
+        }
+        for (i, modal_button) in buttons {
             let button = Align::new(
                 appearance
                     .ui_builder()
@@ -197,24 +233,22 @@ impl View for NativeModal {
             let button =
                 warpui::elements::SavePosition::new(button, &format!("native-modal-button:{i}"))
                     .finish();
-            dialog_column_contents.push(Container::new(button).with_padding_bottom(8.).finish());
+            if compact {
+                dialog = dialog
+                    .with_bottom_row_child(Container::new(button).with_margin_left(8.).finish());
+            } else {
+                dialog_column_contents
+                    .push(Container::new(button).with_padding_bottom(8.).finish());
+            }
         }
 
         let dialog_column = Flex::column()
             .with_children(dialog_column_contents)
             .finish();
-        let dialog = Dialog::new(
-            alert_dialog.message_text.clone(),
-            Some(alert_dialog.info_text.clone()),
-            UiComponentStyles {
-                width: Some(280.),
-                padding: Some(Coords::uniform(24.)),
-                ..dialog_styles(appearance)
-            },
-        )
-        .with_child(dialog_column)
-        .build()
-        .finish();
+        if !compact {
+            dialog = dialog.with_child(dialog_column);
+        }
+        let dialog = dialog.build().finish();
 
         #[cfg(feature = "integration_tests")]
         let dialog = warpui::elements::SavePosition::new(dialog, "native-modal-dialog").finish();

@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Manage Plugins in your NativeScript project."####.into(),command: r####"ns plugin {{command}}"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"Lets you manage the plugins for your NativeScript project."####.into()),arguments: vec![Argument {name: r####"command"####.into(),description: Some(r####"Extends the plugin command. Options - add, remove, update, build, create"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/lib-management/plugin.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

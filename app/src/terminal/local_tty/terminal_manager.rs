@@ -12,6 +12,7 @@ use std::thread::JoinHandle;
 
 use anyhow::Context as _;
 use async_broadcast::InactiveReceiver;
+use instant::Instant;
 #[cfg(unix)]
 use nix::sys::termios::LocalFlags;
 use parking_lot::{FairMutex, Mutex};
@@ -349,6 +350,7 @@ impl<S> TerminalManager<S> {
                 .map(|blocks| blocks.len())
                 .unwrap_or(0)
         );
+        let restore_started = Instant::now();
         let model = terminal_manager::create_terminal_model(
             startup_directory.clone(),
             all_restored_blocks,
@@ -363,6 +365,10 @@ impl<S> TerminalManager<S> {
             },
             block_spacing,
             ctx,
+        );
+        log::debug!(
+            "Terminal startup: model restored in {:?}",
+            restore_started.elapsed()
         );
         let colors = model.colors();
         let model = Arc::new(FairMutex::new(model));
@@ -413,6 +419,7 @@ impl<S> TerminalManager<S> {
         let remote_server_controller =
             init_remote_server_controller(&pty_controller, &model_events, ctx);
         let size_info = model.lock().block_list().size().to_owned();
+        let surface_started = Instant::now();
         let TerminalSurfaceResult { surface, post_wire } = create_surface(
             TerminalSurfaceInit {
                 wakeups_rx,
@@ -424,6 +431,10 @@ impl<S> TerminalManager<S> {
                 inactive_pty_reads_rx: inactive_pty_reads_rx.clone(),
             },
             ctx,
+        );
+        log::debug!(
+            "Terminal startup: surface created in {:?}",
+            surface_started.elapsed()
         );
         wire_up_pty_controller_with_surface(
             &pty_controller,
@@ -465,13 +476,22 @@ impl<S> TerminalManager<S> {
             let terminal_manager = box_manager(terminal_manager);
             ctx.spawn(
                 async move {
-                    match wsl_name_or_shell_starter {
+                    // Restored UNC paths can wake WSL or wait on a network share.
+                    let startup_directory = startup_directory.filter(|path| path.is_dir());
+                    let shell_starter_source = match wsl_name_or_shell_starter {
                         Some(starter_source) => starter_source.to_shell_starter_source().await,
                         None => None,
-                    }
+                    };
+                    let startup_directory = match (&shell_starter_source, startup_directory) {
+                        (Some(ShellStarterSource::Override(ShellStarter::Wsl(starter))), None) => {
+                            starter.home_directory().await
+                        }
+                        (_, directory) => directory,
+                    };
+                    (shell_starter_source, startup_directory)
                 },
                 move |terminal_manager: &mut Box<dyn TerminalManagerTrait>,
-                      shell_starter_source,
+                      (shell_starter_source, startup_directory),
                       ctx| {
                     let Some(terminal_manager) =
                         TerminalManagerTrait::as_any_mut(terminal_manager.as_mut())
@@ -580,15 +600,6 @@ fn on_shell_determined<S: TerminalSurface>(
             manager.model().lock().exit(ExitReason::ShellNotFound);
             return;
         }
-    };
-
-    // In WSL, default to the WSL home directory, not the native Windows home directory.
-    let startup_directory = if let (ShellStarter::Wsl(wsl_shell_starter), None) =
-        (&shell_starter, &startup_directory)
-    {
-        wsl_shell_starter.home_directory()
-    } else {
-        startup_directory
     };
 
     // Show a "shell unsupported" banner, if applicable.

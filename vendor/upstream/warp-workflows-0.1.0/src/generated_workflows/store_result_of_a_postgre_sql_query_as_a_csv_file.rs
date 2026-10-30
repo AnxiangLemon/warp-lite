@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Store result of a PostgreSQL query as a CSV file"####.into(),command: r####"psql -d dbname -t -A -F"," -c "{{query}}" > {{file_name}}"####.into(),tags: vec![r####"postgresql"####.into()].into_iter().collect(),description: Some(r####"Executes a query against a Postgres database and writes the output to a new file"####.into()),arguments: vec![Argument {name: r####"query"####.into(),description: None,default_value: None,},Argument {name: r####"file_name"####.into(),description: None,default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/1517635/save-pl-pgsql-output-from-postgresql-to-a-csv-file"####.into()),author: Some(r####"sorin"####.into()),author_url: Some(r####"https://stackoverflow.com/users/99834/sorin"####.into()),shells: vec![].into_iter().collect(),}
+}

@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Open a path in VS Code"####.into(),command: r####"code {{path}}"####.into(),tags: vec![r####"code"####.into()].into_iter().collect(),description: Some(r####"This workflow opens the current or the specified folder in VS Code."####.into()),arguments: vec![Argument {name: r####"path"####.into(),description: Some(r####"The file or directory where VS Code opens. The default is the current directory."####.into()),default_value: Some(r####"."####.into()),}].into_iter().collect(),source_url: Some(r####"https://code.visualstudio.com/docs/setup/mac#_launching-from-the-command-line"####.into()),author: Some(r####"pan93412"####.into()),author_url: Some(r####"https://github.com/pan93412"####.into()),shells: vec![].into_iter().collect(),}
+}

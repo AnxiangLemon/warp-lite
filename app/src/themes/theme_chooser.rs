@@ -46,7 +46,7 @@ use crate::window_settings::WindowSettings;
 use crate::workspace::PANEL_HEADER_HEIGHT;
 
 // All units in px
-const THEME_CHOOSER_TITLE: &str = "Themes";
+const THEME_CHOOSER_TITLE: &str = crate::lite_i18n::choose("Themes", "主题");
 const CLOSE_BUTTON_MARGIN_RIGHT: f32 = 6.;
 const TITLE_FONT_SIZE: f32 = 16.;
 const TITLE_MARGIN: f32 = 12.;
@@ -114,15 +114,24 @@ impl ThemeChooserMode {
 
     fn render_hint_text(&self, appearance: &Appearance) -> Box<dyn Element> {
         let hint_text = match self {
-            ThemeChooserMode::SystemAgnostic => appearance
-                .ui_builder()
-                .paragraph("Change your current theme.".to_string()),
-            ThemeChooserMode::SystemLight => appearance
-                .ui_builder()
-                .paragraph("Pick a theme for when your system is in light mode.".to_string()),
-            ThemeChooserMode::SystemDark => appearance
-                .ui_builder()
-                .paragraph("Pick a theme for when your system is in dark mode.".to_string()),
+            ThemeChooserMode::SystemAgnostic => appearance.ui_builder().paragraph(
+                crate::lite_i18n::choose("Change your current theme.", "选择终端的配色主题。")
+                    .to_owned(),
+            ),
+            ThemeChooserMode::SystemLight => appearance.ui_builder().paragraph(
+                crate::lite_i18n::choose(
+                    "Pick a theme for when your system is in light mode.",
+                    "选择系统浅色模式下使用的主题。",
+                )
+                .to_owned(),
+            ),
+            ThemeChooserMode::SystemDark => appearance.ui_builder().paragraph(
+                crate::lite_i18n::choose(
+                    "Pick a theme for when your system is in dark mode.",
+                    "选择系统深色模式下使用的主题。",
+                )
+                .to_owned(),
+            ),
         };
         hint_text
             .build()
@@ -206,7 +215,12 @@ impl ThemeChooser {
                         PropagateAndNoOpNavigationKeys::Always,
                     ..Default::default()
                 };
-                EditorView::single_line(options, ctx)
+                let mut editor = EditorView::single_line(options, ctx);
+                editor.set_placeholder_text(
+                    crate::lite_i18n::choose("Search themes…", "搜索主题…"),
+                    ctx,
+                );
+                editor
             })
         };
 
@@ -336,7 +350,12 @@ impl ThemeChooser {
                     Some(
                         self.themes
                             .iter()
-                            .filter(|item| item.kind.matches(&search_term))
+                            .filter(|item| {
+                                item.kind.matches(&search_term)
+                                    || crate::settings_view::lite_i18n::theme_label(&item.kind)
+                                        .to_lowercase()
+                                        .contains(&search_term.to_lowercase())
+                            })
                             .cloned()
                             .collect::<Vec<_>>(),
                     )
@@ -747,7 +766,10 @@ impl ThemeChooser {
                 .with_child(
                     appearance
                         .ui_builder()
-                        .span("No matching themes!".to_string())
+                        .span(
+                            crate::lite_i18n::choose("No matching themes!", "未找到匹配的主题")
+                                .to_owned(),
+                        )
                         .build()
                         .finish(),
                 )
@@ -921,9 +943,13 @@ impl ThemeChooserItem {
                 1.,
                 Container::new(
                     ConstrainedBox::new(
-                        Text::new_inline(self.kind.to_string(), font_family, THEME_NAME_FONT_SIZE)
-                            .with_color(text_color)
-                            .finish(),
+                        Text::new_inline(
+                            crate::settings_view::lite_i18n::theme_label(&self.kind),
+                            font_family,
+                            THEME_NAME_FONT_SIZE,
+                        )
+                        .with_color(text_color)
+                        .finish(),
                     )
                     .with_max_width(190.)
                     .finish(),

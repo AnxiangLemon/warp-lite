@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Tap a Homebrew formula repository from GitHub"####.into(),command: r####"brew tap {{formula_repository}}"####.into(),tags: vec![r####"homebrew"####.into()].into_iter().collect(),description: Some(r####"Taps a Homebrew formula repository (a repository that contains Homebrew formulae) from GitHub."####.into()),arguments: vec![Argument {name: r####"tap_repository"####.into(),description: Some(r####"The repository to tap (in format of "username/repo")"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://docs.brew.sh/Manpage"####.into()),author: Some(r####"Wyatt-Stanke"####.into()),author_url: Some(r####"https://github.com/Wyatt-Stanke"####.into()),shells: vec![].into_iter().collect(),}
+}

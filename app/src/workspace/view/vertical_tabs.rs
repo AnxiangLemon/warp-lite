@@ -2090,8 +2090,11 @@ fn render_tab_group_internal(
         }
     };
     // Tabs inside a group skip the per-tab outer container; the group provides it.
+    let is_lite_settings = cfg!(feature = "warp_lite")
+        && visible_pane_ids.len() == 1
+        && visible_pane_ids[0].pane_type() == IPaneType::Settings;
     let uses_outer_group_container =
-        !in_tab_group && uses_outer_group_container(display_granularity);
+        !in_tab_group && !is_lite_settings && uses_outer_group_container(display_granularity);
     let representative_pane_ids = pane_ids_for_display_granularity(
         &visible_pane_ids,
         pane_group.focused_pane_id(app),
@@ -2774,15 +2777,17 @@ fn render_grouped_tabs_header(
     let sub_text_color = theme.sub_text_color(theme.background());
     let group_id = group.id;
 
-    // Collapsed groups show the icon collage (same component as horizontal tab
-    // groups) in place of the chevron, sized to VERTICAL_TABS_ICON_SIZE so
-    // the 2-icon variant matches the tab Summary Pair layout exactly.
-    let tab_group_icon = if is_collapsed {
+    // Lite keeps the disclosure chevron so a single-terminal group remains distinguishable from a tab.
+    let tab_group_icon = if is_collapsed && !cfg!(feature = "warp_lite") {
         let kinds = collapsed_member_kinds.unwrap_or(&[]);
         render_group_member_icon_collage(kinds, VERTICAL_TABS_ICON_SIZE, appearance)
     } else {
         let chevron_button = render_tab_group_header_icon_button(
-            WarpIcon::ChevronDown,
+            if is_collapsed {
+                WarpIcon::ChevronRight
+            } else {
+                WarpIcon::ChevronDown
+            },
             TAB_GROUP_ICON_SIZE,
             main_text_color,
             internal_colors::fg_overlay_2(theme),

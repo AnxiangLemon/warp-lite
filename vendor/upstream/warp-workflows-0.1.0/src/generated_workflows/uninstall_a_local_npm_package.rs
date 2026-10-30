@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Uninstall a local NPM package"####.into(),command: r####"npm uninstall {{name}}"####.into(),tags: vec![r####"npm"####.into()].into_iter().collect(),description: Some(r####"Removes a module from `node_modules` but does not update `package.json`. To also remove the package from the list of dependencies in `package.json`, add the `--save` flag."####.into()),arguments: vec![Argument {name: r####"name"####.into(),description: Some(r####"The name of the package to uninstall"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/13066532/how-can-i-uninstall-npm-modules-in-node-js"####.into()),author: Some(r####"Menztrual"####.into()),author_url: Some(r####"https://stackoverflow.com/users/1258398/menztrual"####.into()),shells: vec![].into_iter().collect(),}
+}

@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Find version of an installed npm package"####.into(),command: r####"npm list {{package_name}}"####.into(),tags: vec![r####"npm"####.into()].into_iter().collect(),description: Some(r####"Lists the version name of an installed package. To see the versions of all installed packages, run `npm list` without passing a package name."####.into()),arguments: vec![Argument {name: r####"package_name"####.into(),description: Some(r####"The name of the package"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/10972176/find-the-version-of-an-installed-npm-package"####.into()),author: Some(r####"TheHippo"####.into()),author_url: Some(r####"https://stackoverflow.com/users/45786/thehippo"####.into()),shells: vec![].into_iter().collect(),}
+}

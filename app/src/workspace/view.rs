@@ -9300,6 +9300,7 @@ impl Workspace {
             }
             // Navigate to and focus existing pane
             self.focus_pane(locator, ctx);
+            self.ensure_settings_tab_at_end(ctx);
             return;
         }
 
@@ -9328,17 +9329,25 @@ impl Workspace {
             Some(choose("Settings", "设置").to_owned()),
             ctx,
         );
-        if cfg!(feature = "warp_lite") {
-            let mut group = TabGroup::new();
-            group.name = Some(choose("Settings", "设置").to_owned());
-            let group_id = group.id;
-            self.tab_groups.insert(group_id, group);
-            if let Some(tab) = self.tabs.get_mut(self.active_tab_index) {
-                tab.group_id = Some(group_id);
-            }
-            ctx.dispatch_global_action("workspace:save_app", ());
-            ctx.notify();
+        self.ensure_settings_tab_at_end(ctx);
+    }
+
+    fn ensure_settings_tab_at_end(&mut self, ctx: &mut ViewContext<Self>) {
+        if !cfg!(feature = "warp_lite") {
+            return;
         }
+        let index = self.active_tab_index;
+        let Some(tab) = self.tabs.get_mut(index) else {
+            return;
+        };
+        let previous_group = tab.group_id.take();
+        tab.pinned = false;
+        self.move_tab_to_index(index, self.tabs.len(), ctx);
+        if let Some(group_id) = previous_group {
+            self.prune_empty_tab_group(group_id, ctx);
+        }
+        ctx.dispatch_global_action("workspace:save_app", ());
+        ctx.notify();
     }
 
     /// Open a file from the given session as a notebook pane.
@@ -13672,12 +13681,19 @@ impl Workspace {
         let active_group_id = if FeatureFlag::GroupedTabs.is_enabled() {
             self.tabs
                 .get(self.active_tab_index)
+                .filter(|tab| {
+                    !cfg!(feature = "warp_lite")
+                        || SettingsPaneManager::handle(ctx)
+                            .as_ref(ctx)
+                            .find_pane(tab.pane_group.window_id(ctx))
+                            .is_none_or(|locator| locator.pane_group_id != tab.pane_group.id())
+                })
                 .and_then(|tab| tab.group_id)
         } else {
             None
         };
 
-        match TabSettings::as_ref(ctx).new_tab_placement {
+        let (index, group) = match TabSettings::as_ref(ctx).new_tab_placement {
             // End of the bar, outside any group.
             NewTabPlacement::AfterAllTabs => (self.tab_count(), None),
             NewTabPlacement::AfterCurrentTab => {
@@ -13692,7 +13708,21 @@ impl Workspace {
                 };
                 (insert_idx, active_group_id)
             }
-        }
+        };
+        let settings_index = cfg!(feature = "warp_lite")
+            .then(|| {
+                self.tabs.iter().position(|tab| {
+                    SettingsPaneManager::handle(ctx)
+                        .as_ref(ctx)
+                        .find_pane(tab.pane_group.window_id(ctx))
+                        .is_some_and(|locator| locator.pane_group_id == tab.pane_group.id())
+                })
+            })
+            .flatten();
+        (
+            settings_index.map_or(index, |settings| index.min(settings)),
+            group,
+        )
     }
 
     pub fn add_tab_with_pane_layout(
@@ -20115,7 +20145,14 @@ impl Workspace {
             NativeModalEvent::Close => {
                 self.current_workspace_state.is_native_quit_modal_open = false;
                 if cfg!(feature = "warp_lite") {
-                    ctx.focus_self();
+                    // Refocusing the terminal would dismiss the process list opened by the callback.
+                    if self.current_workspace_state.is_palette_open {
+                        ctx.focus(&self.palette);
+                    } else if self.current_workspace_state.is_ctrl_tab_palette_open {
+                        ctx.focus(&self.ctrl_tab_palette);
+                    } else {
+                        ctx.focus_self();
+                    }
                 }
                 ctx.notify();
             }

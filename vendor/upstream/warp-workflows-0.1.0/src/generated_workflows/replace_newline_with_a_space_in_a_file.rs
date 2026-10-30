@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Replace newline with a space in a file"####.into(),command: r####"tr '\n' ' ' < {{file_name}}"####.into(),tags: vec![r####"file manipulation"####.into(),r####"tr"####.into()].into_iter().collect(),description: Some(r####"Replaces all newlines with a space, by using the `tr` command."####.into()),arguments: vec![Argument {name: r####"file_name"####.into(),description: None,default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/1251999/how-can-i-replace-each-newline-n-with-a-space-using-sed"####.into()),author: Some(r####"dmckee --- ex-moderator kitten"####.into()),author_url: Some(r####"https://stackoverflow.com/users/2509/dmckee-ex-moderator-kitten"####.into()),shells: vec![].into_iter().collect(),}
+}

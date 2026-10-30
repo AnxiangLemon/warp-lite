@@ -100,3 +100,26 @@ fn test_sort_single_item() {
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].name, "single");
 }
+
+#[test]
+fn directory_home_uses_the_shell_host() {
+    for (path, home, expected) in [
+        ("~/2025", Some("/home/lemon"), "/home/lemon/2025"),
+        ("~", Some("/root"), "/root"),
+        (
+            "~/项目 with spaces",
+            Some("/srv/remote user"),
+            "/srv/remote user/项目 with spaces",
+        ),
+        (r"~\work", Some(r"C:\Users\demo"), "C:/Users/demo/work"),
+        ("/tmp/project", Some("/home/lemon"), "/tmp/project"),
+        ("~someone/project", Some("/home/lemon"), "~someone/project"),
+        ("~/project", None, "~/project"),
+    ] {
+        assert_eq!(
+            expand_session_home(path, home).replace('\\', "/"),
+            expected,
+            "{path}"
+        );
+    }
+}

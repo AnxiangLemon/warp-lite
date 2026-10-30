@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Update Nativescript dependencies to the latest version."####.into(),command: r####"ns update {{version}}"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"Updates your NativeScript project with the latest versions of iOS/Android runtimes, cross-platform modules and @nativescript/webpack."####.into()),arguments: vec![Argument {name: r####"version"####.into(),description: Some(r####"(Optional) An existing version. E.g. 5.0.0, next (latest development release)"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/general/update.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

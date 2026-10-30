@@ -37,10 +37,6 @@ fn load_svg_fallback_fonts(fontdb: &mut usvg::fontdb::Database) {
     fontdb.set_sans_serif_family("Roboto");
 }
 
-pub fn prewarm_svg_font_db() {
-    LazyLock::force(&SVG_FONT_DB);
-}
-
 #[derive(EnumIter, Debug)]
 pub enum CustomImageFormat {
     Rgb,
@@ -275,8 +271,19 @@ impl Asset for ImageType {
         // SVGs are not handled by the guess_format helper function, so we have to manually check
         // if it's an SVG ourselves.
         if data.first() == Some(&b'<') {
+            let select_font = usvg::FontResolver::default_font_selector();
             let options = usvg::Options {
-                fontdb: SVG_FONT_DB.clone(),
+                font_resolver: usvg::FontResolver {
+                    select_font: Box::new(move |font, fontdb| {
+                        // Path-only icons never need fonts. An empty database has no IDs to
+                        // preserve, so the first text node can adopt the shared database.
+                        if fontdb.is_empty() {
+                            *fontdb = SVG_FONT_DB.clone();
+                        }
+                        select_font(font, fontdb)
+                    }),
+                    ..Default::default()
+                },
                 ..Default::default()
             };
             let svg = Rc::new(usvg::Tree::from_data(data, &options)?);

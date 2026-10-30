@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Graphite - Get downstack from remote"####.into(),command: r####"gt downstack get {{branch_name}}"####.into(),tags: vec![r####"graphite"####.into()].into_iter().collect(),description: Some(r####"Alias `dsg`. Get branches from trunk to the specified branch from remote, prompting the user to resolve conflicts."####.into()),arguments: vec![Argument {name: r####"branch_name"####.into(),description: Some(r####"The name of the branch that you want to fetch from remote"####.into()),default_value: Some(r####"main"####.into()),}].into_iter().collect(),source_url: Some(r####"https://graphite.dev/docs/command-reference"####.into()),author: Some(r####"graphite"####.into()),author_url: Some(r####"https://graphite.dev/"####.into()),shells: vec![].into_iter().collect(),}
+}

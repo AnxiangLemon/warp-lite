@@ -88,6 +88,8 @@ use crate::ui_components::color_dot::{TAB_COLOR_OPTIONS, render_color_dot};
 use crate::ui_components::icons::Icon;
 use crate::user_config::WarpConfig;
 use crate::util::bindings;
+#[cfg(all(feature = "warp_lite", not(target_family = "wasm")))]
+use crate::view_components::FilterableDropdownEvent;
 use crate::view_components::action_button::{ActionButton, ButtonSize, NakedTheme};
 use crate::view_components::{Dropdown, DropdownItem, FilterableDropdown};
 use crate::window_settings::{
@@ -587,6 +589,8 @@ pub struct AppearanceSettingsPageView {
     zoom_level_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
     zoom_reset_button_mouse_state: MouseStateHandle,
     available_families: HashMap<String, (Option<FamilyId>, FontType)>,
+    #[cfg(all(feature = "warp_lite", not(target_family = "wasm")))]
+    system_fonts_requested: bool,
     view_font_type: FontType,
     alt_screen_padding_editor: ViewHandle<EditorView>,
     color_picker_dot_states: Vec<Vec<MouseStateHandle>>,
@@ -1123,13 +1127,15 @@ impl AppearanceSettingsPageView {
         // Don't load all available system fonts in integration tests; we don't
         // have any integration tests which interact with the font dropdown, and
         // loading them in the background slows down test execution.
-        if ChannelState::channel() != Channel::Integration {
+        if !cfg!(feature = "warp_lite") && ChannelState::channel() != Channel::Integration {
             // There's no such thing as a "system font" on the web, so the
             // `all_system_fonts` API doesn't exist.
             #[cfg(not(target_family = "wasm"))]
             {
-                let all_system_fonts = warpui::fonts::Cache::handle(ctx)
-                    .update(ctx, |font_cache, ctx| font_cache.all_system_fonts(ctx));
+                let all_system_fonts =
+                    warpui::fonts::Cache::handle(ctx).update(ctx, |font_cache, ctx| {
+                        font_cache.all_system_fonts(!cfg!(feature = "warp_lite"), ctx)
+                    });
                 ctx.spawn(all_system_fonts, Self::set_system_fonts);
             }
         }
@@ -1155,6 +1161,15 @@ impl AppearanceSettingsPageView {
             dropdown.set_selected_by_index(0, ctx);
             dropdown
         });
+
+        #[cfg(all(feature = "warp_lite", not(target_family = "wasm")))]
+        for dropdown in [&font_family_dropdown, &ai_font_family_dropdown] {
+            ctx.subscribe_to_view(dropdown, |me, _, event, ctx| {
+                if matches!(event, FilterableDropdownEvent::ToggleExpanded) {
+                    me.request_system_fonts(ctx);
+                }
+            });
+        }
 
         let font_weight_dropdown = ctx.add_typed_action_view(|ctx| {
             let mut dropdown = Dropdown::new(ctx);
@@ -1350,7 +1365,7 @@ impl AppearanceSettingsPageView {
         #[cfg(not(feature = "agent_runtime"))]
         let header_toolbar_inline_editor = None;
 
-        AppearanceSettingsPageView {
+        let mut view = AppearanceSettingsPageView {
             page: Self::build_page(ctx),
             window_id: ctx.window_id(),
             local_only_icon_tooltip_states: Default::default(),
@@ -1378,6 +1393,8 @@ impl AppearanceSettingsPageView {
             zoom_level_dropdown: Self::build_zoom_level_dropdown(ctx),
             zoom_reset_button_mouse_state: MouseStateHandle::default(),
             available_families: Default::default(),
+            #[cfg(all(feature = "warp_lite", not(target_family = "wasm")))]
+            system_fonts_requested: false,
             view_font_type: Default::default(),
             color_picker_dot_states: (0..directory_tab_colors(ctx).len())
                 .map(|_| {
@@ -1391,7 +1408,11 @@ impl AppearanceSettingsPageView {
             alt_screen_padding_editor,
             context_chips,
             ps1_grid_info: None,
+        };
+        if cfg!(feature = "warp_lite") {
+            view.update_font_dropdown(ctx);
         }
+        view
     }
 
     fn build_page(ctx: &mut ViewContext<Self>) -> PageType<Self> {
@@ -2271,6 +2292,18 @@ impl AppearanceSettingsPageView {
         ctx.notify();
     }
 
+    #[cfg(all(feature = "warp_lite", not(target_family = "wasm")))]
+    fn request_system_fonts(&mut self, ctx: &mut ViewContext<Self>) {
+        if self.system_fonts_requested || ChannelState::channel() == Channel::Integration {
+            return;
+        }
+        self.system_fonts_requested = true;
+        let fonts = warpui::fonts::Cache::handle(ctx).update(ctx, |font_cache, ctx| {
+            font_cache.all_system_fonts(false, ctx)
+        });
+        ctx.spawn(fonts, Self::set_system_fonts);
+    }
+
     #[cfg_attr(target_family = "wasm", allow(dead_code))]
     pub fn set_system_fonts(
         &mut self,
@@ -2991,7 +3024,7 @@ impl ThemeSelectWidget {
                         .with_child(
                             appearance
                                 .ui_builder()
-                                .span(theme_kind.to_string())
+                                .span(super::lite_i18n::theme_label(&theme_kind))
                                 .with_style(UiComponentStyles::default().set_margin(Coords {
                                     top: 20.,
                                     bottom: 20.,

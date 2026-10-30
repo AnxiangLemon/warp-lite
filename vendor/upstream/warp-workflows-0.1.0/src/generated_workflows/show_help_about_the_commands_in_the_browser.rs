@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Show information about the NativeScript CLI commands in the browser."####.into(),command: r####"ns help {{command}}"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"Shows additional information about the NativeScript CLI commands in this list in the browser."####.into()),arguments: vec![Argument {name: r####"command"####.into(),description: Some(r####"The name of the command in the list."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/general/help.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

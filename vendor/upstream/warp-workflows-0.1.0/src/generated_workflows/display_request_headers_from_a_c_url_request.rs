@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Display request headers from a cURL request"####.into(),command: r####"curl -v {{url}}"####.into(),tags: vec![r####"curl"####.into()].into_iter().collect(),description: Some(r####"Runs curl in verbose mode to display the request headers that were sent with a request."####.into()),arguments: vec![Argument {name: r####"url"####.into(),description: Some(r####"The url where the request should be sent."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/3252851/how-to-display-request-headers-with-command-line-curl"####.into()),author: Some(r####"Asaph"####.into()),author_url: Some(r####"https://stackoverflow.com/users/166339/asaph"####.into()),shells: vec![].into_iter().collect(),}
+}

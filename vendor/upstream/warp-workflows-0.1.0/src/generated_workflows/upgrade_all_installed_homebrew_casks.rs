@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Upgrade all installed Homebrew casks"####.into(),command: r####"brew upgrade --cask"####.into(),tags: vec![r####"homebrew"####.into()].into_iter().collect(),description: Some(r####"Upgrades all applications that were downloaded using Homebrewk Cask. This will not update casks that do not have versioning information or applications that have a built-in upgrade mechanism. To reinstall these casks, append the `--greedy` flag."####.into()),arguments: vec![].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/31968664/upgrade-all-the-casks-installed-via-homebrew-cask"####.into()),author: Some(r####"scribblemaniac"####.into()),author_url: Some(r####"https://stackoverflow.com/users/629029/scribblemaniac"####.into()),shells: vec![].into_iter().collect(),}
+}

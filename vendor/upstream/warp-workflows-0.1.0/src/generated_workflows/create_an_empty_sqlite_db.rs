@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Create an empty sqlite db"####.into(),command: r####"sqlite3 {db_filepath} "VACUUM;""####.into(),tags: vec![r####"sqlite"####.into()].into_iter().collect(),description: Some(r####"Uses the VACUUM command to create a valid empty SQLite database file."####.into()),arguments: vec![Argument {name: r####"db_filepath"####.into(),description: Some(r####"The path to the sqlite database"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/20155693/create-empty-sqlite-db-from-command-line/47909051#47909051"####.into()),author: Some(r####"emkey08"####.into()),author_url: Some(r####"https://stackoverflow.com/users/1070129/emkey08"####.into()),shells: vec![].into_iter().collect(),}
+}

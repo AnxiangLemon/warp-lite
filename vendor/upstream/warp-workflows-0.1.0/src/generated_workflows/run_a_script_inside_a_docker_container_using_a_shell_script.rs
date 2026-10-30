@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Run a script inside a docker container using a shell script"####.into(),command: r####"docker exec {{container_id}} {{filepath_in_container}}"####.into(),tags: vec![r####"docker"####.into()].into_iter().collect(),description: Some(r####"Runs a shell script located within a running Docker container."####.into()),arguments: vec![Argument {name: r####"container_id"####.into(),description: None,default_value: None,},Argument {name: r####"filepath_in_container"####.into(),description: None,default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/31578446/running-a-script-inside-a-docker-container-using-shell-script"####.into()),author: Some(r####"cortejoso"####.into()),author_url: Some(r####"https://stackoverflow.com/users/2862098/javier-cortejoso"####.into()),shells: vec![].into_iter().collect(),}
+}

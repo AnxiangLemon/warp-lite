@@ -404,6 +404,21 @@ fn copy_async_assets() {
     }
 }
 
+fn copy_windows_asset(
+    source: impl AsRef<Path>,
+    destination: impl AsRef<Path>,
+) -> std::io::Result<()> {
+    let source = source.as_ref();
+    let destination = destination.as_ref();
+    // Windows locks loaded binaries; unchanged runtime files need no replacement.
+    if let Ok(existing) = fs::read(destination)
+        && existing == fs::read(source)?
+    {
+        return Ok(());
+    }
+    fs::copy(source, destination).map(|_| ())
+}
+
 /// Copies the DLLs needed to run Warp on Windows.
 ///
 /// They are organized as follows:
@@ -431,7 +446,7 @@ fn copy_windows_assets(target_dir: &Path) {
         .join(target_arch);
 
     // Copy conpty.dll into target directory.
-    fs::copy(
+    copy_windows_asset(
         windows_asset_dir.join(CONPTY_DLL_FILE),
         target_dir.join(CONPTY_DLL_FILE),
     )
@@ -441,7 +456,7 @@ fn copy_windows_assets(target_dir: &Path) {
 
     // Copy the DXC DLLs into the target directory.
     for dxc_file in [DXCOMPILER_DLL_FILE, DXIL_DLL_FILE] {
-        fs::copy(
+        copy_windows_asset(
             windows_asset_dir.join(dxc_file),
             target_dir.join(dxc_file),
         )
@@ -455,7 +470,7 @@ fn copy_windows_assets(target_dir: &Path) {
     let new_platform_dir = target_dir.join(target_arch);
     let new_open_console_exe = new_platform_dir.join(OPEN_CONSOLE_EXE_FILE);
     fs::create_dir_all(&new_platform_dir).expect("Could not create new platform directory");
-    fs::copy(old_open_console_exe, new_open_console_exe)
+    copy_windows_asset(old_open_console_exe, new_open_console_exe)
         .expect("Could not copy platform OpenConsole.exe");
 }
 
@@ -463,15 +478,33 @@ fn copy_windows_assets(target_dir: &Path) {
 fn embed_resource_file(target_dir: &Path) {
     use std::io::Write;
 
-    let version = env::var("GIT_RELEASE_TAG").unwrap_or("v0".to_owned());
-    let app_name = env::var("WARP_APP_NAME").unwrap_or("Warp".to_owned());
+    let is_lite = env::var_os("CARGO_FEATURE_WARP_LITE").is_some();
+    let version = if is_lite {
+        env::var("CARGO_PKG_VERSION").expect("CARGO_PKG_VERSION must be set")
+    } else {
+        env::var("GIT_RELEASE_TAG").unwrap_or("v0".to_owned())
+    };
+    let app_name = env::var("WARP_APP_NAME")
+        .unwrap_or_else(|_| if is_lite { "Warp Lite" } else { "Warp" }.to_owned());
+    let product_name = if is_lite { "Warp Lite" } else { "Warp" };
+    let original_filename = if is_lite { "warp-lite.exe" } else { "" };
+    let file_version = if is_lite {
+        format!("{},0", version.replace('.', ","))
+    } else {
+        "1,0,0,0".to_owned()
+    };
     let bin_name = env::var("CARGO_BIN_NAME").unwrap_or("local".to_owned());
 
-    let icon_path = Path::new("channels")
-        .join(bin_name)
-        .join("icon")
-        .join("no-padding")
-        .join("icon.ico");
+    let icon_path = if is_lite {
+        PathBuf::from("channels/lite/icon/no-padding/icon.ico")
+    } else {
+        Path::new("channels")
+            .join(bin_name)
+            .join("icon")
+            .join("no-padding")
+            .join("icon.ico")
+    };
+    println!("cargo:rerun-if-changed={}", icon_path.display());
 
     fs::copy(icon_path, target_dir.join("icon.ico"))
         .unwrap_or_else(|err| panic!("Could not copy icon: {err:#}"));
@@ -487,8 +520,8 @@ fn embed_resource_file(target_dir: &Path) {
 
 IDI_ICON ICON "icon.ico"
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1,0,0,0
-PRODUCTVERSION  1,0,0,0
+FILEVERSION     {file_version}
+PRODUCTVERSION  {file_version}
 FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
 FILEFLAGS       0
 FILEOS          VOS__WINDOWS32
@@ -504,8 +537,8 @@ BEGIN
             VALUE "FileVersion",      "{version}\0"
             VALUE "LegalCopyright",   "© 2025, Denver Technologies, Inc\0"
             VALUE "InternalName",     "\0"
-            VALUE "OriginalFilename", "\0"
-            VALUE "ProductName",      "Warp\0"
+            VALUE "OriginalFilename", "{original_filename}\0"
+            VALUE "ProductName",      "{product_name}\0"
             VALUE "ProductVersion",   "{version}\0"
         END
     END

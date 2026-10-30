@@ -2,6 +2,8 @@
 
 仅保留 `repository-checks.yml`：在 `main` 的 push、PR 或手动触发时检查变更行的
 whitespace，以及是否误提交构建产物、排错日志和本地配置。
+同时用 Python 标准库核对本地依赖源码 SHA256，并检查 lockfile 没有 Git 来源。
+vendor 保留原始字节与 whitespace，完整性由来源清单校验。
 
 使用一个 GitHub-hosted Linux runner、只读仓库权限和固定版本的官方 checkout action。
 不安装 Rust 或下载 LFS 模型，不编译应用，也不需要维护者配置 secrets。

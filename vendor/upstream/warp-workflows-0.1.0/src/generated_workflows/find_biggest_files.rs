@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Find the largest 10 files in a directory"####.into(),command: r####"du -ah {{directory}} | sort -hr | head -n 10"####.into(),tags: vec![r####"du"####.into()].into_iter().collect(),description: Some(r####"Uses 'du' command to find file and directory sizes in the current working directory, then sorts by size and displays 10 largest files"####.into()),arguments: vec![Argument {name: r####"directory"####.into(),description: Some(r####"The name of the directory where you want to find files"####.into()),default_value: Some(r####"."####.into()),}].into_iter().collect(),source_url: Some(r####"https://linuxhandbook.com/find-biggest-files-linux/"####.into()),author: Some(r####"Christopher Murray"####.into()),author_url: Some(r####"https://linuxhandbook.com/find-biggest-files-linux/"####.into()),shells: vec![].into_iter().collect(),}
+}

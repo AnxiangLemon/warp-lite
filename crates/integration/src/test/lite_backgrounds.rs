@@ -108,10 +108,69 @@ fn assert_background_image(app: &App) -> AssertionOutcome {
 fn assert_solid_background(app: &App) -> AssertionOutcome {
     app.read(|ctx| {
         async_assert!(
-            Appearance::as_ref(ctx).theme().background_image().is_none(),
+            AppearanceManager::as_ref(ctx).lite_background_loaded
+                && Appearance::as_ref(ctx).theme().background_image().is_none(),
             "An unavailable startup background must keep the terminal on its solid color theme"
         )
     })
+}
+
+pub fn test_lite_jpeg_background() -> Builder {
+    lite_builder()
+        .with_real_display()
+        .with_setup(|utils| {
+            prepare_background(utils, None);
+            let path = fixture_path().with_extension("jpg");
+            std::fs::write(path, include_bytes!("../../tests/data/lite-background.jpg"))
+                .expect("write the isolated JPEG fixture");
+        })
+        .with_step(wait_until_bootstrapped_single_pane_for_tab(0))
+        .with_step(
+            new_step_with_default_assertions(
+                "Display a JPEG background after asynchronous loading",
+            )
+            .add_named_assertion(
+                "The JPEG is decoded and available to the renderer",
+                |app, _| {
+                    app.read(|ctx| {
+                        let Some(image) = Appearance::as_ref(ctx).theme().background_image() else {
+                            return AssertionOutcome::failure(
+                                "The JPEG background is missing".to_owned(),
+                            );
+                        };
+                        let AssetState::Loaded { data } =
+                            AssetCache::as_ref(ctx).load_asset::<ImageType>(image.source)
+                        else {
+                            return AssertionOutcome::failure(
+                                "The JPEG background is still loading".to_owned(),
+                            );
+                        };
+                        let ImageType::StaticBitmap { image } = data.as_ref() else {
+                            return AssertionOutcome::failure(
+                                "Expected a static JPEG bitmap".to_owned(),
+                            );
+                        };
+                        async_assert!(
+                            image.width() == 16
+                                && image.height() == 16
+                                && image.rgba_bytes()[0].abs_diff(20) <= 2
+                                && image.rgba_bytes()[1].abs_diff(170) <= 2
+                                && image.rgba_bytes()[2].abs_diff(230) <= 2
+                                && image.rgba_bytes()[3] == 255,
+                            "Unexpected JPEG pixels: {:?}",
+                            image.rgba_bytes().get(..4)
+                        )
+                    })
+                },
+            )
+            .with_take_screenshot("lite-jpeg-background-startup.png"),
+        )
+        .with_step(execute_command_for_single_terminal_in_tab(
+            0,
+            "Write-Output 'jpeg-background-ok'".to_owned(),
+            ExpectedExitStatus::Success,
+            "jpeg-background-ok".to_owned(),
+        ))
 }
 
 fn open_appearance() -> warpui_core::integration::TestStep {

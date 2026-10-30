@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Check if a file exists and is a regular file"####.into(),command: r####"[[ -f {{file}} ]]"####.into(),tags: vec![r####"shell"####.into()].into_iter().collect(),description: Some(r####"Returns an exit code of 0 if the file exists and is a regular file (i.e. is not a directory or a symbolic link)."####.into()),arguments: vec![Argument {name: r####"file"####.into(),description: Some(r####"The file to test"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://linuxhint.com/bash-test-command/"####.into()),author: Some(r####"Sidratul Muntaha"####.into()),author_url: Some(r####"https://linuxhint.com/author/lh_sidratul_muntaha/"####.into()),shells: vec![Shell::Zsh,Shell::Bash].into_iter().collect(),}
+}

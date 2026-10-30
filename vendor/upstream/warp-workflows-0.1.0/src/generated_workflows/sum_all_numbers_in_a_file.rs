@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Sum all numbers in a file"####.into(),command: r####"awk 'BEGIN {OFMT = "%.0f"} { sum += $1 } END { print sum }' {{file_name}}"####.into(),tags: vec![r####"file manipulation"####.into(),r####"awk"####.into()].into_iter().collect(),description: Some(r####"Uses awk to sum all the numbers in a file. This command is also resilient to big numbers since it internally converts each number to a string."####.into()),arguments: vec![Argument {name: r####"file_name"####.into(),description: None,default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/2702564/how-can-i-quickly-sum-all-numbers-in-a-file"####.into()),author: Some(r####"devnull"####.into()),author_url: Some(r####"https://stackoverflow.com/users/2235132/devnull"####.into()),shells: vec![].into_iter().collect(),}
+}

@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Generate new SSH key for GitHub"####.into(),command: r####"ssh-keygen -t ed25519 -C "{{email}}""####.into(),tags: vec![r####"github"####.into()].into_iter().collect(),description: Some(r####"Generates a new SSH key for GitHub. The email address is optional. If you don't specify an email address, you'll be prompted to enter one."####.into()),arguments: vec![Argument {name: r####"email"####.into(),description: Some(r####"Your email address. This is used to identify the key."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent"####.into()),author: Some(r####"Tim Smith"####.into()),author_url: Some(r####"https://timsmith.tech"####.into()),shells: vec![].into_iter().collect(),}
+}

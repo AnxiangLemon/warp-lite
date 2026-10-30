@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Compare two files in VS Code (Insiders)"####.into(),command: r####"code-insiders -d {{file1}} {{file2}}"####.into(),tags: vec![r####"code-insiders"####.into()].into_iter().collect(),description: Some(r####"Compare two files using code."####.into()),arguments: vec![Argument {name: r####"file1"####.into(),description: Some(r####"The first file that you want to compare."####.into()),default_value: None,},Argument {name: r####"file2"####.into(),description: Some(r####"The second file that you want to compare."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/30139597/visual-studio-code-is-there-a-compare-feature-like-that-plugin-for-notepad"####.into()),author: Some(r####"wisbucky"####.into()),author_url: Some(r####"https://stackoverflow.com/users/1081043/wisbucky"####.into()),shells: vec![].into_iter().collect(),}
+}

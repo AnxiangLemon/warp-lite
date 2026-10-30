@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Undo git add"####.into(),command: r####"git reset {{file}}"####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Removes a file that was staged for commit by `git add`. Executing `git reset` without any file name will unstage all changes."####.into()),arguments: vec![Argument {name: r####"file"####.into(),description: Some(r####"The file to unstage"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/348170/how-do-i-undo-git-add-before-commit"####.into()),author: Some(r####"genehack"####.into()),author_url: Some(r####"https://stackoverflow.com/users/39933/genehack"####.into()),shells: vec![].into_iter().collect(),}
+}

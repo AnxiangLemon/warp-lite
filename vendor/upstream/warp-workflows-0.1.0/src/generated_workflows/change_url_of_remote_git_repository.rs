@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Change URL of remote git repository"####.into(),command: r####"git remote set-url origin {{url}}"####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Sets the URL for a remote git repository to a new URL"####.into()),arguments: vec![Argument {name: r####"url"####.into(),description: Some(r####"The new URL the remote repository should point to"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/2432764/how-to-change-the-uri-url-for-a-remote-git-repository"####.into()),author: Some(r####"hobbs"####.into()),author_url: Some(r####"https://stackoverflow.com/users/152948/hobbs"####.into()),shells: vec![].into_iter().collect(),}
+}

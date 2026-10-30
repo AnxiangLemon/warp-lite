@@ -16,7 +16,7 @@ try {
             [pscustomobject]@{ Name = $Matches[1]; Version = $Matches[2] }
         }
     } | Sort-Object Name, Version -Unique)
-    $removedServices = '^(aws-(config|credential-types|runtime|sdk-.+|sigv4|smithy-.+|types)|tantivy(-.+)?|tink-.+|hpke|git2|libgit2-sys|rquickjs(-.+)?|warp_js|opentelemetry-otlp|mermaid_to_svg|syntect|html5ever|markup5ever|ipynb)$'
+    $removedServices = '^(aws-(config|credential-types|runtime|sdk-.+|sigv4|smithy-.+|types)|tantivy(-.+)?|tink-.+|hpke|git2|libgit2-sys|aws-lc(-rs|-sys)?|rustls|tokio-rustls|hyper-rustls|candle-.+|ort(-sys)?|tokenizers|rquickjs(-.+)?|warp_js|opentelemetry-otlp|mermaid_to_svg|syntect|html5ever|markup5ever|ipynb)$'
     $parserSupport = @('arborium-highlight', 'arborium-theme', 'arborium-tree-sitter')
     $unexpected = @($packages | Where-Object {
         $_.Name -match $removedServices -or (

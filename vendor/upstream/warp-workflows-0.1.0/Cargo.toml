@@ -1,0 +1,24 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+
+
+["package"]
+"edition" = "2021"
+"name" = "warp-workflows"
+"version" = "0.1.0"
+"authors" = ["Warp Team <dev@warp.dev>"]
+"build" = false
+"publish" = false
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"readme" = false
+"license" = "Apache-2.0"
+
+["lib"]
+"name" = "warp_workflows"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"warp-workflows-types" = {"path" = "../warp-workflows-types-0.1.0"}

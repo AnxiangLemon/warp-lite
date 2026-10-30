@@ -49,7 +49,9 @@ impl ImportedConfigModel {
         self.started = true;
 
         let loaded_system_fonts = warpui::fonts::Cache::handle(ctx)
-            .update(ctx, |font_cache, ctx| font_cache.all_system_fonts(ctx));
+            .update(ctx, |font_cache, ctx| {
+                font_cache.all_system_fonts(!cfg!(feature = "warp_lite"), ctx)
+            });
         ctx.spawn(loaded_system_fonts, |_, fonts, ctx| {
             let fonts = fonts
                 .into_iter()

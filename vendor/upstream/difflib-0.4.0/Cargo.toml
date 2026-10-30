@@ -1,0 +1,30 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+"example" = [{"name" = "example", "path" = "examples/example.rs"}]
+"test" = [{"name" = "tests", "path" = "tests/tests.rs"}]
+
+["package"]
+"edition" = "2021"
+"name" = "difflib"
+"version" = "0.4.0"
+"authors" = ["Dima Kudosh <dimakudosh@gmail.com>"]
+"build" = false
+"include" = ["**/*.rs", "Cargo.toml"]
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "Port of Python's difflib library to Rust."
+"homepage" = "https://github.com/DimaKudosh/difflib"
+"documentation" = "https://github.com/DimaKudosh/difflib/wiki"
+"readme" = "README.md"
+"keywords" = ["difflib", "text", "diff"]
+"license" = "MIT"
+"repository" = "https://github.com/DimaKudosh/difflib"
+
+["lib"]
+"name" = "difflib"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"rustc-hash" = "1.1.0"

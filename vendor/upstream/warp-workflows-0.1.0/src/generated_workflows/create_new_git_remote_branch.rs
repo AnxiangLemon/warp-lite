@@ -1,0 +1,5 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Create new git remote branch"####.into(),command: r####"git checkout -b {{branch_name}}
+git push {{remote_name}} {{branch_name}}"####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Creates a new local git branch and pushes the branch to a remote server to create a remote branch of the same name."####.into()),arguments: vec![Argument {name: r####"branch_name"####.into(),description: Some(r####"The name of the branch to be created"####.into()),default_value: None,},Argument {name: r####"remote_name"####.into(),description: Some(r####"The name of the remote git repository"####.into()),default_value: Some(r####"origin"####.into()),}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/1519006/how-do-you-create-a-remote-git-branch"####.into()),author: Some(r####"Ikke"####.into()),author_url: Some(r####"https://stackoverflow.com/users/20261/ikke"####.into()),shells: vec![].into_iter().collect(),}
+}

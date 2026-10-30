@@ -240,6 +240,14 @@ pub enum DisplayChipMenuAction {
 }
 
 impl DisplayChipMenu {
+    #[cfg(feature = "integration_tests")]
+    pub fn filtered_item_names(&self) -> Vec<String> {
+        self.filtered_items
+            .iter()
+            .map(|item| item.item.name())
+            .collect()
+    }
+
     fn menu_width(&self) -> f32 {
         match self.chip_menu_type {
             ChipMenuType::Environments => ENV_MENU_WIDTH,
@@ -318,7 +326,7 @@ impl DisplayChipMenu {
                     let placeholder_text = match chip_menu_type {
                         ChipMenuType::Directories => crate::lite_i18n::choose(
                             "Search directories...",
-                            "筛选当前目录下的文件夹…",
+                            "筛选当前目录的文件和文件夹…",
                         ),
                         ChipMenuType::Branches => "Search branches...",
                         ChipMenuType::Environments => "Search environments...",
@@ -1085,7 +1093,7 @@ impl DisplayChipMenu {
                         ChipMenuType::Directories
                         | ChipMenuType::Branches
                         | ChipMenuType::CodeReview => (
-                            "No results found",
+                            crate::lite_i18n::choose("No results found", "未找到匹配项"),
                             appearance.ui_font_size(),
                             LABEL_HORIZONTAL_PADDING,
                             LABEL_VERTICAL_PADDING * 2.0,

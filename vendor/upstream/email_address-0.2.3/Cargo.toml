@@ -1,0 +1,32 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+
+
+["package"]
+"edition" = "2018"
+"name" = "email_address"
+"version" = "0.2.3"
+"authors" = ["Simon Johnston <johnstonskj@gmail.com>"]
+"build" = false
+"publish" = true
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "A Rust crate providing an implementation of an RFC-compliant `EmailAddress` newtype. "
+"documentation" = "https://docs.rs/email_address/"
+"readme" = "README.md"
+"license" = "MIT"
+"repository" = "https://github.com/johnstonskj/rust-email_address.git"
+"metadata" = {"docs" = {"rs" = {"targets" = ["x86_64-unknown-linux-gnu"]}}}
+
+["features"]
+"default" = ["serde_support"]
+"serde_support" = ["serde"]
+
+["lib"]
+"name" = "email_address"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"serde" = {"version" = "1.0", "features" = ["derive"], "optional" = true}

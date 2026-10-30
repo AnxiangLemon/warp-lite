@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Push a tag to a remote git repository"####.into(),command: r####"git push origin {{tag_name}}"####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Pushes a single tag to a remote server"####.into()),arguments: vec![Argument {name: r####"tag_name"####.into(),description: Some(r####"The name of the tag that should be pushed to the remote git repository"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/5195859/how-do-you-push-a-tag-to-a-remote-repository-using-git"####.into()),author: Some(r####"Trevor"####.into()),author_url: Some(r####"https://stackoverflow.com/users/207162/trevor"####.into()),shells: vec![].into_iter().collect(),}
+}

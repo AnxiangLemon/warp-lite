@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Build your NativeScript project for Android or iOS."####.into(),command: r####"ns build {{platform}}"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"Builds your NativeScript project for Android or iOS and produces an application package that you can manually deploy on a device or native emulator."####.into()),arguments: vec![Argument {name: r####"platform"####.into(),description: Some(r####"The name of the platform. E.g. ios, android, etc."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/project/testing/build.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

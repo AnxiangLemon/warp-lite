@@ -5,6 +5,15 @@ edition = "2024"
 publish.workspace = true
 license.workspace = true
 
+[features]
+default = ["network_transport"]
+network_transport = [
+    "async-tungstenite/tokio-rustls-manual-roots",
+    "dep:tokio-rustls",
+    "dep:rustls",
+    "dep:rustls-platform-verifier",
+]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -32,12 +41,12 @@ graphql-ws-client = {workspace = true, features = ["ws_stream_wasm"]}
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 async-io.workspace = true
 async-net = "2.0.0"
-async-tungstenite = {version = "0.28.2", features = ["tokio-rustls-manual-roots"]}
+async-tungstenite = {version = "0.28.2", features = ["tokio-runtime"]}
 http-body-util = "0.1"
 hyper = { workspace = true, features = ["client", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 tokio = { workspace = true, features = ["io-util", "net", "time"] }
-tokio-rustls = "0.26.4"
+tokio-rustls = { version = "0.26.4", optional = true }
 graphql-ws-client = {workspace = true, features = ["tungstenite"]}
-rustls = "0.23.29"
-rustls-platform-verifier = "0.6.1"
+rustls = { version = "0.23.29", optional = true }
+rustls-platform-verifier = { version = "0.6.1", optional = true }

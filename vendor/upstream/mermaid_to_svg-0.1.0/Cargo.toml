@@ -1,0 +1,41 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+"bin" = [{"name" = "render_mermaid", "path" = "src/bin/render_mermaid.rs"}]
+"example" = [{"name" = "render_mermaid", "path" = "examples/render_mermaid.rs"}]
+
+["package"]
+"edition" = "2021"
+"name" = "mermaid_to_svg"
+"version" = "0.1.0"
+"authors" = ["Warp Team <dev@warp.dev>"]
+"build" = false
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "Convert Mermaid diagram syntax to SVG"
+"readme" = "README.md"
+"license" = "MIT"
+
+["lib"]
+"name" = "mermaid_to_svg"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"graphlib_rust" = "0.0.2"
+"petgraph" = "0.8.3"
+"regex" = "1"
+"serde_yaml" = "0.9.34"
+"thiserror" = "1.0"
+"unicode-segmentation" = "1.11"
+"dagre_rust" = {"path" = "../dagre_rust-0.0.5"}
+
+["dev-dependencies"]
+"anyhow" = "1.0"
+"insta" = "1.34"
+"resvg" = "0.45.0"
+"roxmltree" = "0.20"
+"serde_json" = "1.0"
+"image" = {"version" = "0.25.2", "features" = ["rayon", "jpeg", "png", "gif", "webp"], "default-features" = false}
+"rust-embed" = {"version" = "8.7.0", "features" = ["include-exclude"]}
+"serde" = {"version" = "1.0", "features" = ["derive"]}

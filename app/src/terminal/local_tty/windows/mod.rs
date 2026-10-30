@@ -222,6 +222,9 @@ pub(super) fn spawn(
 
     let start_directory = options
         .start_dir
+        // WSL receives its Linux working directory through WARP_INITIAL_WORKING_DIR.
+        // Keep the Windows launcher off the WSL network redirector on the UI thread.
+        .filter(|_| !matches!(shell_starter, ShellStarter::Wsl(_)))
         .filter(|start_dir| start_dir.is_dir())
         .or_else(|| {
             std::env::var_os("USERPROFILE")

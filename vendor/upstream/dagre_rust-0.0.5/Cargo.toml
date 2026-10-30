@@ -1,0 +1,28 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+
+
+["package"]
+"edition" = "2021"
+"name" = "dagre_rust"
+"version" = "0.0.5"
+"authors" = ["Ameer Hamza <r3alst@gmail.com>"]
+"build" = false
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "Dagre implementation in Rust"
+"readme" = "README.md"
+"keywords" = ["dagre", "graph", "dag"]
+"categories" = ["graph", "dagre"]
+"license" = "Apache-2.0"
+"repository" = "https://github.com/r3alst/dagre-rust"
+
+["lib"]
+"name" = "dagre_rust"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"graphlib_rust" = {"version" = "0.0.2"}
+"ordered_hashmap" = {"version" = "0.0.3"}

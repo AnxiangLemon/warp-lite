@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"FFprobe file in json"####.into(),command: r####"ffprobe -i {{media_file_path}} -show_streams -show_format -print_format json"####.into(),tags: vec![r####"ffprobe"####.into()].into_iter().collect(),description: Some(r####"Show streams and format of media file in json format using ffprobe"####.into()),arguments: vec![Argument {name: r####"media_file_path"####.into(),description: Some(r####"Path of media file (may be local file path, http url or some other protocols described at https://ffmpeg.org/ffmpeg-protocols.html#Protocols)"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://ffmpeg.org/ffprobe.html"####.into()),author: Some(r####"tabroot"####.into()),author_url: Some(r####"https://github.com/bvc3at"####.into()),shells: vec![].into_iter().collect(),}
+}

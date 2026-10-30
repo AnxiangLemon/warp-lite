@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"List all recognized connected devices using NativeScript CLI."####.into(),command: r####"ns device {{platform}}"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"NativeScript lists all recognized connected Android or iOS devices with serial number and index, grouped by platform."####.into()),arguments: vec![Argument {name: r####"platform"####.into(),description: Some(r####"(Optional) The name of the platform. E.g.. ios, android, etc."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/device/device.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

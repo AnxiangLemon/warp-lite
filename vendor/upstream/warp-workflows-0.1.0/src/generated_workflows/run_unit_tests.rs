@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Run unit tests on your NativeScript project."####.into(),command: r####"ns test {{platform}}"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"Runs unit tests on the selected mobile platform. Your NativeScript project must already be configured for unit testing by running $ ns test init."####.into()),arguments: vec![Argument {name: r####"platform"####.into(),description: Some(r####"The name of the platform. E.g. ios, android, etc."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/project/testing/test.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

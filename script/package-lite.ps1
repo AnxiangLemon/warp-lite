@@ -128,6 +128,10 @@ try {
             Source = $ExecutablePath
             RelativePath = 'warp-lite.exe'
         }
+        [pscustomobject]@{
+            Source = Join-Path $repoRoot 'app\channels\lite\icon\no-padding\icon.ico'
+            RelativePath = 'icon.ico'
+        }
     )
     $runtimeDlls = @('conpty.dll', 'vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll')
     if (!$SystemShaderCompiler) {
@@ -200,9 +204,10 @@ try {
 
     [void][System.IO.Directory]::CreateDirectory((Split-Path -Parent $backgroundReadmePath))
     $backgroundReadme = @'
-将 PNG 图片命名为 background.png 放在此目录，重启程序后生效。
+将 PNG / JPG / JPEG 图片命名为 background.png / background.jpg / background.jpeg 放在此目录，重启程序后生效。
+按上述顺序使用第一张有效图片；文件内容决定解码格式。窗口先显示纯色主题，背景图在后台加载完成后显示。
 没有图片或图片损坏时使用纯色主题。
-仅支持大小不超过 8 MiB、边长不超过 4096 像素的静态 PNG。
+仅支持大小不超过 8 MiB、边长不超过 4096 像素的静态 PNG / JPEG。纹理最长边缩放至 2048 像素。
 '@
     [System.IO.File]::WriteAllText($backgroundReadmePath, $backgroundReadme, [System.Text.UTF8Encoding]::new($false))
 
@@ -213,8 +218,8 @@ try {
         architecture = $architecture
         shader_compiler = if ($SystemShaderCompiler) { 'system_fxc' } else { 'dynamic_dxc' }
         background_directory = 'backgrounds'
-        fixed_background_file = 'backgrounds/background.png'
-        background_load_policy = 'startup_only_with_solid_fallback'
+        fixed_background_files = @('backgrounds/background.png', 'backgrounds/background.jpg', 'backgrounds/background.jpeg')
+        background_load_policy = 'async_startup_only_with_solid_fallback'
         background_limits = @{ file_bytes = 8388608; max_dimension = 4096; rendered_max_dimension = 2048 }
         external_background_files = @()
         features = @('warp_lite')

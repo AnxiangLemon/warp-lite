@@ -8,7 +8,7 @@ license.workspace = true
 
 [features]
 default = ["network_assets"]
-network_assets = ["dep:reqwest", "dep:async-compat"]
+network_assets = ["dep:reqwest", "dep:async-compat", "reqwest/default"]
 
 [dependencies]
 warp_errors.workspace = true

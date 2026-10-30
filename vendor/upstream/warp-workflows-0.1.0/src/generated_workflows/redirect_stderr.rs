@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Redirect stderr"####.into(),command: r####"{{command}} 2> {{file}}"####.into(),tags: vec![r####"shell"####.into()].into_iter().collect(),description: Some(r####"Executes the command, redirecting stderr to a file. Specify `/dev/null` to ignore stderr completely."####.into()),arguments: vec![Argument {name: r####"command"####.into(),description: Some(r####"The command to run."####.into()),default_value: None,},Argument {name: r####"file"####.into(),description: Some(r####"The path to the file where the stderr should be written."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://tldp.org/LDP/abs/html/io-redirection.html"####.into()),author: Some(r####"Mendel Cooper"####.into()),author_url: None,shells: vec![Shell::Zsh,Shell::Bash].into_iter().collect(),}
+}

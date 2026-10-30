@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Show a continuous stream of Kubernetes logs"####.into(),command: r####"kubectl logs -f {{pod_id}}"####.into(),tags: vec![r####"kubernetes"####.into()].into_iter().collect(),description: Some(r####"Continuously streams logs from a given Kubernetes pod by using the `-f` flag."####.into()),arguments: vec![Argument {name: r####"pod_id"####.into(),description: Some(r####"The Pod ID that should be used to display"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/39454962/kubectl-logs-continuously"####.into()),author: Some(r####"Yu-Ju Hong"####.into()),author_url: Some(r####"https://stackoverflow.com/users/5265822/yu-ju-hong"####.into()),shells: vec![].into_iter().collect(),}
+}

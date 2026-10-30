@@ -17,6 +17,7 @@ network_transport = [
     "dep:reqwest-eventsource",
     "dep:tempfile",
     "dep:websocket",
+    "websocket/network_transport",
     "dep:warp_isolation_platform",
 ]
 agent_mode_evals = ["dep:rand"]

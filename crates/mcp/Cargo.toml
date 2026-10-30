@@ -11,6 +11,7 @@ transports = [
     "dep:oauth2",
     "dep:pin-project-lite",
     "dep:reqwest",
+    "reqwest/default",
     "dep:sse-stream",
     "dep:http",
     "dep:tracing",

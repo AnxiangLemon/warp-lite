@@ -1,26 +1,33 @@
 //! A WebSocket+TLS client based on `async-tungstenite`.
 
+#[cfg(feature = "network_transport")]
 use std::sync::Arc;
 
 use async_tungstenite::WebSocketStream;
+use async_tungstenite::tokio::ClientStream;
+#[cfg(feature = "network_transport")]
 use async_tungstenite::tokio::{
-    ClientStream, client_async_tls_with_connector_and_config, connect_async_with_tls_connector,
+    client_async_tls_with_connector_and_config, connect_async_with_tls_connector,
 };
 use async_tungstenite::tungstenite::client::IntoClientRequest;
 use futures::{Sink, Stream};
 use futures_util::StreamExt as _;
+#[cfg(feature = "network_transport")]
 use rustls_platform_verifier::ConfigVerifierExt;
 use tokio::net::TcpStream;
+#[cfg(feature = "network_transport")]
 use tokio_rustls::TlsConnector;
 
 use crate::WebsocketMessage;
 
+#[cfg(feature = "network_transport")]
 mod proxy;
 
 pub use async_tungstenite::tungstenite::Message;
 
 pub struct WebSocket(WebSocketStream<ClientStream<TcpStream>>);
 
+#[cfg(feature = "network_transport")]
 static CLIENT_CONFIG: std::sync::LazyLock<Result<Arc<rustls::ClientConfig>, rustls::Error>> =
     std::sync::LazyLock::new(|| Ok(Arc::new(rustls::ClientConfig::with_platform_verifier()?)));
 
@@ -31,25 +38,37 @@ static CLIENT_CONFIG: std::sync::LazyLock<Result<Arc<rustls::ClientConfig>, rust
 /// The `NO_PROXY` environment variable is respected to bypass the proxy for specific hosts.
 pub async fn connect(request: impl IntoClientRequest + Unpin) -> anyhow::Result<WebSocket> {
     let request = request.into_client_request()?;
-    let tls_connector = Some(TlsConnector::from(CLIENT_CONFIG.clone()?));
+    #[cfg(not(feature = "network_transport"))]
+    {
+        drop(request);
+        anyhow::bail!("WebSocket transport is disabled in this build");
+    }
+    #[cfg(feature = "network_transport")]
+    {
+        let tls_connector = Some(TlsConnector::from(CLIENT_CONFIG.clone()?));
 
-    if let Some(proxy_info) = proxy::resolve_proxy(request.uri())? {
-        log::debug!(
-            "Using HTTP proxy {}:{} for WebSocket connection to {}",
-            proxy_info.host,
-            proxy_info.port,
-            request.uri(),
-        );
-        let tcp_stream = proxy::connect_via_proxy(&proxy_info, request.uri()).await?;
-        let (stream, _response) =
-            client_async_tls_with_connector_and_config(request, tcp_stream, tls_connector, None)
-                .await?;
-        Ok(WebSocket(stream))
-    } else {
-        let stream = connect_async_with_tls_connector(request, tls_connector)
-            .await?
-            .0;
-        Ok(WebSocket(stream))
+        if let Some(proxy_info) = proxy::resolve_proxy(request.uri())? {
+            log::debug!(
+                "Using HTTP proxy {}:{} for WebSocket connection to {}",
+                proxy_info.host,
+                proxy_info.port,
+                request.uri(),
+            );
+            let tcp_stream = proxy::connect_via_proxy(&proxy_info, request.uri()).await?;
+            let (stream, _response) = client_async_tls_with_connector_and_config(
+                request,
+                tcp_stream,
+                tls_connector,
+                None,
+            )
+            .await?;
+            Ok(WebSocket(stream))
+        } else {
+            let stream = connect_async_with_tls_connector(request, tls_connector)
+                .await?
+                .0;
+            Ok(WebSocket(stream))
+        }
     }
 }
 

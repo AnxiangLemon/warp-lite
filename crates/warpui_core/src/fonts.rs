@@ -217,6 +217,7 @@ pub struct Cache {
     raster_bounds: DashMap<RasterBoundsKey, Result<RectI, Error>>,
     #[cfg_attr(target_family = "wasm", allow(dead_code))]
     available_system_fonts: Option<Vec<(Option<FamilyId>, FontInfo)>>,
+    available_system_fonts_preloaded: bool,
     font_fallback_cache: FontFallbackCache,
 }
 
@@ -251,6 +252,7 @@ impl Cache {
             glyph_typographic_bounds: Default::default(),
             raster_bounds: Default::default(),
             available_system_fonts: Default::default(),
+            available_system_fonts_preloaded: false,
             font_fallback_cache: Default::default(),
         }
     }
@@ -274,23 +276,32 @@ impl Cache {
     /// Returns all of the system fonts on the user's current machine. If already cached, the
     /// current set of system fonts are immediately returned. If not cached, a future is returned
     /// that returns all of the system fonts when awaited.
-    /// NOTE it is up to the caller to cache the result of the future via a call to
-    /// [`Self::set_system_fonts`].
+    /// `preload_families` loads every family for font previews; otherwise only metadata is cached.
     #[cfg(not(target_family = "wasm"))]
     pub fn all_system_fonts(
         &self,
+        preload_families: bool,
         ctx: &mut crate::ModelContext<Self>,
     ) -> BoxFuture<'static, Vec<(Option<FamilyId>, FontInfo)>> {
-        if let Some(fonts) = self.available_system_fonts.as_ref() {
+        if let Some(fonts) = self.available_system_fonts.as_ref()
+            && (!preload_families || self.available_system_fonts_preloaded)
+        {
             futures::future::ready(fonts.clone()).boxed()
         } else {
             log::info!("Computing available system fonts");
             let (tx, rx) = futures::channel::oneshot::channel();
             ctx.spawn(
                 self.platform.load_all_system_fonts(),
-                |me, loaded_system_fonts, _ctx| {
-                    let system_fonts = me.platform.process_loaded_system_fonts(loaded_system_fonts);
+                move |me, loaded_system_fonts, _ctx| {
+                    if me.available_system_fonts_preloaded {
+                        let _ = tx.send(me.available_system_fonts.clone().unwrap_or_default());
+                        return;
+                    }
+                    let system_fonts = me
+                        .platform
+                        .process_loaded_system_fonts(loaded_system_fonts, preload_families);
                     me.available_system_fonts = Some(system_fonts.clone());
+                    me.available_system_fonts_preloaded = preload_families;
                     let _ = tx.send(system_fonts);
                 },
             );

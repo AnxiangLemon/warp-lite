@@ -68,7 +68,12 @@ pub fn current_shell_starter_and_version() -> (DirectShellStarter, String) {
         }
         shell::ShellType::PowerShell => {
             let stdout = Command::new(starter.logical_shell_path())
-                .args(["-Version"])
+                .args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    "$PSVersionTable.PSVersion.ToString()",
+                ])
                 .output()
                 .expect("version command should run")
                 .stdout;

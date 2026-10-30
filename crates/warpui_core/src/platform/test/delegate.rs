@@ -536,11 +536,13 @@ impl platform::FontDB for FontDB {
     fn process_loaded_system_fonts(
         &mut self,
         loaded_system_fonts: Box<dyn platform::LoadedSystemFonts>,
+        preload_families: bool,
     ) -> Vec<(Option<FamilyId>, crate::fonts::FontInfo)> {
         let _loaded_system_fonts: Box<LoadedSystemFonts> = loaded_system_fonts
             .as_any()
             .downcast()
             .expect("should not fail to downcast to concrete type");
+        let _ = preload_families;
         vec![]
     }
 

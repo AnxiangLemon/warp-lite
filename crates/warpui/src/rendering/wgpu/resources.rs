@@ -66,7 +66,7 @@ pub struct Resources {
     pub adapter: Adapter,
     pub surface: Surface<'static>,
     pub surface_config: RefCell<SurfaceConfiguration>,
-    pub supported_backends: Vec<wgpu::Backend>,
+    supported_backends: std::sync::OnceLock<Vec<wgpu::Backend>>,
     uniforms: uniforms::Uniforms,
     quad: quad::Resources,
 }
@@ -74,19 +74,64 @@ pub struct Resources {
 impl Resources {
     /// Attempts to construct a new instance of [`Resources`] via the provided `window_handle`.
     pub fn new(
-        window_handle: impl Into<wgpu::SurfaceTarget<'static>> + wgpu::rwh::HasDisplayHandle,
+        window_handle: impl Into<wgpu::SurfaceTarget<'static>> + wgpu::rwh::HasDisplayHandle + Clone,
         gpu_power_preference: GPUPowerPreference,
         backend_preference: Option<wgpu::Backend>,
         on_gpu_device_selected: &OnGPUDeviceSelected,
         initial_surface_size: Vector2F,
         downrank_non_nvidia_vulkan_adapters: bool,
     ) -> Result<Self> {
+        let deferred = super::defer_unused_backends()
+            && matches!(backend_preference, None | Some(wgpu::Backend::Dx12));
+        let result = Self::new_with_backends(
+            window_handle.clone(),
+            gpu_power_preference,
+            backend_preference,
+            on_gpu_device_selected,
+            initial_surface_size,
+            downrank_non_nvidia_vulkan_adapters,
+            deferred,
+        );
+        if deferred && let Err(error) = &result {
+            log::warn!(
+                "DirectX initialization failed; trying remaining graphics backends: {error:#}"
+            );
+            return Self::new_with_backends(
+                window_handle,
+                gpu_power_preference,
+                backend_preference,
+                on_gpu_device_selected,
+                initial_surface_size,
+                downrank_non_nvidia_vulkan_adapters,
+                false,
+            );
+        }
+        result
+    }
+
+    fn new_with_backends(
+        window_handle: impl Into<wgpu::SurfaceTarget<'static>> + wgpu::rwh::HasDisplayHandle,
+        gpu_power_preference: GPUPowerPreference,
+        backend_preference: Option<wgpu::Backend>,
+        on_gpu_device_selected: &OnGPUDeviceSelected,
+        initial_surface_size: Vector2F,
+        downrank_non_nvidia_vulkan_adapters: bool,
+        deferred: bool,
+    ) -> Result<Self> {
         let windowing_system = window_handle.display_handle()?.as_raw().try_into().ok();
 
-        let instance = super::get_wgpu_instance();
+        let instance = if deferred {
+            super::get_wgpu_instance()
+        } else {
+            super::get_full_wgpu_instance()
+        };
         let surface = instance.create_surface(window_handle)?;
 
-        let backends = super::wgpu_backend_options();
+        let backends = if deferred {
+            wgpu::Backends::DX12
+        } else {
+            super::wgpu_backend_options()
+        };
         // All of the WGPU initialization functions are asynchronous. For simplicity while
         // prototyping, we just use `block_on` to force them to be synchronous.
         block_on(async {
@@ -99,6 +144,7 @@ impl Resources {
                 initial_surface_size,
                 windowing_system,
                 downrank_non_nvidia_vulkan_adapters,
+                deferred && backend_preference.is_none(),
             )
             .await
             .ok_or_else(|| anyhow!("No usable wgpu adapter was found"))?;
@@ -133,10 +179,36 @@ impl Resources {
                 adapter,
                 surface,
                 surface_config: surface_config.into(),
-                supported_backends: supported_backends.into_iter().collect(),
+                supported_backends: if deferred {
+                    std::sync::OnceLock::new()
+                } else {
+                    std::sync::OnceLock::from(supported_backends.into_iter().collect_vec())
+                },
                 uniforms,
                 quad,
             })
+        })
+    }
+
+    pub fn supported_backends(
+        &self,
+        window_handle: impl Into<wgpu::SurfaceTarget<'static>>,
+    ) -> &[wgpu::Backend] {
+        self.supported_backends.get_or_init(|| {
+            let instance = super::get_full_wgpu_instance();
+            let surface = match instance.create_surface(window_handle) {
+                Ok(surface) => surface,
+                Err(error) => {
+                    log::warn!("Unable to probe additional graphics backends: {error:#}");
+                    return vec![self.adapter.get_info().backend];
+                }
+            };
+            block_on(instance.enumerate_adapters(super::wgpu_backend_options()))
+                .into_iter()
+                .filter(|adapter| is_supported_adapter(adapter, &surface))
+                .map(|adapter| adapter.get_info().backend)
+                .unique()
+                .collect()
         })
     }
 
@@ -256,6 +328,7 @@ async fn select_adapter(
     initial_surface_size: Vector2F,
     windowing_system: Option<windowing::System>,
     downrank_non_nvidia_vulkan_adapters: bool,
+    prefer_reliable_hardware: bool,
 ) -> Option<(
     Adapter,
     Device,
@@ -300,7 +373,16 @@ async fn select_adapter(
 
     let adapters = sorted_adapters
         // Filter out any unsupported adapters and log information about each one.
-        .filter(|adapter| is_supported_adapter(adapter, surface))
+        .filter(|adapter| {
+            (!prefer_reliable_hardware
+                || (adapter.get_info().device_type != DeviceType::Cpu
+                    && adapter_stability_sort_func(
+                        adapter,
+                        windowing_system,
+                        downrank_non_nvidia_vulkan_adapters,
+                    ) == AdapterSupport::Supported))
+                && is_supported_adapter(adapter, surface)
+        })
         // While we don't strictly need to collect the iterator into a vector,
         // this ensures we log adapter information for all adapters.  (Omitting
         // this means the iterator is lazily evaluated, and we'll only print
@@ -659,6 +741,21 @@ async fn initialize_device(
 
     limits.max_mesh_output_layers = 0;
 
+    #[cfg(windows)]
+    let memory_hints = if crate::platform::windows::MEMORY_EFFICIENT_GPU_ALLOCATIONS
+        .get()
+        .is_some()
+    {
+        // D3D12 allocates this descriptor heap up front; the default million entries costs
+        // tens of MiB even for an empty terminal. Keep ample room for cached glyphs and images.
+        limits.max_non_sampler_bindings = 65_536;
+        wgpu::MemoryHints::MemoryUsage
+    } else {
+        wgpu::MemoryHints::default()
+    };
+    #[cfg(not(windows))]
+    let memory_hints = wgpu::MemoryHints::default();
+
     let (device, queue) = match adapter
         .request_device(&wgpu::DeviceDescriptor {
             // Use the broadest/most permissive device requirements
@@ -666,6 +763,7 @@ async fn initialize_device(
             // If we use any WGSL features that aren't included in
             // these defaults, we can add specific overrides as needed.
             required_limits: limits,
+            memory_hints,
             ..Default::default()
         })
         .await

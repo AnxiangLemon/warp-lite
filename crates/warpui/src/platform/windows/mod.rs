@@ -8,6 +8,8 @@ use warp_errors::report_error;
 pub use crate::windowing::winit::app::App;
 
 pub(crate) static DXC_PATH: std::sync::OnceLock<Option<DXCPath>> = std::sync::OnceLock::new();
+pub(crate) static MEMORY_EFFICIENT_GPU_ALLOCATIONS: std::sync::OnceLock<()> =
+    std::sync::OnceLock::new();
 
 /// Path to the DXC DLLs to be used to compile DirectX shaders using DXC.
 /// See https://github.com/microsoft/DirectXShaderCompiler.
@@ -26,6 +28,9 @@ pub trait AppBuilderExt {
     /// Using DXC requires the dlls within [`DXCPath`] to be available and shipped
     /// alongside the application.=
     fn use_dxc_for_directx_shader_compilation(&mut self, dxc_path: DXCPath);
+
+    /// Prefer smaller GPU memory pools and defer unused graphics backends.
+    fn use_memory_efficient_gpu_allocations(&mut self);
 }
 
 impl AppBuilderExt for super::AppBuilder {
@@ -40,6 +45,10 @@ impl AppBuilderExt for super::AppBuilder {
         if let Err(e) = DXC_PATH.set(Some(dxc_path)) {
             log::warn!("Failed to set DXC path {e:?}");
         }
+    }
+
+    fn use_memory_efficient_gpu_allocations(&mut self) {
+        let _ = MEMORY_EFFICIENT_GPU_ALLOCATIONS.set(());
     }
 }
 

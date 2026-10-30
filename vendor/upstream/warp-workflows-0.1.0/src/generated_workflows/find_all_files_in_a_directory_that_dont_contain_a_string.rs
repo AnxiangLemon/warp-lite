@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Find all files in a directory that don't contain a string"####.into(),command: r####"grep -L "{{pattern}}" "####.into(),tags: vec![r####"search"####.into(),r####"grep"####.into()].into_iter().collect(),description: Some(r####"Finds all files in a repository that don't contain a given pattern."####.into()),arguments: vec![Argument {name: r####"pattern"####.into(),description: Some(r####"The pattern to search for"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/1748129/how-do-i-find-files-that-do-not-contain-a-given-string-pattern"####.into()),author: Some(r####"ghostdog74"####.into()),author_url: Some(r####"https://stackoverflow.com/users/131527/ghostdog74"####.into()),shells: vec![].into_iter().collect(),}
+}

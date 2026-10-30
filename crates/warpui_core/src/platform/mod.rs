@@ -368,6 +368,7 @@ pub trait FontDB: 'static {
     fn process_loaded_system_fonts(
         &mut self,
         loaded_system_fonts: Box<dyn LoadedSystemFonts>,
+        preload_families: bool,
     ) -> Vec<(Option<FamilyId>, crate::fonts::FontInfo)>;
 
     /// Returns the [`FamilyId`] identified by `name`, or [`None`] if no font

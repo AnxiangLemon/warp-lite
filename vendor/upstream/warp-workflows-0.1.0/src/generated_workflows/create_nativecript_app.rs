@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Create a NativeScript app."####.into(),command: r####"ns create {{app_name}}"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"Interactively creates a new NativeScript app based on a predefined template."####.into()),arguments: vec![Argument {name: r####"app_name"####.into(),description: Some(r####"The name of project and must meet the requirements of each platform that you want to target."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/project/creation/create.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

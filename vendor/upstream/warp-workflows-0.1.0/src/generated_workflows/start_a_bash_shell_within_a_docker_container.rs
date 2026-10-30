@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Start a Bash shell within a Docker container"####.into(),command: r####"docker exec -it {{container_name}} bash"####.into(),tags: vec![r####"docker"####.into()].into_iter().collect(),description: Some(r####"Runs a Bash subshell within a Docker container."####.into()),arguments: vec![Argument {name: r####"container_name"####.into(),description: Some(r####"The container name of the Docker container"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/30172605/how-do-i-get-into-a-docker-containers-shell"####.into()),author: Some(r####"larsks"####.into()),author_url: Some(r####"https://stackoverflow.com/users/147356/larsks"####.into()),shells: vec![].into_iter().collect(),}
+}

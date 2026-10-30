@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Remove all global npm modules"####.into(),command: r####"npm ls -gp --depth=0 | awk -F/ '/node_modules/ && !/\/npm$/ {print $NF}' | xargs npm -g rm"####.into(),tags: vec![r####"npm"####.into()].into_iter().collect(),description: Some(r####"Removes all global NPM modules by listing all the global top level modules, and removing all modules that are not actually NPM itself (i.e. don't end with "/NPM")"####.into()),arguments: vec![].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/9283472/command-to-remove-all-npm-modules-globally"####.into()),author: Some(r####"Kai Sternad"####.into()),author_url: Some(r####"https://stackoverflow.com/users/283200/kai-sternad"####.into()),shells: vec![].into_iter().collect(),}
+}

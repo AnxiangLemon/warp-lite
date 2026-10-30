@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Report when a Kubernetes job has finished"####.into(),command: r####"kubectl wait --for=condition=complete job/{{job_name}}"####.into(),tags: vec![r####"kubernetes"####.into()].into_iter().collect(),description: Some(r####"Waits for a specified Kubernetes job to complete. The default timeout is 30 seconds, but can be adjusted by passing in the `--timeout` flag."####.into()),arguments: vec![Argument {name: r####"job_name"####.into(),description: Some(r####"The job that's currently running"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/44686568/tell-when-job-is-complete"####.into()),author: Some(r####"abagshaw"####.into()),author_url: Some(r####"https://stackoverflow.com/users/3474089/abagshaw"####.into()),shells: vec![].into_iter().collect(),}
+}

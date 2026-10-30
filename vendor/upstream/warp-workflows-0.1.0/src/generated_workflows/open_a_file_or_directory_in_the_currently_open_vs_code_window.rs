@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Open a file or directory in the currently open VS Code window"####.into(),command: r####"code -r {{file_or_directory}}"####.into(),tags: vec![r####"code"####.into()].into_iter().collect(),description: Some(r####"Use -r or --reuse-window command line option to attach the currently open VS Code window."####.into()),arguments: vec![Argument {name: r####"file_or_directory"####.into(),description: Some(r####"The file or directory that you want to open."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/41377489/how-to-open-a-file-from-the-integrated-terminal-in-visual-studio-code"####.into()),author: Some(r####"zloy-zhake"####.into()),author_url: Some(r####"https://stackoverflow.com/users/2807320/zloy-zhake"####.into()),shells: vec![].into_iter().collect(),}
+}

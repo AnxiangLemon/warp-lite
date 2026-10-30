@@ -1,0 +1,39 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+
+
+["package"]
+"edition" = "2018"
+"rust-version" = "1.78.0"
+"name" = "tink-proto"
+"version" = "0.3.0"
+"authors" = ["David Drysdale <drysdale@google.com>"]
+"build" = "build.rs"
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "Protocol buffer message definitions for Rust port of Google's Tink cryptography library"
+"documentation" = "https://docs.rs/tink-proto"
+"readme" = "README.md"
+"keywords" = ["cryptography", "tink", "protobuf"]
+"categories" = ["cryptography"]
+"license" = "Apache-2.0"
+"repository" = "https://github.com/project-oak/tink-rust"
+"metadata" = {"docs" = {"rs" = {"all-features" = true, "rustdoc-args" = ["--cfg", "docsrs"]}}}
+
+["features"]
+"default" = []
+"json" = ["base64", "serde"]
+
+["lib"]
+"name" = "tink_proto"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"prost" = "^0.14"
+"base64" = {"version" = "^0.22", "optional" = true}
+"serde" = {"version" = "^1.0.203", "features" = ["derive"], "optional" = true}
+
+["build-dependencies"]
+"prost-build" = "^0.14"

@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 
 #[cfg(feature = "warp_lite")]
 pub use backgrounds::{
-    test_lite_corrupt_background, test_lite_fixed_background, test_lite_missing_background,
-    test_lite_oversized_background,
+    test_lite_corrupt_background, test_lite_fixed_background, test_lite_jpeg_background,
+    test_lite_missing_background, test_lite_oversized_background,
 };
 #[cfg(feature = "warp_lite")]
 pub use close_confirmation::test_lite_close_confirmation;
@@ -28,6 +28,9 @@ use warp::integration_testing::command_search::{
     assert_command_search_has_results, assert_command_search_is_open,
     assert_history_filter_is_active,
 };
+use warp::integration_testing::context_chips::{
+    DisplayChip, DisplayChipAction, DisplayChipKind, DisplayChipMenu, DisplayChipMenuAction,
+};
 use warp::integration_testing::pane_group::{assert_focused_pane_index, assert_num_panes_in_tab};
 use warp::integration_testing::persistence::{
     PersistenceScope, database_file_path_for_current_scope, database_file_path_for_scope,
@@ -44,13 +47,20 @@ use warp::integration_testing::terminal::{
 use warp::integration_testing::view_getters::{
     pane_group_view, single_terminal_view_for_tab, workspace_view,
 };
-use warp::integration_testing::workspace::{assert_focused_tab_index, assert_tab_count};
-use warp::settings::{AISettings, DebugSettings, RESTORE_SESSION};
+use warp::integration_testing::workspace::{
+    AddTabWithShellSource, assert_focused_tab_index, assert_tab_count,
+};
+use warp::settings::{AISettings, DebugSettings, RESTORE_SESSION, ThemeSettings};
 use warp::settings_view::{SettingsSection, SettingsView};
+use warp::terminal::available_shells::AvailableShells;
+use warp::themes::theme::ThemeKind;
+use warp::themes::theme_chooser::ThemeChooserMode;
 use warp::workspace::WorkspaceAction;
 use warp::workspace::header_toolbar_item::HeaderToolbarItemKind;
 use warp::workspace::tab_settings::{TabSettings, VerticalTabsDisplayGranularity};
+use warpui_core::assets::asset_cache::{AssetCache, AssetSource, AssetState};
 use warpui_core::elements::DEFAULT_UI_LINE_HEIGHT_RATIO;
+use warpui_core::image_cache::ImageType;
 use warpui_core::integration::{ARTIFACTS_DIR_ENV_VAR, AssertionOutcome, TestSetupUtils, TestStep};
 use warpui_core::platform::LineStyle;
 use warpui_core::text_layout::{DEFAULT_TOP_BOTTOM_RATIO, StyleAndFont, TextStyle};
@@ -174,6 +184,36 @@ fn same_directory(actual: &str, expected: &Path) -> bool {
     Path::new(actual).canonicalize().ok() == expected.canonicalize().ok() && expected.is_dir()
 }
 
+fn searchable_directory_chip(
+    app: &warpui_core::App,
+    window_id: warpui_core::WindowId,
+) -> Option<warpui_core::ViewHandle<DisplayChip>> {
+    app.views_of_type::<DisplayChip>(window_id)?
+        .into_iter()
+        .find(|chip| {
+            chip.read(app, |chip, ctx| match chip.display_chip_kind() {
+                DisplayChipKind::WorkingDirectory {
+                    directory_fetcher, ..
+                } => directory_fetcher
+                    .as_ref(ctx)
+                    .cached_files()
+                    .iter()
+                    .any(|item| item.name == "搜索测试 目录"),
+                _ => false,
+            })
+        })
+}
+
+fn searchable_directory_menu(
+    app: &warpui_core::App,
+    window_id: warpui_core::WindowId,
+) -> Option<warpui_core::ViewHandle<DisplayChipMenu>> {
+    searchable_directory_chip(app, window_id)?.read(app, |chip, _| match chip.display_chip_kind() {
+        DisplayChipKind::WorkingDirectory { menu, .. } => Some(menu.clone()),
+        _ => None,
+    })
+}
+
 pub fn test_lite_chinese_settings() -> Builder {
     let mut builder = lite_builder()
         .with_user_defaults(HashMap::from([(
@@ -181,9 +221,81 @@ pub fn test_lite_chinese_settings() -> Builder {
             "false".to_owned(),
         )]))
         .with_setup(|utils| {
-            prepare_directory(utils);
+            let directory = prepare_directory(utils);
+            std::fs::create_dir_all(directory.join("搜索测试 目录")).unwrap();
+            std::fs::write(directory.join("readme.txt"), "directory search fixture").unwrap();
         })
         .with_step(wait_until_bootstrapped_single_pane_for_tab(0))
+        .with_step(execute_command_for_single_terminal_in_tab(
+            0,
+            format!("Set-Location -LiteralPath $env:{DIRECTORY_ENV}"),
+            ExpectedExitStatus::Success,
+            (),
+        ))
+        .with_step(
+            new_step_with_default_assertions("Directory chip reads local files and folders")
+                .add_named_assertion(
+                    "The directory menu contains the fixture",
+                    |app, window_id| {
+                        async_assert!(
+                            searchable_directory_chip(app, window_id).is_some(),
+                            "Directory chip must list the current directory"
+                        )
+                    },
+                ),
+        )
+        .with_step(
+            new_step_with_default_assertions("Open the directory menu").with_action(
+                |app, window_id, _| {
+                    let chip = searchable_directory_chip(app, window_id).unwrap();
+                    app.dispatch_typed_action(
+                        window_id,
+                        &[chip.id()],
+                        &DisplayChipAction::ToggleMenu,
+                    );
+                },
+            ),
+        )
+        .with_step(
+            new_step_with_default_assertions("Filter the directory menu with real text input")
+                .with_typed_characters(&["搜索测试"])
+                .add_named_assertion("Typing Chinese filters to one folder", |app, window_id| {
+                    let menu = searchable_directory_menu(app, window_id).unwrap();
+                    menu.read(app, |menu, _| {
+                        async_assert_eq!(
+                            menu.filtered_item_names(),
+                            vec!["搜索测试 目录".to_owned()]
+                        )
+                    })
+                })
+                .with_take_screenshot("lite-directory-search.png"),
+        )
+        .with_step(
+            new_step_with_default_assertions("Select the filtered directory")
+                .with_action(|app, window_id, _| {
+                    let menu = searchable_directory_menu(app, window_id).unwrap();
+                    app.dispatch_typed_action(
+                        window_id,
+                        &[menu.id()],
+                        &DisplayChipMenuAction::SelectEnter,
+                    );
+                })
+                .add_named_assertion(
+                    "Selection changes the actual shell directory",
+                    |app, window_id| {
+                        let expected = PathBuf::from(std::env::var_os(DIRECTORY_ENV).unwrap())
+                            .join("搜索测试 目录");
+                        single_terminal_view_for_tab(app, window_id, 0).read(app, |view, _| {
+                            async_assert!(
+                                view.pwd()
+                                    .as_deref()
+                                    .is_some_and(|pwd| same_directory(pwd, &expected)),
+                                "Selecting a search result must change the working directory"
+                            )
+                        })
+                    },
+                ),
+        )
         .with_step(assert_logged_out())
         .with_step(assert_lite_runtime_services_are_absent())
         .with_step(
@@ -258,6 +370,11 @@ pub fn test_lite_chinese_settings() -> Builder {
     for (section, screenshot) in [
         (SettingsSection::Features, "lite-settings-terminal.png"),
         (SettingsSection::Appearance, "lite-settings-appearance.png"),
+        (SettingsSection::About, "lite-settings-about.png"),
+        (
+            SettingsSection::Keybindings,
+            "lite-settings-keybindings.png",
+        ),
     ] {
         let mut step = new_step_with_default_assertions(&format!("Open the simplified Lite {section:?} settings page"))
             .with_action(move |app, window_id, _| {
@@ -288,6 +405,15 @@ pub fn test_lite_chinese_settings() -> Builder {
                     )
                 })
             })
+            .add_named_assertion("Settings reuse one top-level entry at the bottom", |app, window_id| {
+                workspace_view(app, window_id).read(app, |workspace, ctx| {
+                    let snapshot = workspace.snapshot(window_id, false, ctx);
+                    if snapshot.tabs.len() != 2 {
+                        return AssertionOutcome::failure("Opening settings repeatedly must reuse the same tab".to_owned());
+                    }
+                    async_assert!(snapshot.tabs[1].group_id.is_none() && snapshot.tabs[1].custom_title.as_deref() == Some("设置"), "Settings must be an ungrouped final tab")
+                })
+            })
             .add_named_assertion("The unavailable project and code tool panels stay hidden", |app, window_id| {
                 workspace_view(app, window_id).read(app, |workspace, ctx| {
                     async_assert!(
@@ -298,13 +424,128 @@ pub fn test_lite_chinese_settings() -> Builder {
                     )
                 })
             });
+        if section == SettingsSection::About {
+            step =
+                step.add_named_assertion("The bundled Lite logo decodes successfully", |app, _| {
+                    app.read(|ctx| {
+                        match AssetCache::as_ref(ctx).load_asset::<ImageType>(
+                            AssetSource::Bundled {
+                                path: "bundled/svg/warp-lite-logo.svg",
+                            },
+                        ) {
+                            AssetState::Loaded { .. } => AssertionOutcome::Success,
+                            AssetState::FailedToLoad(error) => AssertionOutcome::failure(format!(
+                                "Lite logo failed to load: {error:#}"
+                            )),
+                            AssetState::Loading { .. } | AssetState::Evicted => {
+                                AssertionOutcome::failure("Lite logo is not ready".to_owned())
+                            }
+                        }
+                    })
+                });
+        }
         if std::env::var_os("WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS").is_some() {
             step = step.with_take_screenshot(screenshot);
         }
         builder = builder.with_step(step);
     }
 
-    builder
+    for (query, expected) in [
+        ("字号", vec![SettingsSection::Appearance]),
+        ("智能", vec![SettingsSection::Features]),
+        ("没有这项设置", vec![]),
+        (
+            "",
+            vec![
+                SettingsSection::Appearance,
+                SettingsSection::Features,
+                SettingsSection::Keybindings,
+                SettingsSection::About,
+            ],
+        ),
+    ] {
+        builder = builder.with_step(
+            new_step_with_default_assertions(&format!("Filter settings with {query:?}"))
+                .with_action(move |app, window_id, _| {
+                    let settings = app.views_of_type::<SettingsView>(window_id).unwrap()[0].clone();
+                    settings.update(app, |view, ctx| view.set_search_query(query, ctx));
+                })
+                .add_named_assertion(
+                    "Chinese search filters settings and clearing restores all pages",
+                    move |app, window_id| {
+                        let settings =
+                            app.views_of_type::<SettingsView>(window_id).unwrap()[0].clone();
+                        settings.read(app, |view, ctx| {
+                            async_assert_eq!(
+                                view.visible_sections_for_integration_test(ctx),
+                                expected
+                            )
+                        })
+                    },
+                ),
+        );
+    }
+    builder = builder
+        .with_step(
+            new_step_with_default_assertions("Open the Chinese theme chooser")
+                .with_action(|app, window_id, _| {
+                    let workspace = workspace_view(app, window_id);
+                    app.dispatch_typed_action(
+                        window_id,
+                        &[workspace.id()],
+                        &WorkspaceAction::ShowThemeChooser(ThemeChooserMode::SystemAgnostic),
+                    );
+                })
+                .with_take_screenshot("lite-theme-chooser.png"),
+        )
+        .with_step(
+            new_step_with_default_assertions("Choose a theme by its Chinese name")
+                .with_typed_characters(&["紫莓"])
+                .with_keystrokes(&["down"])
+                .add_named_assertion(
+                    "The Chinese result selects the original theme identifier",
+                    |app, _| {
+                        app.read(|ctx| {
+                            async_assert_eq!(
+                                *ThemeSettings::as_ref(ctx).theme_kind.value(),
+                                ThemeKind::Adeberry
+                            )
+                        })
+                    },
+                )
+                .with_take_screenshot("lite-theme-search-chinese.png"),
+        )
+        .with_step(
+            new_step_with_default_assertions("Close the theme chooser")
+                .with_keystrokes(&["escape"]),
+        );
+    builder.with_step(
+        new_step_with_default_assertions("Open a terminal while settings is active")
+            .with_action(|app, window_id, _| {
+                let workspace = workspace_view(app, window_id);
+                app.dispatch_typed_action(
+                    window_id,
+                    &[workspace.id()],
+                    &WorkspaceAction::AddTerminalTab {
+                        hide_homepage: true,
+                    },
+                );
+            })
+            .add_named_assertion(
+                "Settings stays last when opening a terminal",
+                |app, window_id| {
+                    workspace_view(app, window_id).read(app, |workspace, ctx| {
+                        let snapshot = workspace.snapshot(window_id, false, ctx);
+                        async_assert!(
+                            snapshot.tabs.len() == 3
+                                && snapshot.tabs[2].group_id.is_none()
+                                && snapshot.tabs[2].custom_title.as_deref() == Some("设置"),
+                            "Settings must remain ungrouped at the end"
+                        )
+                    })
+                },
+            ),
+    )
 }
 
 pub fn test_lite_terminal_management() -> Builder {
@@ -441,6 +682,18 @@ pub fn test_lite_terminal_management() -> Builder {
                 .with_take_screenshot("lite-directory-groups.png"),
         )
         .with_step(
+            new_step_with_default_assertions("Distinguish a collapsed group from terminal rows")
+                .with_action(|app, window_id, _| {
+                    let workspace = workspace_view(app, window_id);
+                    let group_id = workspace.read(app, |workspace, ctx| {
+                        workspace.snapshot(window_id, false, ctx).tabs[0].group_id.unwrap()
+                    });
+                    app.dispatch_typed_action(window_id, &[workspace.id()],
+                        &WorkspaceAction::ToggleTabGroupCollapsed(group_id));
+                })
+                .with_take_screenshot("lite-collapsed-group.png"),
+        )
+        .with_step(
             new_step_with_default_assertions("Rename a group while keeping the other directory title automatic")
                 .with_action(|app, window_id, _| {
                     let workspace = workspace_view(app, window_id);
@@ -481,14 +734,9 @@ pub fn test_lite_terminal_management() -> Builder {
                         &WorkspaceAction::CloseActiveTab,
                     );
                 })
-                .add_named_assertion("The tab remains until its close is confirmed", assert_tab_count(2))
-                .add_named_assertion("Closing an idle tab requires confirmation", |app, window_id| {
-                    workspace_view(app, window_id).read(app, |workspace, ctx| async_assert!(workspace.is_native_quit_modal_open(ctx), "The close confirmation dialog is missing"))
-                }),
-        )
-        .with_step(
-            new_step_with_default_assertions("Confirm the tab close through the real dialog button")
-                .with_click_on_saved_position("native-modal-button:0")
+                .add_named_assertion("Closing a tab does not show a quit dialog", |app, window_id| {
+                    workspace_view(app, window_id).read(app, |workspace, ctx| async_assert!(!workspace.is_native_quit_modal_open(ctx), "Ordinary tabs should close directly"))
+                })
                 .add_named_assertion("One tab remains", assert_tab_count(1))
                 .add_named_assertion("The original tab is focused", assert_focused_tab_index(0)),
         )
@@ -996,4 +1244,48 @@ pub fn test_lite_restore_saved_tabs() -> Builder {
     } else {
         builder
     }
+}
+
+pub fn test_lite_wsl_directory_search() -> Builder {
+    lite_builder().with_real_display()
+        .with_setup(|utils| {
+            prepare_directory(utils);
+            // WSL must use the generated test rcfiles, not the user's Linux shell configuration.
+            utils.set_env("WSLENV", Some("HOME/p"));
+        })
+        .with_step(wait_until_bootstrapped_single_pane_for_tab(0))
+        .with_step(new_step_with_default_assertions("Wait for the installed WSL distro")
+            .add_named_assertion("WSL is available", |app, _| app.read(|ctx| {
+                async_assert!(AvailableShells::as_ref(ctx).get_available_shells().any(|shell| shell.is_wsl()), "Expected an installed WSL distribution")
+            })))
+        .with_step(new_step_with_default_assertions("Open a WSL terminal")
+            .with_action(|app, window_id, _| {
+                let shell = app.read(|ctx| AvailableShells::as_ref(ctx).get_available_shells().find(|shell| shell.is_wsl()).cloned().unwrap());
+                let workspace = workspace_view(app, window_id);
+                app.dispatch_typed_action(window_id, &[workspace.id()], &WorkspaceAction::AddTabWithShell { shell, source: AddTabWithShellSource::ShellSelectorMenu });
+            }))
+        .with_step(wait_until_bootstrapped_single_pane_for_tab(1))
+        .with_step(execute_command_for_single_terminal_in_tab(1,
+            r#"fixture=$(mktemp -d "$HOME/warp-lite-search.XXXXXX"); mkdir "$fixture/搜索测试 目录"; touch "$fixture/readme.txt"; cd "$fixture""#.to_owned(), ExpectedExitStatus::Success, ()))
+        .with_step(new_step_with_default_assertions("The WSL directory menu resolves its own home")
+            .add_named_assertion("The tilde path lists WSL files", |app, window_id| {
+                async_assert!(searchable_directory_chip(app, window_id).is_some(), "WSL home directory listing must contain the fixture")
+            }))
+        .with_step(new_step_with_default_assertions("Open the WSL directory menu")
+            .with_action(|app, window_id, _| {
+                let chip = searchable_directory_chip(app, window_id).unwrap();
+                app.dispatch_typed_action(window_id, &[chip.id()], &DisplayChipAction::ToggleMenu);
+            }))
+        .with_step(new_step_with_default_assertions("Search WSL folders in Chinese")
+            .with_typed_characters(&["搜索测试"])
+            .add_named_assertion("Exactly the Chinese WSL directory matches", |app, window_id| {
+                searchable_directory_menu(app, window_id).unwrap().read(app, |menu, _| async_assert_eq!(menu.filtered_item_names(), vec!["搜索测试 目录".to_owned()]))
+            }).with_take_screenshot("lite-wsl-directory-search.png"))
+        .with_step(new_step_with_default_assertions("Navigate to the WSL search result")
+            .with_keystrokes(&["enter"])
+            .add_named_assertion("The WSL shell changes directory", |app, window_id| {
+                single_terminal_view_for_tab(app, window_id, 1).read(app, |view, _| async_assert!(view.pwd().as_deref().is_some_and(|pwd| pwd.ends_with("/搜索测试 目录")), "WSL navigation should use the selected directory"))
+            }))
+        .with_step(execute_command_for_single_terminal_in_tab(1,
+            r#"cd "$fixture"; rmdir '搜索测试 目录'; rm readme.txt; cd ..; rmdir "$fixture""#.to_owned(), ExpectedExitStatus::Success, ()))
 }

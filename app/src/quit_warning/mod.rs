@@ -590,7 +590,7 @@ impl<'a> QuitWarningDialog<'a> {
             && state.total_long_running_commands > 0
         {
             buttons.push(ModalButton::for_app(
-                choose("Show running processes", "查看运行中的进程").to_string(),
+                choose("Show running processes", "查看进程").to_string(),
                 move |app| {
                     callback(app);
                 },

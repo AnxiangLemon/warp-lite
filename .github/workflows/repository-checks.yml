@@ -49,8 +49,12 @@ jobs:
             ':(top,glob).note/**' \
             ':(top,glob)lite_check*.txt' \
             ':(top).env' \
-            ':(top,glob)script/fix_lite_*.py')
+            ':(top,glob)script/fix_lite_*.py' \
+            ':(top,glob)**/ModuleAnalysisCache')
           if [[ -n "$artifacts" ]]; then
             printf 'Remove generated or local files from Git:\n%s\n' "$artifacts"
             exit 1
           fi
+
+      - name: Verify local dependency sources
+        run: python3 script/verify-local-sources.py --ledger-only

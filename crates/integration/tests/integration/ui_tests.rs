@@ -10,9 +10,14 @@ integration_tests! {
     #[cfg(target_os = "windows")]
     test_lite_chinese_settings,
     #[cfg(target_os = "windows")]
+    #[ignore = "Requires an installed WSL distribution"]
+    test_lite_wsl_directory_search,
+    #[cfg(target_os = "windows")]
     test_lite_close_confirmation,
     #[cfg(target_os = "windows")]
     test_lite_fixed_background,
+    #[cfg(target_os = "windows")]
+    test_lite_jpeg_background,
     #[cfg(target_os = "windows")]
     test_lite_missing_background,
     #[cfg(target_os = "windows")]

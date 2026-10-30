@@ -1,9 +1,20 @@
+use crate::themes::theme::ThemeKind;
+
 pub fn text(value: &str) -> &str {
     if !cfg!(feature = "warp_lite") {
         return value;
     }
     match value {
         "Settings" => "设置",
+        "Command" => "操作",
+        "Characters considered part of a word" => "视为单词组成部分的字符",
+        "Keyboard shortcuts are not synced to the cloud" => "快捷键仅保存在本机",
+        "Regular" => "常规",
+        "Medium" => "中等",
+        "Semi Bold" | "Semibold" => "半粗体",
+        "Thin" => "细体",
+        "Enabled" => "已启用",
+        "Disabled" => "已禁用",
         "Appearance" => "外观",
         "Features" => "终端",
         "Keyboard shortcuts" | "Configure keyboard shortcuts" => "快捷键",
@@ -128,6 +139,17 @@ pub fn search_query(query: &str) -> String {
     let mut query = query.to_lowercase();
     for (chinese, english) in [
         ("快捷键", " keyboard "),
+        ("启动", " startup "),
+        ("会话", " session "),
+        ("终端", " terminal "),
+        ("单词", " word "),
+        ("字符", " word "),
+        ("智能", " smart "),
+        ("版本", " version "),
+        ("状态标记", " indicator "),
+        ("标记", " indicator "),
+        ("底部", " bottom "),
+        ("顶部", " top "),
         ("字体", " font "),
         ("字号", " font size "),
         ("字重", " font weight "),
@@ -185,6 +207,41 @@ pub fn label(value: impl AsRef<str>) -> String {
     } else {
         translated.to_owned()
     }
+}
+
+pub fn theme_label(kind: &ThemeKind) -> String {
+    if !cfg!(feature = "warp_lite") {
+        return kind.to_string();
+    }
+    match kind {
+        ThemeKind::Light => "浅色主题",
+        ThemeKind::Dark => "深色主题",
+        ThemeKind::Adeberry => "紫莓",
+        ThemeKind::Phenomenon => "幻象",
+        ThemeKind::Dracula => "德古拉",
+        ThemeKind::FancyDracula => "绚彩德古拉",
+        ThemeKind::CyberWave => "赛博浪潮",
+        ThemeKind::SolarFlare => "太阳耀斑",
+        ThemeKind::SolarizedDark => "Solarized 深色",
+        ThemeKind::SolarizedLight => "Solarized 浅色",
+        ThemeKind::WillowDream => "柳色梦境",
+        ThemeKind::DarkCity => "暗夜都市",
+        ThemeKind::GruvboxDark => "Gruvbox 深色",
+        ThemeKind::GruvboxLight => "Gruvbox 浅色",
+        ThemeKind::RedRock => "赤岩",
+        ThemeKind::JellyFish => "水母",
+        ThemeKind::Leafy => "绿叶",
+        ThemeKind::Koi => "锦鲤",
+        ThemeKind::Snowy => "初雪",
+        ThemeKind::PinkCity => "粉色都市",
+        ThemeKind::Marble => "大理石",
+        ThemeKind::SentReferralReward
+        | ThemeKind::ReceivedReferralReward
+        | ThemeKind::Custom(_)
+        | ThemeKind::CustomBase16(_)
+        | ThemeKind::InMemory(_) => return kind.to_string(),
+    }
+    .to_owned()
 }
 
 pub fn binding_label(name: &str) -> Option<&'static str> {

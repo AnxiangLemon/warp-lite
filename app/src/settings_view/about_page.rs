@@ -1,8 +1,9 @@
 use warpui::assets::asset_cache::AssetSource;
 use warpui::elements::{
     Align, CacheOption, ConstrainedBox, Container, CrossAxisAlignment, Element, Flex, Image,
-    MainAxisAlignment, MouseStateHandle, ParentElement, Wrap,
+    MainAxisAlignment, MouseStateHandle, ParentElement, Text, Wrap,
 };
+use warpui::fonts::{Properties, Weight};
 use warpui::ui_components::components::UiComponent;
 use warpui::{AppContext, Entity, View, ViewContext, ViewHandle};
 
@@ -64,6 +65,9 @@ impl SettingsWidget for AboutPageWidget {
         appearance: &Appearance,
         _app: &AppContext,
     ) -> Box<dyn Element> {
+        if cfg!(feature = "warp_lite") {
+            return self.render_lite(appearance);
+        }
         let theme = appearance.theme();
         let ui_builder = appearance.ui_builder();
 
@@ -129,6 +133,120 @@ impl SettingsWidget for AboutPageWidget {
                         .finish(),
                 )
                 .finish(),
+        )
+        .finish()
+    }
+}
+
+impl AboutPageWidget {
+    fn render_lite(&self, appearance: &Appearance) -> Box<dyn Element> {
+        let theme = appearance.theme();
+        let font = appearance.ui_font_family();
+        let foreground = theme.foreground().into_solid();
+        let secondary = theme.sub_text_color(theme.surface_1()).into_solid();
+        let version = concat!("Warp Lite ", env!("CARGO_PKG_VERSION"));
+        let logo = ConstrainedBox::new(
+            Image::new(
+                AssetSource::Bundled {
+                    path: "bundled/svg/warp-lite-logo.svg",
+                },
+                CacheOption::BySize,
+            )
+            .finish(),
+        )
+        .with_width(88.)
+        .with_height(88.)
+        .finish();
+        let version_row = Flex::row()
+            .with_main_axis_alignment(MainAxisAlignment::Center)
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_child(
+                Text::new(format!("版本 {}", env!("CARGO_PKG_VERSION")), font, 13.)
+                    .with_color(secondary)
+                    .finish(),
+            )
+            .with_child(
+                Container::new(
+                    appearance
+                        .ui_builder()
+                        .copy_button(16., self.copy_version_button_mouse_state.clone())
+                        .build()
+                        .on_click(move |ctx, _, _| {
+                            ctx.dispatch_typed_action(WorkspaceAction::CopyVersion(version))
+                        })
+                        .finish(),
+                )
+                .with_margin_left(8.)
+                .finish(),
+            )
+            .finish();
+        Align::new(
+            ConstrainedBox::new(
+                Flex::column()
+                    .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                    .with_child(
+                        Container::new(logo)
+                            .with_margin_top(24.)
+                            .with_margin_bottom(20.)
+                            .finish(),
+                    )
+                    .with_child(
+                        Text::new("Warp Lite", font, 28.)
+                            .with_style(Properties {
+                                weight: Weight::Bold,
+                                ..Default::default()
+                            })
+                            .with_color(foreground)
+                            .finish(),
+                    )
+                    .with_child(
+                        Container::new(
+                            Text::new("轻量终端，专注当下。", font, 15.)
+                                .with_color(secondary)
+                                .finish(),
+                        )
+                        .with_margin_top(10.)
+                        .with_margin_bottom(24.)
+                        .finish(),
+                    )
+                    .with_child(version_row)
+                    .with_child(
+                        Container::new(
+                            Text::new("本地终端  ·  分屏管理  ·  会话恢复", font, 13.)
+                                .with_color(foreground)
+                                .finish(),
+                        )
+                        .with_margin_top(28.)
+                        .with_margin_bottom(20.)
+                        .finish(),
+                    )
+                    .with_child(
+                        Text::new(
+                            "基于 Warp 裁剪构建的精简版本，保留日常终端工作所需的核心功能。",
+                            font,
+                            14.,
+                        )
+                        .with_color(secondary)
+                        .finish(),
+                    )
+                    .with_child(
+                        Container::new(
+                            Text::new(
+                                "衍生版本：Warp Lite\n原项目：Warp · 保留原项目版权与许可声明",
+                                font,
+                                12.,
+                            )
+                            .with_color(secondary)
+                            .finish(),
+                        )
+                        .with_margin_top(28.)
+                        .with_margin_bottom(24.)
+                        .finish(),
+                    )
+                    .finish(),
+            )
+            .with_max_width(440.)
+            .finish(),
         )
         .finish()
     }

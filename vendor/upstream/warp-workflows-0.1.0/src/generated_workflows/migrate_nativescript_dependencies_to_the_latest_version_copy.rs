@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Migrate Nativescript dependencies to the latest version."####.into(),command: r####"ns migrate"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"Migrates the app dependencies to a form compatible with the latest NativeScript. Running this command will not affect the codebase of the application and you might need to do additional changes manually."####.into()),arguments: vec![].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/general/migrate.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Redirect output of command to a file"####.into(),command: r####"{{command}} > {{file}}"####.into(),tags: vec![r####"shell"####.into()].into_iter().collect(),description: Some(r####"Writes the output of a command to a file, overwriting anything that was already in the file."####.into()),arguments: vec![Argument {name: r####"command"####.into(),description: Some(r####"The command whose output should be forwarded to a file."####.into()),default_value: None,},Argument {name: r####"file"####.into(),description: Some(r####"The path to the file where the output should be written."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://tldp.org/LDP/abs/html/io-redirection.html"####.into()),author: Some(r####"Mendel Cooper"####.into()),author_url: None,shells: vec![Shell::Zsh,Shell::Bash].into_iter().collect(),}
+}

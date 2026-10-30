@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Graphite - Create a branch with an accompanying commit message"####.into(),command: r####"gt bc -am {{commit_message}}"####.into(),tags: vec![r####"graphite"####.into()].into_iter().collect(),description: Some(r####"Create a new branch stacked on top of the current branch and commit staged changes. If no branch name is specified but a commit message is passed, generate a branch name from the commit message."####.into()),arguments: vec![Argument {name: r####"commit_message"####.into(),description: Some(r####"The message to assign to this commit."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://graphite.dev/docs/command-reference"####.into()),author: Some(r####"graphite"####.into()),author_url: Some(r####"https://graphite.dev/"####.into()),shells: vec![].into_iter().collect(),}
+}

@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Configure NativeScript command-line autocompletion."####.into(),command: r####"ns autocomplete {{command}}"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"Prints your current NativeScript command-line completion settings. If disabled, prompts you to enable it."####.into()),arguments: vec![Argument {name: r####"command"####.into(),description: Some(r####"options are status, enable, disable."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/general/autocomplete.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

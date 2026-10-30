@@ -1,0 +1,36 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+"bin" = [{"name" = "file-id", "path" = "bin/file_id.rs"}]
+
+["package"]
+"edition" = "2021"
+"rust-version" = "1.77"
+"name" = "file-id"
+"version" = "0.2.2"
+"authors" = ["Daniel Faust <hessijames@gmail.com>"]
+"build" = false
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "Utility for reading inode numbers (Linux, MacOS) and file IDs (Windows)"
+"homepage" = "https://github.com/notify-rs/notify"
+"documentation" = "https://docs.rs/notify"
+"readme" = "README.md"
+"keywords" = ["filesystem", "inode", "file", "index"]
+"categories" = ["filesystem"]
+"license" = "MIT OR Apache-2.0"
+"repository" = "https://github.com/notify-rs/notify.git"
+
+["lib"]
+"name" = "file_id"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"serde" = {"version" = "1.0.89", "features" = ["derive"], "optional" = true}
+
+["dev-dependencies"]
+"tempfile" = {"version" = "3.10.0"}
+
+["target"]
+"cfg(windows)" = {"dependencies" = {"windows-sys" = {"version" = "0.59.0", "features" = ["Win32_Storage_FileSystem", "Win32_Foundation"]}}}

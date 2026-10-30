@@ -1,112 +1,51 @@
 # AGENTS.md
 
-This file provides guidance when working with code in this repository.
+This repository independently maintains Warp Lite, a local GUI terminal. Do not restore upstream
+services, automation, or private infrastructure as part of routine development.
 
-## Development Commands
+## Build and Run
 
-### Build and Run
-- `cargo run` / `./script/run` - Build and run the GUI desktop app locally
-- `./script/run-tui` - Build and run the headless TUI front-end (`crates/warp_tui`)
-- `cargo bundle --bin warp` - Bundle the main (GUI) app
+- `./script/run` or `./script/run-lite` runs Lite; `--release` uses the optimized `lite` profile.
+- Windows: `./script/run-lite.ps1 -Release`, `-BuildOnly` builds without starting the app.
+- Direct: `cargo build -p warp --bin warp-lite --profile lite --no-default-features --features warp_lite --locked`.
+- Package: `./script/package-lite.ps1 -SystemShaderCompiler`.
+- Bootstrap installs local development tools only; Git LFS and upstream skills are not required.
+- Plain `cargo run` still selects legacy default features; always specify the Lite configuration.
 
-### Running with local warp-server
-To connect Warp client to a local warp-server instance:
+## Verification
 
-```bash
-# Connect to server on default port 8080
-WITH_LOCAL_SERVER=1 ./script/run
+Use `script/presubmit` for the prescribed formatting and Clippy configurations. Before pushing, run
+`./script/format`, `./script/format --check` and all three strict Clippy commands:
 
-# Connect to server on custom port (e.g., 8082)
-WITH_LOCAL_SERVER=1 SERVER_ROOT_URL=http://localhost:8082 WS_SERVER_URL=ws://localhost:8082/graphql/v2 ./script/run
+```sh
+cargo clippy --workspace --exclude warp_completer --all-targets --tests -- -D warnings
+cargo clippy -p warp --all-targets --tests -- -D warnings
+cargo clippy -p warp_completer --all-targets --tests -- -D warnings
 ```
 
-Environment variables:
-- `SERVER_ROOT_URL` - HTTP endpoint (default: `http://localhost:8080`)
-- `WS_SERVER_URL` - WebSocket endpoint (default: `ws://localhost:8080/graphql/v2`)
+All must pass. Prefer nextest when installed; otherwise run targeted `cargo test` commands. See
+`docs/development.md` for offline service, Lite, persistence and real GUI test commands.
 
-### Testing
-- `cargo nextest run --no-fail-fast --workspace --exclude command-signatures-v2` - Run tests with nextest
-- `cargo nextest run -p warp_completer --features v2` - Run completer tests with v2 features
-- `cargo test --doc` - Run doc tests
-- `cargo test` - Run standard tests for individual packages
+- `python script/verify-local-sources.py` checks local source integrity and zero Git dependencies.
+- `./script/verify-lite-dependencies.ps1` rejects removed services, TLS and model dependencies in Lite.
+- Platform claims must match actual build/run evidence; see `docs/independence.md`.
 
-### Linting and Formatting
-- `./script/presubmit` - Run all presubmit checks (fmt, clippy, tests)
-- `./script/format` - Format code
-- `cargo clippy --workspace --all-targets --all-features --tests -- -D warnings` - Run clippy
-- `./script/run-clang-format.py -r --extensions 'c,h,cpp,m' ./crates/warpui/src/ ./app/src/` - Format C/C++/Obj-C code
-- `find . -name "*.wgsl" -exec wgslfmt --check {} +` - Check WGSL shader formatting
+## Architecture
 
-### Platform Setup
-- `./script/bootstrap` - Platform-specific setup plus common agent skill installation from `skills-lock.json`; prompts for project/global when an install or update is needed unless a target flag or environment override is provided.
-- `./script/bootstrap --skip-common-skills` - Platform setup without installing or updating common agent skills.
-- `./script/bootstrap --install-common-skills` - Explicitly install common agent skills from `skills-lock.json`; this is the default behavior.
-- `./script/bootstrap --install-common-skills-in-repo` - Platform setup plus common agent skill installation in this checkout's `.agents/skills`.
-- `./script/bootstrap --install-common-skills-globally` - Platform setup plus common agent skill installation in `~/.agents/skills`.
-- `../common-skills/scripts/install_common_skills --repo-root "$PWD" --project --if-needed` - Install or refresh shared agent skills in this checkout's `.agents/skills`.
-- `../common-skills/scripts/install_common_skills --repo-root "$PWD" --global --if-needed` - Install or refresh shared agent skills in `~/.agents/skills`.
-- `../common-skills/scripts/remove_common_skills --repo-root "$PWD"` - Remove shared agent skills listed in `skills-lock.json` from this checkout's `.agents/skills`.
-- `../common-skills/scripts/remove_common_skills --repo-root "$PWD" --global` - Remove shared agent skills listed in `skills-lock.json` from `~/.agents/skills`.
-- `../common-skills/scripts/remove_common_skills --repo-root "$PWD" --clear-lock` - Remove shared agent skills from this checkout and delete `skills-lock.json`.
-- `./script/install_cargo_build_deps` - Install Cargo build dependencies
-- `./script/install_cargo_test_deps` - Install Cargo test dependencies
+`app/` is the GUI frontend; `crates/warpui` and `crates/warpui_core` provide the shared Entity/model
+core and GPU UI. Terminal sessions, shell integration, persistence and settings share types with
+legacy modules. Preserve those contracts when removing code. The standalone `warp_tui` and
+`serve-wasm` packages are removed; shared cell-grid elements may still be used by tests.
 
-`skills-lock.json` is the standard project lock file managed by `npx skills`. `warpdotdev/common-skills/scripts/install_common_skills` requires an explicit install target before restoring: pass `--project`, pass `--global`, set `WARP_COMMON_SKILLS_INSTALL_TARGET`, or answer the interactive prompt from bootstrap. Non-interactive flows fail if no target is explicit. The installer creates `skills-lock.json` from `warpdotdev/common-skills` if it is missing, uses global as the recommended interactive default, errors if common skills are present in both project and global locations, prevents a global install pinned to one lock from being silently overwritten by another checkout pinned to a different lock, and verifies installed skills against the lock after successful install or skip paths. `script/run` and `script/bootstrap` execute this installer with `script/resolve_common_skills`, which uses `WARP_COMMON_SKILLS_SCRIPTS_DIR` only when explicitly set and otherwise runs the raw script from `warpdotdev/common-skills`. To test a remote common-skills branch, set `WARP_COMMON_SKILLS_REF=<branch>`. Cloud setup should use `common-skills/scripts/install_common_skills --repo-root <warp-checkout> --project --if-needed --non-interactive` or set `WARP_COMMON_SKILLS_INSTALL_TARGET=project` to avoid the prompt. To update the locked common skills, run `npx --yes skills@1.5.6 update -p -y` and commit the resulting `skills-lock.json` changes.
-
-## Architecture Overview
-
-This is a Rust-based terminal emulator with a custom UI framework called **WarpUI**. It has **two front-ends** that share a common core.
-
-### Front-ends: GUI and TUI
-
-Warp has two front-ends that share the `warp_core`/`warpui` Entity/model core (App/Entity/`AppContext`, actions, `Appearance`, `FeatureFlag`, telemetry, logging) but differ in UI framework, rendering, input, and verification:
-- **GUI desktop app** — the `app/` crate on the WarpUI pixel/GPU framework (`warpui`, `crates/warpui_core`): `Element`/`View` layout, GPU/WGSL rendering, mouse input, `.app` bundles. Run with `cargo run` / `./script/run`; verify visually with `computer_use` or the real-display integration framework (`crates/integration`).
-- **Headless TUI** — the `crates/warp_tui` crate: a console app (run with `./script/run-tui`; no `.app`/GPU) rendered with a parallel cell-grid element library at `crates/warpui_core/src/elements/tui` (the `TuiElement` trait), behind the `tui` cargo feature. Verify by running it in a real terminal and observing output; test with render-to-lines unit tests.
-
-**Skill convention:** a skill specific to one front-end says so in its name and/or description (e.g. `gui-ui-guidelines` / `gui-integration-test` are GUI-only; `tui-ui-guidelines`, `tui-testing`, and `tui-verify-change` are TUI-specific). Skills with no front-end call-out are surface-agnostic and apply to both. For TUI work prefer the `tui-*` skills and ignore GUI-only ones — and vice versa.
-
-### Key Components
-
-**Shared UI core** (`crates/warpui`, `crates/warpui_core`) — used by **both** front-ends:
-- Entity-Component-Handle pattern: a global `App` object owns all views/models (entities); views hold `ViewHandle<T>` references to other views; `AppContext` provides temporary access to handles during render/events.
-- Actions system for event handling.
-- `crates/warpui_core` also hosts the TUI cell-grid element library under `src/elements/tui` (behind the `tui` feature).
-
-**GUI rendering** (WarpUI GUI elements — GUI-specific):
-- `Element`s describe visual layout (Flutter-inspired), rendered on the GPU (WGSL).
-- Mouse input uses `MouseStateHandle`: create it once during construction and reference/clone it wherever mouse input is tracked. An inline `MouseStateHandle::default()` while rendering means no mouse interactions work. (The TUI's hover/click elements — `TuiHoverable`, `tui_collapsible` — also build on `MouseStateHandle`, so the same ownership rule applies there.)
-
-**TUI rendering** (`crates/warp_tui` + `crates/warpui_core/src/elements/tui` — TUI-specific):
-- Headless console front-end. The `TuiElement` trait lays out and paints into a cell-grid `TuiBuffer`; crossterm input is converted to `TuiEvent`. No GPU/WGSL, pixel geometry, or `.app` bundle.
-
-**Main app / shared surfaces** (`app/`) — the GUI desktop app plus feature surfaces the TUI reuses:
-- Terminal emulation and shell management (`terminal/`)
-- AI integration including Agent Mode (`ai/`)
-- Cloud synchronization and Drive features (`drive/`)
-- Authentication and user management (`auth/`)
-- Settings and preferences (`settings/`)
-- Workspace and session management (`workspace/`)
-
-**Core Libraries**:
-- `crates/warp_core/` - Core utilities and platform abstractions (shared)
-- `crates/warp_tui/` - Headless TUI front-end
-- `crates/editor/` - Text editing functionality
-- `crates/warpui/` and `crates/warpui_core/` - Custom UI framework (shared core plus the GUI and TUI element libraries)
-- `crates/ipc/` - Inter-process communication
-- `crates/graphql/` - GraphQL client and schema
-
-### Key Architectural Patterns
-
-1. **Entity-Handle System**: Views reference other views via handles, not direct ownership
-2. **Modular Structure**: Workspace contains multiple workspace configurations, each with terminals, notebooks, etc.
-3. **Cross-Platform**: Native implementations for macOS, Windows, Linux, plus WASM target
-4. **AI Integration**: Built-in AI assistant with context awareness and codebase indexing
-5. **Cloud Sync**: Objects can be synchronized across devices via Warp Drive
+Git-source dependencies are local path packages under `vendor/upstream`, excluded from workspace
+membership. `vendor/sources.json` records origin commits, licenses, local changes and file hashes.
+Update the ledger after intentionally modifying vendor source, and keep copyright/license notices.
+Ordinary registry dependencies remain pinned in `Cargo.lock`.
 
 ### Development Guidelines
 
 **Workspace Structure**:
-- This is a Cargo workspace with 60+ member crates
+- This is a Cargo workspace with shared terminal and UI crates
 - Main binary is in `app/`, UI framework in `crates/warpui/`
 - Platform-specific code is conditionally compiled
 - Integration tests are in `crates/integration/`
@@ -163,7 +102,7 @@ for itself.
 
 **Testing**:
 - Use `cargo nextest` for parallel test execution
-- Integration tests use the custom framework in `crates/integration/` — this is **GUI-only**. TUI elements/screens are covered by render-to-lines unit tests instead (see the `tui-testing` skill).
+- Integration tests use the custom framework in `crates/integration/` and use isolated app identities and data directories.
 - Tests should be run via presubmit script before submitting
 - Unit tests should be placed in separate files using the naming convention `${filename}_tests.rs` or `mod_test.rs`
 - Test files should be included at the end of their corresponding module with:

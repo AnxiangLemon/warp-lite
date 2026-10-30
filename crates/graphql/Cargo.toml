@@ -22,7 +22,7 @@ serde.workspace = true
 thiserror.workspace = true
 warp_core.workspace = true
 warp_graphql_schema.workspace = true
-websocket = { path = "../websocket", optional = true }
+websocket = { workspace = true, optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 graphql-ws-client = { workspace = true, features = ["client-cynic", "tungstenite"], optional = true }
@@ -40,6 +40,6 @@ cynic-codegen.workspace = true
 
 [features]
 default = ["network_transport"]
-network_transport = ["http_client/network_transport", "dep:futures", "dep:log", "dep:websocket", "dep:graphql-ws-client", "dep:ws_stream_wasm"]
+network_transport = ["http_client/network_transport", "websocket/network_transport", "dep:futures", "dep:log", "dep:websocket", "dep:graphql-ws-client", "dep:ws_stream_wasm"]
 # Enables utilities for testing.
 test-util = []

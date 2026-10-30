@@ -1,0 +1,29 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+
+
+["package"]
+"edition" = "2021"
+"name" = "warp-completion-metadata"
+"version" = "0.0.0"
+"authors" = ["Warp Team <dev@warp.dev>"]
+"build" = false
+"publish" = false
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"readme" = false
+"license" = "MIT"
+
+["lib"]
+"name" = "warp_completion_metadata"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"html-escape" = "0.2.13"
+"itertools" = "0.10.0"
+"log" = "0.4"
+"serde_json" = "1.0"
+"serde_with" = "^3.21"
+"serde" = {"version" = "1.0", "features" = ["derive"]}

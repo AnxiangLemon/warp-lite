@@ -33,12 +33,30 @@ pub struct AppearanceManager {
     // as a setting. It is used when the user is actively choosing a theme.
     transient_theme: Option<WarpTheme>,
 
+    #[cfg(feature = "warp_lite")]
+    lite_background: Option<crate::themes::theme::Image>,
+    #[cfg(all(feature = "warp_lite", feature = "integration_tests"))]
+    pub lite_background_loaded: bool,
+
     #[cfg(target_os = "macos")]
     app_icon_at_startup: AppIcon,
 }
 
 impl AppearanceManager {
     pub fn new(ctx: &mut ModelContext<Self>) -> Self {
+        #[cfg(feature = "warp_lite")]
+        ctx.spawn(
+            async { crate::themes::backgrounds::load_startup_background() },
+            |manager, image, ctx| {
+                manager.lite_background = image;
+                #[cfg(feature = "integration_tests")]
+                {
+                    manager.lite_background_loaded = true;
+                }
+                manager.refresh_theme_state(ctx);
+            },
+        );
+
         ctx.subscribe_to_model(&ThemeSettings::handle(ctx), move |me, _, _event, ctx| {
             me.refresh_theme_state(ctx);
         });
@@ -126,6 +144,10 @@ impl AppearanceManager {
 
         Self {
             transient_theme: None,
+            #[cfg(feature = "warp_lite")]
+            lite_background: None,
+            #[cfg(all(feature = "warp_lite", feature = "integration_tests"))]
+            lite_background_loaded: false,
             #[cfg(target_os = "macos")]
             app_icon_at_startup: *AppIconSettings::handle(ctx).as_ref(ctx).app_icon.value(),
         }
@@ -140,7 +162,11 @@ impl AppearanceManager {
         };
 
         #[cfg(feature = "warp_lite")]
-        let new_theme = apply_lite_background_setting(new_theme);
+        let new_theme = {
+            let mut theme = new_theme;
+            theme.set_background_image(self.lite_background.clone());
+            theme
+        };
 
         #[cfg(target_family = "wasm")]
         emit_theme_background_event(&new_theme);
@@ -410,12 +436,6 @@ fn get_or_load_font_family(font_name: &str, ctx: &mut AppContext) -> Option<Fami
     })
 }
 
-#[cfg(feature = "warp_lite")]
-fn apply_lite_background_setting(mut theme: WarpTheme) -> WarpTheme {
-    crate::themes::backgrounds::apply_lite_background(&mut theme);
-    theme
-}
-
 fn build_appearance(ctx: &mut AppContext) -> Appearance {
     let default_monospace_font_family = load_default_monospace_font_family(ctx)
         .expect("unable to load default monospace font family");
@@ -444,7 +464,11 @@ fn build_appearance(ctx: &mut AppContext) -> Appearance {
     let theme_kind = active_theme_kind(ThemeSettings::as_ref(ctx), ctx);
     let theme = Settings::theme_for_theme_kind(&theme_kind, ctx);
     #[cfg(feature = "warp_lite")]
-    let theme = apply_lite_background_setting(theme);
+    let theme = {
+        let mut theme = theme;
+        theme.set_background_image(None);
+        theme
+    };
     #[cfg(target_family = "wasm")]
     emit_theme_background_event(&theme);
 

@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Remove the first line of a text file"####.into(),command: r####"tail -n +2 "${{file_name}}""####.into(),tags: vec![r####"file manipulation"####.into(),r####"tail"####.into()].into_iter().collect(),description: Some(r####"Removes the first line line of a file using tail. Tail defaults to printing the first `x-1` lines, so `+2` indicates it should skip the first line."####.into()),arguments: vec![Argument {name: r####"file_name"####.into(),description: None,default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/339483/how-can-i-remove-the-first-line-of-a-text-file-using-bash-sed-script"####.into()),author: Some(r####"Aaron Digulla"####.into()),author_url: Some(r####"https://stackoverflow.com/users/34088/aaron-digulla"####.into()),shells: vec![].into_iter().collect(),}
+}

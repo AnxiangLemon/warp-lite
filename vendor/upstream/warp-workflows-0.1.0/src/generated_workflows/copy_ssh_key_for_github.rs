@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Copy SSH key for GitHub"####.into(),command: r####"pbcopy < ~/.ssh/id_ed25519.pub"####.into(),tags: vec![r####"github"####.into()].into_iter().collect(),description: Some(r####"Copies the SSH key for GitHub to the clipboard. This is useful for adding the SSH key to GitHub."####.into()),arguments: vec![Argument {name: r####"email"####.into(),description: Some(r####"Your email address. This is used to identify the key."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://docs.github.com/en/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account"####.into()),author: Some(r####"Tim Smith"####.into()),author_url: Some(r####"https://timsmith.tech"####.into()),shells: vec![].into_iter().collect(),}
+}

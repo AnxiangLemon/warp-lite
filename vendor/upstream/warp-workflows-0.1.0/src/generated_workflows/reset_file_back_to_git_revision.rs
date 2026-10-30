@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Reset file back to git revision"####.into(),command: r####"git reset {{commit_hash}} {{file_name}}"####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Resets a file back to a specific commit hash."####.into()),arguments: vec![Argument {name: r####"commit_hash"####.into(),description: Some(r####"The commit hash the file should be restored to"####.into()),default_value: None,},Argument {name: r####"file_name"####.into(),description: Some(r####"The file that should be restored"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/215718/how-can-i-reset-or-revert-a-file-to-a-specific-revision"####.into()),author: Some(r####"Chris Lloyd"####.into()),author_url: Some(r####"https://stackoverflow.com/users/42413/chris-lloyd"####.into()),shells: vec![].into_iter().collect(),}
+}

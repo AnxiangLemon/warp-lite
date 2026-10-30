@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Delete local git branch"####.into(),command: r####"git branch --delete {{branch_name}}"####.into(),tags: vec![r####"git"####.into()].into_iter().collect(),description: Some(r####"Deletes a local git branch only if it has been fully merged into the upstream branch. To force delete the branch irrespective of the its merged status, add the `--force` flag."####.into()),arguments: vec![Argument {name: r####"branch_name"####.into(),description: Some(r####"The name of the branch to delete"####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/2003505/how-do-i-delete-a-git-branch-locally-and-remotely"####.into()),author: Some(r####"Matthew Rankin"####.into()),author_url: Some(r####"https://stackoverflow.com/users/95592/matthew-rankin"####.into()),shells: vec![].into_iter().collect(),}
+}

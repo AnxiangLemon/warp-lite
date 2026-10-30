@@ -12,6 +12,11 @@ fn chinese_search_matches_terminal_settings() {
         ("restore session window tab pane startup", "恢复 标签页"),
         ("max block size lines maximum limit memory", "历史 行数"),
         ("copy on select", "选中 复制"),
+        ("startup shell session", "启动"),
+        ("word smart select semantic separator", "智能 单词"),
+        ("about warp version", "版本"),
+        ("tab indicator", "标签页 状态标记"),
+        ("jump to bottom of block button", "命令块 底部"),
     ] {
         let query = search_query(query);
         assert!(

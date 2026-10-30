@@ -11,6 +11,39 @@ const FRAME_WIDTH: f32 = 80.;
 const FRAME_HEIGHT: f32 = f32::MAX;
 
 #[test]
+fn system_font_listing_can_defer_loading_until_requested() -> Result<()> {
+    let mut font_db = FontDB::new();
+    let family_name = "Roboto";
+    let loaded_fonts = || -> Result<Box<dyn platform::LoadedSystemFonts>> {
+        let bytes =
+            include_bytes!("../../../../../app/assets/bundled/fonts/roboto/Roboto-Regular.ttf");
+        Ok(Box::new(LoadedSystemFonts(vec![(
+            crate::fonts::FontInfo {
+                family_name: family_name.to_owned(),
+                is_monospace: false,
+            },
+            load_font_family_from_bytes(family_name, vec![bytes.to_vec()])?,
+        )])))
+    };
+
+    let listed = font_db.process_loaded_system_fonts(loaded_fonts()?, false);
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].1.family_name, family_name);
+    assert_eq!(listed[0].0, None);
+    assert_eq!(font_db.family_id_for_name(family_name), None);
+
+    let preloaded = font_db.process_loaded_system_fonts(loaded_fonts()?, true);
+    let family_id = preloaded[0].0.expect("preloaded font must be available");
+    assert_eq!(font_db.family_id_for_name(family_name), Some(family_id));
+    let font_id = font_db.select_font(family_id, Properties::default());
+    assert!(font_db.font_metrics(font_id).units_per_em > 0);
+
+    let listed_again = font_db.process_loaded_system_fonts(loaded_fonts()?, false);
+    assert_eq!(listed_again[0].0, Some(family_id));
+    Ok(())
+}
+
+#[test]
 fn test_fixed_width_tab_size_affects_tab_width() -> Result<()> {
     let (font_db, roboto) = init_fonts();
 

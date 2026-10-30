@@ -1166,6 +1166,7 @@ impl platform::FontDB for FontDB {
     fn process_loaded_system_fonts(
         &mut self,
         loaded_system_fonts: Box<dyn platform::LoadedSystemFonts>,
+        preload_families: bool,
     ) -> Vec<(Option<FamilyId>, crate::fonts::FontInfo)> {
         let loaded_system_fonts: Box<LoadedSystemFonts> = loaded_system_fonts
             .as_any()
@@ -1176,7 +1177,11 @@ impl platform::FontDB for FontDB {
             .0
             .into_iter()
             .map(|(font_info, family)| {
-                let family_id = self.insert_font_family(family).ok();
+                let family_id = if preload_families {
+                    self.insert_font_family(family).ok()
+                } else {
+                    self.family_id_for_name(&font_info.family_name)
+                };
                 (family_id, font_info)
             })
             .collect_vec()

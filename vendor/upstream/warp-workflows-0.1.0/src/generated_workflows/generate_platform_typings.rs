@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Generate platform's (iOS and/or Android) typings for your NativeScript project."####.into(),command: r####"ns typings {{platform}}"####.into(),tags: vec![r####"nativescript"####.into()].into_iter().collect(),description: Some(r####"Generate iOS & Android typings for your NativeScript project. By default respecting platform support, so no iOS typings generated on Windows/Linux machines."####.into()),arguments: vec![Argument {name: r####"platform"####.into(),description: Some(r####"The name of the platform. E.g. ios, android, etc."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://github.com/NativeScript/nativescript-cli/blob/master/docs/man_pages/project/testing/typings.md"####.into()),author: Some(r####"erodriguezh"####.into()),author_url: Some(r####"https://github.com/erodriguezh"####.into()),shells: vec![].into_iter().collect(),}
+}

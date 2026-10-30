@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Sort a file by line length"####.into(),command: r####"cat {{file_name}} | awk '{ print length, $0 }' | sort -n -s | cut -d" " -f2-"####.into(),tags: vec![r####"file manipulation"####.into(),r####"awk"####.into()].into_iter().collect(),description: Some(r####"Sorts a text file by line length (including spaces). The `-s` flag indicates that any lines that are the same length are kept in the relative order that they occurred in the input."####.into()),arguments: vec![Argument {name: r####"file_name"####.into(),description: Some(r####"The name of the file to sort."####.into()),default_value: None,}].into_iter().collect(),source_url: Some(r####"https://stackoverflow.com/questions/5917576/sort-a-text-file-by-line-length-including-spaces"####.into()),author: None,author_url: None,shells: vec![].into_iter().collect(),}
+}

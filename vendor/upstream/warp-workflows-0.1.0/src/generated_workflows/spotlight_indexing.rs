@@ -1,0 +1,4 @@
+use warp_workflows_types::*;
+pub fn workflow() -> Workflow {
+    Workflow {name: r####"Starts or stops the MacOS Spotlight indexing process mds_stores."####.into(),command: r####"sudo mdutil -a -i {{switch}}"####.into(),tags: vec![r####"MacOS"####.into(),r####"mds_stores"####.into()].into_iter().collect(),description: Some(r####"mds_stores is a CPU intensive process that runs for Spotlight indexing. This command will enable or disable that process."####.into()),arguments: vec![Argument {name: r####"switch"####.into(),description: Some(r####"can be set to on or off."####.into()),default_value: Some(r####"off"####.into()),}].into_iter().collect(),source_url: Some(r####"https://electrictoolbox.com/disable-spotlight-indexing-mac-osx/"####.into()),author: Some(r####"The Electric Toolbox"####.into()),author_url: Some(r####"https://electrictoolbox.com/contact/"####.into()),shells: vec![].into_iter().collect(),}
+}

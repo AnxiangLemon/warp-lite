@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 
-use typed_path::TypedPathBuf;
 use warp_completer::completer::{EngineDirEntry, EngineFileType};
 use warp_util::file_type::is_binary_file;
 use warpui::r#async::SpawnedFutureHandle;
@@ -86,13 +85,11 @@ impl DirectoryFetcher {
         session_context: &SessionContext,
         dir_path: &str,
     ) -> Vec<DirectoryItem> {
-        // Convert the directory path to TypedPathBuf, expanding ~ if needed
-        let expanded_path = shellexpand::tilde(dir_path).into_owned();
-        let typed_path = if expanded_path != dir_path {
-            TypedPathBuf::from(expanded_path)
-        } else {
-            TypedPathBuf::from(dir_path)
-        };
+        // Display paths belong to the shell session, which may live in WSL or on an SSH host.
+        let expanded_path = expand_session_home(dir_path, session_context.session.home_dir());
+        let typed_path = session_context
+            .session
+            .convert_directory_to_typed_path_buf(expanded_path);
 
         // Force re-read the directory from disk so the chip reflects its current contents rather
         // than serving the possibly-stale entry from the shared `SessionContext` cache.
@@ -152,6 +149,19 @@ impl DirectoryFetcher {
 
 impl Entity for DirectoryFetcher {
     type Event = DirectoryFetcherEvent;
+}
+
+fn expand_session_home(path: &str, home: Option<&str>) -> String {
+    let Some(home) = home else {
+        return path.to_owned();
+    };
+    if path == "~" {
+        return home.to_owned();
+    }
+    if let Some(relative) = path.strip_prefix("~/").or_else(|| path.strip_prefix("~\\")) {
+        return format!("{}/{relative}", home.trim_end_matches(['/', '\\']));
+    }
+    path.to_owned()
 }
 
 impl Drop for DirectoryFetcher {

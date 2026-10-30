@@ -1,0 +1,29 @@
+# Local dependency snapshot; original manifest: Cargo.toml.upstream
+
+
+["package"]
+"edition" = "2021"
+"name" = "warp_multi_agent_api"
+"authors" = ["Warp Team <dev@warp.dev>"]
+"build" = "build.rs"
+"publish" = false
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"readme" = false
+"license" = "AGPL-3.0-only"
+
+["lib"]
+"name" = "warp_multi_agent_api"
+"path" = "src/lib.rs"
+
+["dependencies"]
+"prost" = {"version" = "0.14.3"}
+"prost-reflect" = {"version" = "0.16.3", "features" = ["derive"]}
+"prost-types" = {"version" = "0.14.3"}
+
+["build-dependencies"]
+"regex" = "1.11.1"
+"prost-reflect-build" = {"version" = "0.16.0"}

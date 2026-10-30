@@ -107,11 +107,11 @@ deltae = "0.3.1"
 derivative.workspace = true
 dhat = { version = "0.3.2", optional = true }
 diesel.workspace = true
-difflib = { git = "https://github.com/warpdotdev/difflib.git", rev = "114177e7d8e1f8017baca397f943e11644b14d63" }
+difflib = { path = "../vendor/upstream/difflib-0.4.0" }
 directories.workspace = true
 dirs.workspace = true
 dunce.workspace = true
-email_address = { git = "https://github.com/warpdotdev/rust-email_address", branch = "main" }
+email_address = { path = "../vendor/upstream/email_address-0.2.3" }
 embed_plist = "1.2"
 enclose = "1.1.8"
 enum-iterator.workspace = true
@@ -347,7 +347,6 @@ aws-sdk-sts = { version = "1", default-features = false, features = ["default-ht
 
 notify-debouncer-full.workspace = true
 rquickjs = { workspace = true, optional = true }
-rustls.workspace = true
 syntect = { version = "5.0", optional = true }
 sysinfo.workspace = true
 warp-command-signatures = { workspace = true, features = ["embed-signatures"] }
@@ -516,7 +515,7 @@ crash_reporting = [
 creating_shared_sessions = []
 cross_repo_context = []
 codebase_index_persistence = ["full_source_code_embedding"]
-cloud_services = ["dep:opentelemetry", "dep:opentelemetry-http", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "dep:tracing-opentelemetry", "dep:tracing-subscriber", "http_client/network_transport", "asset_cache/network_assets", "dep:aws-config", "dep:aws-credential-types", "dep:aws-sdk-sts", "warp_graphql/network_transport", "warp_server_client/network_transport", "warp_managed_secrets/runtime"]
+cloud_services = ["websocket/network_transport", "dep:opentelemetry", "dep:opentelemetry-http", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "dep:tracing-opentelemetry", "dep:tracing-subscriber", "http_client/network_transport", "asset_cache/network_assets", "dep:aws-config", "dep:aws-credential-types", "dep:aws-sdk-sts", "warp_graphql/network_transport", "warp_server_client/network_transport", "warp_managed_secrets/runtime"]
 agent_runtime = ["warp_completer/cli_signatures", "dep:git2"]
 rich_documents = ["dep:syntect", "warp_editor/mermaid", "warp_editor/html", "warp_editor/ipynb", "languages/all_languages", "syntax_tree/runtime", "markdown_parser/html"]
 full_text_search = ["warp_search_core/full_text_search"]
@@ -755,9 +754,10 @@ grep_tool = []
 # For the most part, including GUI code in headless builds is fine; the main use case is
 # for things that pull in external dependencies.
 gui = ["voice_input"]
-nld_classifier_v1 = ["input_classifier/nld_classifier_v1"]
-nld_classifier_v2 = ["input_classifier/nld_classifier_v2"]
-nld_classifier_v3 = ["input_classifier/nld_classifier_v3"]
+# Compatibility aliases for saved feature selections; classification is heuristic-only.
+nld_classifier_v1 = []
+nld_classifier_v2 = []
+nld_classifier_v3 = []
 nld_heuristic_v1 = ["input_classifier/nld_heuristic_v1"]
 nld_heuristic_v2 = ["input_classifier/nld_heuristic_v2"]
 nld_prompt_history_match = []

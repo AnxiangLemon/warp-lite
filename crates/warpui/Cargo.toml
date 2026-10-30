@@ -154,7 +154,7 @@ font-kit.workspace = true
 bimap = "0.6.2"
 bytemuck.workspace = true
 command.workspace = true
-cosmic-text = { git = "https://github.com/warpdotdev/cosmic-text.git", rev = "15198beba692162201c0ea8b15222cf5643ea068" }
+cosmic-text = { path = "../../vendor/upstream/cosmic-text-0.12.0" }
 derivative.workspace = true
 fontdb = "0.23.0"
 memmap2 = "0.9.3"
@@ -209,7 +209,7 @@ zbus.workspace = true
 virtual-fs.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]
-dwrote = { git = "https://github.com/warpdotdev/dwrote-rs", rev = "a71ce6c0136f7d0954a9a8b181b5b2d8ace5eb9c", default-features = false }
+dwrote = { path = "../../vendor/upstream/dwrote-0.11.5", default-features = false }
 winreg.workspace = true
 windows = { workspace = true, features = [
     "Win32_Graphics_Dwm",

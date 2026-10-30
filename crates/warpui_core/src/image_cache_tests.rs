@@ -440,6 +440,30 @@ fn test_preview_and_full_animation_requests_do_not_collide_in_rendered_image_cac
 }
 
 #[test]
+fn test_path_only_svg_does_not_load_fonts() {
+    let image_type = ImageType::try_from_bytes(
+        br##"<svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path d="M0 0H16V16H0Z" fill="#123456"/></svg>"##,
+    )
+    .expect("Path-only SVG should parse");
+    let ImageType::Svg { svg } = &image_type else {
+        panic!("Expected SVG image type");
+    };
+    assert!(svg.fontdb().is_empty());
+    let image = image_type
+        .to_image(
+            Vector2I::new(16, 16),
+            FitType::Contain,
+            true,
+            AnimatedImageBehavior::FullAnimation,
+        )
+        .expect("Path-only SVG should rasterize without fonts");
+    let Image::Static(image) = image else {
+        panic!("Expected static image");
+    };
+    assert_eq!(&image.rgba_bytes()[..4], &[0x12, 0x34, 0x56, 0xff]);
+}
+
+#[test]
 fn test_svg_text_rasterizes_with_loaded_system_fonts() {
     let image_type = ImageType::try_from_bytes(
         br##"<svg width="160" height="40" viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg">

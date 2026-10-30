@@ -36,7 +36,7 @@ use crate::r#async::{FutureId, SpawnableOutput, Timer, block_on};
 use crate::core::{ActionType, StoredView, Window};
 use crate::event::KeyState;
 use crate::fonts::{self, ExternalFontFamily, FallbackFontModel, RequestedFallbackFontSource};
-use crate::image_cache::{self, ImageCache};
+use crate::image_cache::ImageCache;
 use crate::keymap::{
     BindingLens, Context, CustomTag, DescriptionContext, EditableBinding, EditableBindingLens,
     FixedBinding, IsBindingValid, Keystroke, MatchResult, Matcher, Trigger,
@@ -854,14 +854,6 @@ impl AppContext {
         });
         ctx.add_singleton_model(|_| image_cache);
         ctx.add_singleton_model(|_| FallbackFontModel::new());
-
-        if !is_unit_test {
-            ctx.background_executor()
-                .spawn(async {
-                    image_cache::prewarm_svg_font_db();
-                })
-                .detach();
-        }
 
         ctx
     }
