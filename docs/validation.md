@@ -12,7 +12,8 @@
 
 - `./script/format` 失败：`app/src/ai_lite/facts/manager.rs` 不存在，无法解析 `manager` module。
 - `cargo check -p warp --bin warp-lite --no-default-features --features warp_lite --locked` 报错：`facts` 缺失 `manager` 与 `view` module，同时存在 `crate::ai::agent::Shared` 未解析及 Lite 兼容接口缺失等错误。
-- 已启动 `script/presubmit` 中第一项 workspace Clippy，结果待进程完成后记录。
+- `cargo clippy --workspace --exclude warp_completer --all-targets --tests -- -D warnings` 失败：`rquickjs-sys v0.3.1` 的 build script 找不到 `patch` 工具。其余 Clippy 组合与完整 presubmit 未运行。
+- Lite 编译已报告 3220 个错误与 245 个警告，确认失败后停止编译器；该数量是本次输出记录，不代表完整问题清单。`cargo check` 返回 101。
 - 未验证 GUI 行为或 macOS / Linux 构建。旧 `dist/` 分发包与历史成功日志不作为当前源码可构建的证据。
 
 应先完成 Lite 接口对齐和缺失模块修复，再重新执行格式化、Clippy 与相关测试。当前整理结果属于开发中的源码快照，不是已验证的发布版本。
