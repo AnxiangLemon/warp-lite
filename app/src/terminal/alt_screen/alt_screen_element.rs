@@ -41,6 +41,7 @@ use crate::terminal::model::mouse::{MouseAction, MouseButton, MouseState};
 use crate::terminal::model::selection::{SelectAction, SelectionPoint};
 use crate::terminal::model::terminal_model::WithinModel;
 use crate::terminal::safe_mode_settings::get_secret_obfuscation_mode;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::presence_manager::{
     MUTED_PARTICIPANT_COLOR, PresenceManager, text_selection_color,
 };
@@ -74,6 +75,7 @@ pub struct AltScreenElement {
     active_session_state: ActiveSessionState,
     selection_range: Option<Vec1<Range<Point>>>,
 
+    #[cfg(feature = "agent_runtime")]
     presence_manager: Option<ModelHandle<PresenceManager>>,
 
     // Fields needed for vertical scrolling for shared session viewer when window is smaller than sharer's
@@ -150,6 +152,7 @@ impl AltScreenElement {
                 use_ligature_rendering: false,
                 hide_cursor_cell: false,
             },
+            #[cfg(feature = "agent_runtime")]
             presence_manager: None,
             scroll_top,
             visible_lines: None,
@@ -170,6 +173,7 @@ impl AltScreenElement {
         self
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn with_shared_session_presence(
         mut self,
         presence_manager: Option<ModelHandle<PresenceManager>>,
@@ -533,6 +537,7 @@ impl AltScreenElement {
     }
 
     /// Renders any shared session participants' selections.
+    #[cfg(feature = "agent_runtime")]
     fn render_participant_selections(
         &self,
         size_info: &SizeInfo,
@@ -779,6 +784,7 @@ impl Element for AltScreenElement {
             adjusted_grid_origin,
             ctx,
         );
+        #[cfg(feature = "agent_runtime")]
         self.render_participant_selections(
             &self.grid_render_params.size_info,
             adjusted_grid_origin,

@@ -138,6 +138,10 @@ impl LanguageServerCandidate for RustAnalyzerCandidate {
         _executor: &CommandBuilder,
     ) -> anyhow::Result<()> {
         anyhow::ensure!(
+            cfg!(feature = "managed_downloads"),
+            "Managed language-server installation is disabled in this build"
+        );
+        anyhow::ensure!(
             !cfg!(target_os = "freebsd"),
             "rust-analyzer is not auto-installable on FreeBSD: upstream \
              GitHub releases publish no FreeBSD asset. Install it via \

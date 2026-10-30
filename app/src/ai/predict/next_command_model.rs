@@ -824,6 +824,6 @@ fn find_potential_autosuggestions_from_history<'a>(
     commands_in_same_dir
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "next_command_model_tests.rs"]
 mod tests;

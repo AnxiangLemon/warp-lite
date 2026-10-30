@@ -258,6 +258,6 @@ impl Entity for WaitForEventsExecutor {
     type Event = ();
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "wait_for_events_tests.rs"]
 mod tests;

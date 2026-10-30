@@ -84,24 +84,28 @@ pub fn init_global_actions(app: &mut AppContext) {
     app.add_global_action("workspace:toggle_scroll_reporting", toggle_scroll_reporting);
     app.add_global_action("workspace:toggle_focus_reporting", toggle_focus_reporting);
     app.add_global_action("workspace:save_app", save_app);
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     app.add_global_action("workspace:fork_ai_conversation", fork_ai_conversation);
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     app.add_global_action(
         "workspace:summarize_ai_conversation",
         summarize_ai_conversation,
     );
+    #[cfg(feature = "agent_runtime")]
     app.add_global_action(
         "workspace:toggle_debug_network_status",
         toggle_debug_network_status,
     );
+    #[cfg(feature = "agent_runtime")]
     app.add_global_action(
         "workspace:debug_create_anonymous_user",
         create_anonymous_user,
     );
     app.add_global_action("workspace:open_repository", open_repository);
     app.add_global_action("app:undo_close", undo_close);
+    #[cfg(feature = "agent_runtime")]
     app.add_global_action("app:maybe_log_out", trigger_maybe_log_out);
+    #[cfg(feature = "agent_runtime")]
     app.add_global_action("app:log_out", trigger_log_out);
 }
 
@@ -163,6 +167,10 @@ fn save_app(_: &(), ctx: &mut AppContext) {
 
     // Only compute the app state if we're definitely going to use it.
     let app_state = get_app_state(ctx);
+    // Forced closes can bypass normal app termination; keep saved tabs when no windows remain.
+    if cfg!(feature = "warp_lite") && app_state.windows.is_empty() {
+        return;
+    }
     let event = ModelEvent::Snapshot(app_state);
 
     if let Err(err) = model_event_sender.send(event) {
@@ -235,7 +243,6 @@ fn open_repository(path: &String, ctx: &mut AppContext) {
     }
 }
 
-#[cfg(not(feature = "warp_lite"))]
 fn fork_ai_conversation(params: &ForkAIConversationParams, ctx: &mut AppContext) {
     dispatch_to_active_workspace(
         ctx,
@@ -251,7 +258,6 @@ fn fork_ai_conversation(params: &ForkAIConversationParams, ctx: &mut AppContext)
     );
 }
 
-#[cfg(not(feature = "warp_lite"))]
 fn summarize_ai_conversation(prompt: &Option<String>, ctx: &mut AppContext) {
     dispatch_to_active_workspace(
         ctx,
@@ -265,3 +271,7 @@ fn summarize_ai_conversation(prompt: &Option<String>, ctx: &mut AppContext) {
 fn trigger_log_out(_: &(), ctx: &mut AppContext) {
     auth::log_out(ctx)
 }
+
+#[cfg(all(test, feature = "warp_lite"))]
+#[path = "global_actions_tests.rs"]
+mod tests;

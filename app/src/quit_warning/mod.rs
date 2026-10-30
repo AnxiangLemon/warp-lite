@@ -11,7 +11,10 @@ use warpui::{
 use crate::code::editor_management::{CodeEditorStatus, CodeEditorSummary};
 use crate::code::view::CodeView;
 use crate::code_review::code_review_view::CodeReviewView;
-use crate::pane_group::{CodePane, PaneGroup, PaneId, TerminalPane};
+use crate::lite_i18n::choose;
+#[cfg(feature = "agent_runtime")]
+use crate::pane_group::CodePane;
+use crate::pane_group::{PaneGroup, PaneId, TerminalPane};
 use crate::server::telemetry::CloseTarget;
 use crate::session_management::{RunningSessionSummary, SessionNavigationData};
 use crate::settings::CodeSettings;
@@ -108,26 +111,34 @@ impl QuitScope<'_> {
 
     /// All code editors in this scope.
     fn code_editors(&self, ctx: &AppContext) -> Vec<CodeEditorStatus> {
-        match self {
-            Self::Pane {
-                pane_group,
-                pane_id,
-                ..
-            } => pane_group
-                .downcast_pane_by_id::<CodePane>(*pane_id)
-                .map(|code_pane| code_pane.editor_status(ctx))
-                .into_iter()
-                .collect(),
-            Self::Tabs(tabs) => tabs
-                .iter()
-                .filter_map(|tab| tab.upgrade(ctx))
-                .flat_map(|pane_group| CodeEditorStatus::editors_in_tab(&pane_group, ctx))
-                .collect_vec(),
-            Self::Window(window_id) => {
-                CodeEditorStatus::editors_in_window(*window_id, ctx).collect_vec()
+        #[cfg(feature = "agent_runtime")]
+        {
+            match self {
+                Self::Pane {
+                    pane_group,
+                    pane_id,
+                    ..
+                } => pane_group
+                    .downcast_pane_by_id::<CodePane>(*pane_id)
+                    .map(|code_pane| code_pane.editor_status(ctx))
+                    .into_iter()
+                    .collect(),
+                Self::Tabs(tabs) => tabs
+                    .iter()
+                    .filter_map(|tab| tab.upgrade(ctx))
+                    .flat_map(|pane_group| CodeEditorStatus::editors_in_tab(&pane_group, ctx))
+                    .collect_vec(),
+                Self::Window(window_id) => {
+                    CodeEditorStatus::editors_in_window(*window_id, ctx).collect_vec()
+                }
+                Self::App => CodeEditorStatus::all_editors(ctx).collect_vec(),
+                Self::EditorTab { editor_status, .. } => editor_status.clone(),
             }
-            Self::App => CodeEditorStatus::all_editors(ctx).collect_vec(),
-            Self::EditorTab { editor_status, .. } => editor_status.clone(),
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = ctx;
+            Vec::new()
         }
     }
 
@@ -164,41 +175,49 @@ impl QuitScope<'_> {
 
     /// All code editor views (code panes) in this scope, as handles for saving.
     fn code_view_handles(&self, ctx: &AppContext) -> Vec<ViewHandle<CodeView>> {
-        match self {
-            Self::Pane {
-                pane_group,
-                pane_id,
-                ..
-            } => pane_group
-                .code_pane_by_id(*pane_id)
-                .map(|code_pane| code_pane.file_view(ctx))
-                .into_iter()
-                .collect(),
-            Self::Tabs(tabs) => tabs
-                .iter()
-                .filter_map(|tab| tab.upgrade(ctx))
-                .flat_map(|pane_group| {
-                    pane_group
-                        .as_ref(ctx)
-                        .code_panes(ctx)
-                        .map(|(_, editor)| editor)
-                        .collect_vec()
-                })
-                .collect(),
-            Self::Window(window_id) => ctx
-                .views_of_type::<CodeView>(*window_id)
-                .into_iter()
-                .flatten()
-                .collect(),
-            Self::App => ctx
-                .window_ids()
-                .flat_map(|window_id| {
-                    ctx.views_of_type::<CodeView>(window_id)
-                        .into_iter()
-                        .flatten()
-                })
-                .collect(),
-            Self::EditorTab { .. } => Vec::new(),
+        #[cfg(feature = "agent_runtime")]
+        {
+            match self {
+                Self::Pane {
+                    pane_group,
+                    pane_id,
+                    ..
+                } => pane_group
+                    .code_pane_by_id(*pane_id)
+                    .map(|code_pane| code_pane.file_view(ctx))
+                    .into_iter()
+                    .collect(),
+                Self::Tabs(tabs) => tabs
+                    .iter()
+                    .filter_map(|tab| tab.upgrade(ctx))
+                    .flat_map(|pane_group| {
+                        pane_group
+                            .as_ref(ctx)
+                            .code_panes(ctx)
+                            .map(|(_, editor)| editor)
+                            .collect_vec()
+                    })
+                    .collect(),
+                Self::Window(window_id) => ctx
+                    .views_of_type::<CodeView>(*window_id)
+                    .into_iter()
+                    .flatten()
+                    .collect(),
+                Self::App => ctx
+                    .window_ids()
+                    .flat_map(|window_id| {
+                        ctx.views_of_type::<CodeView>(window_id)
+                            .into_iter()
+                            .flatten()
+                    })
+                    .collect(),
+                Self::EditorTab { .. } => Vec::new(),
+            }
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = ctx;
+            Vec::new()
         }
     }
 
@@ -351,6 +370,9 @@ impl<'a> UnsavedStateSummary<'a> {
     }
 
     pub fn should_display_warning(&self, ctx: &AppContext) -> bool {
+        if cfg!(feature = "warp_lite") {
+            return matches!(self.scope, QuitScope::App | QuitScope::Window(_));
+        }
         *GeneralSettings::as_ref(ctx).show_warning_before_quitting
             && (self.total_long_running_commands > 0
                 || self.shared_sessions > 0
@@ -366,6 +388,9 @@ impl<'a> UnsavedStateSummary<'a> {
     /// things auto-save can't handle: running processes, shared sessions, or
     /// unsaved changes with no backing file (e.g. untitled buffers).
     pub fn save_unsaved_code_and_should_warn(&self, ctx: &mut AppContext) -> bool {
+        if cfg!(feature = "warp_lite") {
+            return matches!(self.scope, QuitScope::App | QuitScope::Window(_));
+        }
         if !*CodeSettings::as_ref(ctx).auto_save {
             return self.should_display_warning(ctx);
         }
@@ -396,6 +421,38 @@ impl<'a> UnsavedStateSummary<'a> {
 
     /// Builds warning text describing what unsaved data there is.
     pub fn warning_text(&self) -> String {
+        if cfg!(feature = "warp_lite") {
+            let scope = match self.scope {
+                QuitScope::Tabs(ref tabs) if tabs.len() == 1 => "当前标签页",
+                QuitScope::Window(_) => "当前窗口",
+                QuitScope::Pane { .. } => "当前面板",
+                QuitScope::App | QuitScope::Tabs(_) | QuitScope::EditorTab { .. } => "这些会话",
+            };
+            let mut lines = Vec::new();
+            if self.total_long_running_commands > 0 {
+                lines.push(format!(
+                    "{scope}中有 {} 个进程仍在运行，关闭后这些进程会结束。",
+                    self.total_long_running_commands
+                ));
+            }
+            if self.shared_sessions > 0 {
+                lines.push(format!("当前正在共享 {} 个会话。", self.shared_sessions));
+            }
+            if self.unsaved_code_changes {
+                lines.push("存在未保存的文件更改。".to_owned());
+            }
+            if lines.is_empty() {
+                lines.push(match self.scope {
+                    QuitScope::App => "退出后会结束所有终端会话。".to_owned(),
+                    QuitScope::Window(_) => "关闭后会结束此窗口中的终端会话。".to_owned(),
+                    QuitScope::Tabs(_) => "关闭后会结束所选标签页中的终端会话。".to_owned(),
+                    QuitScope::Pane { .. } => "关闭后会结束此分屏中的终端会话。".to_owned(),
+                    QuitScope::EditorTab { .. } => "是否关闭当前页面？".to_owned(),
+                });
+            }
+            return lines.join("\n");
+        }
+
         let mut info_text_lines = Vec::<String>::new();
 
         let scope_suffix = match self.scope {
@@ -506,26 +563,34 @@ impl<'a> QuitWarningDialog<'a> {
 
         if let Some(callback) = on_confirm {
             let confirm_title = match state.scope {
-                QuitScope::Window(_) | QuitScope::Tabs(_) | QuitScope::Pane { .. } => "Yes, close",
-                QuitScope::App => "Yes, quit",
+                QuitScope::Window(_) | QuitScope::Tabs(_) | QuitScope::Pane { .. } => {
+                    choose("Yes, close", "确认关闭")
+                }
+                QuitScope::App => choose("Yes, quit", "确认退出"),
                 _ => "",
             };
             buttons.push(ModalButton::for_app(confirm_title.to_string(), callback));
         }
 
         if let Some(callback) = on_save_changes {
-            buttons.push(ModalButton::for_app("Save".to_string(), callback));
+            buttons.push(ModalButton::for_app(
+                choose("Save", "保存").to_string(),
+                callback,
+            ));
         }
 
         if let Some(callback) = on_discard_changes {
-            buttons.push(ModalButton::for_app("Don't Save".to_string(), callback));
+            buttons.push(ModalButton::for_app(
+                choose("Don't Save", "不保存").to_string(),
+                callback,
+            ));
         }
 
         if let Some(callback) = on_show_processes
             && state.total_long_running_commands > 0
         {
             buttons.push(ModalButton::for_app(
-                "Show running processes".to_string(),
+                choose("Show running processes", "查看运行中的进程").to_string(),
                 move |app| {
                     callback(app);
                 },
@@ -533,16 +598,19 @@ impl<'a> QuitWarningDialog<'a> {
         }
 
         if let Some(callback) = on_cancel {
-            buttons.push(ModalButton::for_app("Cancel".to_string(), callback));
+            buttons.push(ModalButton::for_app(
+                choose("Cancel", "取消").to_string(),
+                callback,
+            ));
         }
 
         let title = match &state.scope {
-            QuitScope::Pane { .. } => "Close pane?",
-            QuitScope::Tabs(tabs) if tabs.len() == 1 => "Close tab?",
-            QuitScope::Tabs(_) => "Close tabs?",
-            QuitScope::Window(_) => "Close window?",
-            QuitScope::App => "Quit Warp?",
-            QuitScope::EditorTab { .. } => "Save changes?",
+            QuitScope::Pane { .. } => choose("Close pane?", "关闭面板？"),
+            QuitScope::Tabs(tabs) if tabs.len() == 1 => choose("Close tab?", "关闭标签页？"),
+            QuitScope::Tabs(_) => choose("Close tabs?", "关闭这些标签页？"),
+            QuitScope::Window(_) => choose("Close window?", "关闭窗口？"),
+            QuitScope::App => choose("Quit Warp?", "退出 Warp Lite？"),
+            QuitScope::EditorTab { .. } => choose("Save changes?", "保存更改？"),
         };
 
         AlertDialogWithCallbacks::for_app(
@@ -581,7 +649,14 @@ impl<'a> QuitWarningDialog<'a> {
             let window_id_to_focus = ctx
                 .windows()
                 .active_window()
-                .or_else(|| session_summary.windows_running().iter().next().copied());
+                .or_else(|| session_summary.windows_running().iter().next().copied())
+                .or_else(|| {
+                    if cfg!(feature = "warp_lite") {
+                        ctx.window_ids().next()
+                    } else {
+                        None
+                    }
+                });
             if let Some(window_id_to_focus) = window_id_to_focus {
                 ctx.windows().show_window_and_focus_app(window_id_to_focus);
                 if let Some(workspace) = ctx
@@ -605,6 +680,9 @@ fn pluralize<'a>(count: usize, singular: &'a str, plural: &'a str) -> &'a str {
 
 /// Callback to disable the quit warning modal.
 fn on_disable_warning_modal(ctx: &mut AppContext) {
+    if cfg!(feature = "warp_lite") {
+        return;
+    }
     GeneralSettings::handle(ctx).update(ctx, |general_settings, ctx| {
         report_if_error!(
             general_settings

@@ -9,7 +9,9 @@ use warp_core::features::FeatureFlag;
 use warp_errors::report_error;
 use warp_multi_agent_api::client_action::Action;
 use warp_multi_agent_api::message::Message;
-use warp_multi_agent_api::response_event::{ClientActions, stream_finished};
+use warp_multi_agent_api::response_event::ClientActions;
+#[cfg(feature = "agent_runtime")]
+use warp_multi_agent_api::response_event::stream_finished;
 use warpui::{AppContext, ModelContext, SingletonEntity};
 
 use super::response_stream::ResponseStreamId;
@@ -499,6 +501,7 @@ impl BlocklistAIController {
 
     /// Sends a synthetic cancellation event to viewers when the sharer cancels a conversation.
     /// This ensures viewers see the conversation as cancelled and update their UI accordingly.
+    #[cfg(feature = "agent_runtime")]
     pub(super) fn send_cancellation_to_viewers(&mut self, ctx: &mut ModelContext<Self>) {
         if !self
             .terminal_model
@@ -576,6 +579,7 @@ impl BlocklistAIController {
                         .map(|t| t.as_str().to_string())
                 })
         });
+        #[cfg(feature = "agent_runtime")]
         self.terminal_model
             .lock()
             .send_agent_response_for_shared_session(

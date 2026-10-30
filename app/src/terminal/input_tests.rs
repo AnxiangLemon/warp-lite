@@ -1,15 +1,23 @@
+#[cfg(feature = "agent_runtime")]
 use std::cell::RefCell;
 use std::collections::HashSet;
+#[cfg(feature = "agent_runtime")]
 use std::rc::Rc;
 use std::sync::Arc;
+#[cfg(feature = "agent_runtime")]
 use std::time::Duration;
 
+#[cfg(feature = "agent_runtime")]
 use ai::index::full_source_code_embedding::manager::CodebaseIndexManager;
 use chrono::Local;
 use fuzzy_match::FuzzyMatchResult;
+#[cfg(feature = "agent_runtime")]
 use repo_metadata::RepoMetadataModel;
+#[cfg(feature = "agent_runtime")]
 use repo_metadata::repositories::DetectedRepositories;
+#[cfg(feature = "agent_runtime")]
 use repo_metadata::watcher::DirectoryWatcher;
+#[cfg(feature = "agent_runtime")]
 use session_sharing_protocol::common::Role;
 use smol_str::SmolStr;
 use unindent::Unindent;
@@ -20,96 +28,160 @@ use warp_completer::completer::{
     SuggestionResults, SuggestionType,
 };
 use warp_completer::meta::Span;
+#[cfg(feature = "agent_runtime")]
 use warp_util::standardized_path::StandardizedPath;
 use warp_util::user_input::UserInput;
+#[cfg(feature = "agent_runtime")]
+use warpui::ReadModel;
 use warpui::platform::WindowStyle;
 use warpui::text::SelectionType;
-use warpui::{App, ReadModel, UpdateView, WindowId};
+use warpui::{App, UpdateView, WindowId};
+#[cfg(feature = "agent_runtime")]
 use watcher::HomeDirectoryWatcher;
+#[cfg(feature = "agent_runtime")]
 use workflows::workflow::{Argument, ArgumentType, Workflow};
 
 use super::*;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::AIRequestUsageModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::conversation::ConversationStatus;
-use crate::ai::agent::task::TaskId;
-use crate::ai::agent::{
-    AIAgentActionId, AIAgentExchange, AIAgentInput, AIAgentOutputStatus, UserQueryMode,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::ai::agent::{AIAgentExchange, AIAgentInput, AIAgentOutputStatus, UserQueryMode};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_conversations_model::AgentConversationsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{AIQueryHistory, BlocklistAIPermissions, ResponseStreamId};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::connected_self_hosted_workers::ConnectedSelfHostedWorkersModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::harness_availability::HarnessAvailabilityModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::llms::{LLMId, LLMPreferences};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::gallery::MCPGalleryManager;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::templatable_manager::TemplatableMCPServerManager;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::outline::RepoOutlines;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::persisted_workspace::PersistedWorkspace;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::restored_conversations::RestoredAgentConversations;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::skills::SkillManager;
+#[cfg(feature = "agent_runtime")]
 use crate::auth::AuthStateProvider;
+#[cfg(feature = "agent_runtime")]
 use crate::auth::auth_manager::AuthManager;
+#[cfg(feature = "agent_runtime")]
 use crate::changelog_model::ChangelogModel;
+#[cfg(feature = "agent_runtime")]
 use crate::cloud_object::model::persistence::CloudModel;
+#[cfg(feature = "agent_runtime")]
 use crate::context_chips::prompt::Prompt;
-use crate::editor::{DisplayPoint, EditorAction, Point, TextStyleOperation};
-use crate::input_suggestions::{HistoryOrder, Item};
+#[cfg(feature = "agent_runtime")]
+use crate::editor::TextStyleOperation;
+use crate::editor::{DisplayPoint, EditorAction, Point};
+#[cfg(feature = "agent_runtime")]
+use crate::input_suggestions::HistoryOrder;
+use crate::input_suggestions::Item;
+#[cfg(feature = "agent_runtime")]
 use crate::network::NetworkStatus;
+#[cfg(feature = "agent_runtime")]
 use crate::pricing::PricingInfoModel;
+#[cfg(feature = "agent_runtime")]
 use crate::search::files::model::FileSearchModel;
+#[cfg(feature = "agent_runtime")]
 use crate::search::slash_command_menu::static_commands::commands;
+#[cfg(feature = "agent_runtime")]
 use crate::server::cloud_objects::listener::Listener;
+#[cfg(feature = "agent_runtime")]
 use crate::server::cloud_objects::update_manager::UpdateManager;
+#[cfg(feature = "agent_runtime")]
 use crate::server::server_api::ServerApiProvider;
+#[cfg(feature = "agent_runtime")]
 use crate::server::sync_queue::SyncQueue;
+#[cfg(feature = "agent_runtime")]
 use crate::server::telemetry::context_provider::AppTelemetryContextProvider;
 use crate::settings::import::model::ImportedConfigModel;
+use crate::settings::{AliasExpansionSettings, AppEditorSettings};
+#[cfg(feature = "agent_runtime")]
 use crate::settings::{
-    AliasExpansionSettings, AppEditorSettings, InputBoxType, LongRunningCommandSubmissionMode,
-    PrivacySettings, PromptSubmissionMode,
+    InputBoxType, LongRunningCommandSubmissionMode, PrivacySettings, PromptSubmissionMode,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
 #[cfg(windows)]
+#[cfg(feature = "agent_runtime")]
 use crate::system::SystemInfo;
+#[cfg(feature = "agent_runtime")]
 use crate::system::SystemStats;
 use crate::terminal::TerminalView;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::alt_screen_reporting::AltScreenReporting;
 use crate::terminal::block_list_viewport::ScrollPosition;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::{
     CLIAgentInputEntrypoint, CLIAgentInputState, CLIAgentSession, CLIAgentSessionContext,
     CLIAgentSessionStatus, CLIAgentSessionsModel,
 };
-use crate::terminal::event::{
-    BlockCompletedEvent, BlockMetadataReceivedEvent, BlockType, BootstrappedEvent,
-    UserBlockCompleted,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::event::{BlockCompletedEvent, BlockType, UserBlockCompleted};
+use crate::terminal::event::{BlockMetadataReceivedEvent, BootstrappedEvent};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::general_settings::UserDefaultShellUnsupportedBannerState;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::slash_commands::SlashCommandsEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::keys::TerminalKeybindings;
 use crate::terminal::local_shell::LocalShellState;
 use crate::terminal::local_tty::shell::ShellStarter;
 use crate::terminal::model::ansi::{Handler, PromptMetadata};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::model::block::{BlockId, SerializedBlock};
 use crate::terminal::model::blocks::{BlockListPoint, insert_block};
 use crate::terminal::model::grid::Dimensions as _;
 use crate::terminal::model::index::Side;
+#[cfg(not(feature = "agent_runtime"))]
+use crate::terminal::model::session::command_executor::NoOpCommandExecutor;
 use crate::terminal::model::session::{BootstrapSessionType, SessionInfo};
 use crate::terminal::model::terminal_model::BlockIndex;
 use crate::terminal::model_events::ModelEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::resizable_data::ResizableData;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::AIAgentActionId;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::TaskId;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::permissions_manager::SessionPermissionsManager;
 use crate::terminal::shell::ShellType;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::universal_developer_input::UniversalDeveloperInputButtonBarEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::inline_banner::ByoLlmAuthBannerSessionState;
 use crate::terminal::writeable_pty::command_history::update_command_history;
+#[cfg(feature = "agent_runtime")]
 use crate::test_util::settings::initialize_settings_for_tests;
+#[cfg(feature = "agent_runtime")]
 use crate::themes::theme::AnsiColorIdentifier;
+#[cfg(feature = "agent_runtime")]
 use crate::warp_managed_paths_watcher::WarpManagedPathsWatcher;
-use crate::workspace::{ActiveSession, OneTimeModalModel, ToastStack, WorkspaceRegistry};
+use crate::workspace::ToastStack;
+#[cfg(feature = "agent_runtime")]
+use crate::workspace::{ActiveSession, OneTimeModalModel, WorkspaceRegistry};
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::team_tester::TeamTesterStatus;
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::update_manager::TeamUpdateManager;
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::user_workspaces::UserWorkspaces;
+#[cfg(feature = "agent_runtime")]
 use crate::{
     AgentNotificationsModel, GlobalResourceHandles, GlobalResourceHandlesProvider,
     ReferralThemeStatus, experiments,
@@ -202,6 +274,7 @@ fn renders_fixed_prompt_chip_command_without_interpolation() {
     );
 }
 
+#[cfg(feature = "agent_runtime")]
 pub fn initialize_app(app: &mut App) {
     initialize_settings_for_tests(app);
 
@@ -346,6 +419,15 @@ pub fn initialize_app(app: &mut App) {
     app.add_singleton_model(|_| LocalShellState::NotLoaded);
 }
 
+#[cfg(not(feature = "agent_runtime"))]
+pub fn initialize_app(app: &mut App) {
+    crate::test_util::terminal::initialize_app_for_terminal_view(app);
+    app.update(init);
+    app.add_singleton_model(ImportedConfigModel::new);
+    app.add_singleton_model(|_| ToastStack);
+    app.add_singleton_model(|_| LocalShellState::NotLoaded);
+}
+
 fn bootstrap_terminal(
     terminal: &ViewHandle<TerminalView>,
     bootstrapped_event: BootstrappedEvent,
@@ -365,6 +447,16 @@ fn bootstrap_terminal(
         let model_event_dispatcher = terminal.model_event_dispatcher().clone();
         model_event_dispatcher.update(ctx, |dispatcher, _| {
             dispatcher.set_active_session_id(session_id);
+        });
+
+        #[cfg(not(feature = "agent_runtime"))]
+        History::handle(ctx).update(ctx, |history, ctx| {
+            let session = Arc::new(Session::new(
+                bootstrapped_event.session_info.as_ref().clone(),
+                Arc::new(NoOpCommandExecutor::default()),
+            ));
+            // Keep the fixture's history independent of the host shell history file.
+            history.init_session_with(session, async { Vec::new() }, ctx);
         });
 
         terminal.sessions_model().update(ctx, |sessions, ctx| {
@@ -735,6 +827,7 @@ fn test_input_tab() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn zero_state_hint_text_only_registers_active_slash_command_placeholders() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -866,23 +959,27 @@ fn test_clear_selection_after_insert() {
         assert_selections_in_blocklist(&mut app, false);
 
         // Activate Agent Mode, which should no longer allow text insertion to clear the selected text.
-        terminal.update(&mut app, |terminal, ctx| {
-            terminal.set_ai_input_mode_with_query(None, ctx)
-        });
+        #[cfg(feature = "agent_runtime")]
+        {
+            terminal.update(&mut app, |terminal, ctx| {
+                terminal.set_ai_input_mode_with_query(None, ctx)
+            });
 
-        // Agent Mode: Insert some text into the input box - this should no longer clear the terminal selection!
-        select_text(&mut app);
-        user_insert(&mut app, "bam");
-        assert_selections_in_blocklist(&mut app, true);
+            // Agent Mode: Insert some text into the input box - this should no longer clear the terminal selection!
+            select_text(&mut app);
+            user_insert(&mut app, "bam");
+            assert_selections_in_blocklist(&mut app, true);
 
-        // Agent Mode: System insert should not clear terminal selection.
-        select_text(&mut app);
-        user_insert(&mut app, "bab");
-        assert_selections_in_blocklist(&mut app, true);
+            // Agent Mode: System insert should not clear terminal selection.
+            select_text(&mut app);
+            user_insert(&mut app, "bab");
+            assert_selections_in_blocklist(&mut app, true);
+        }
     });
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_merge_ai_and_command_history() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1248,6 +1345,7 @@ fn test_history_up_buffer_restoration() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_history_up_for_shared_session_executor() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1326,6 +1424,7 @@ fn test_history_up_for_shared_session_executor() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn maybe_route_ai_query_to_remote_target_proceeds_for_local_pane() {
     // An ordinary local pane (not a viewer, not a cloud/ambient pane) must not be intercepted:
     // the helper returns false so the caller proceeds with normal local submission.
@@ -1361,6 +1460,7 @@ fn maybe_route_ai_query_to_remote_target_proceeds_for_local_pane() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn maybe_route_ai_query_to_remote_target_proceeds_for_empty_buffer() {
     // Even on a viewer pane, an empty buffer is a no-op the caller handles normally, so the
     // helper returns false and does not forward anything.
@@ -1401,6 +1501,7 @@ fn maybe_route_ai_query_to_remote_target_proceeds_for_empty_buffer() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn maybe_route_ai_query_to_remote_target_blocks_read_only_viewer() {
     // A read-only (reader) viewer cannot submit; the helper handles it (blocks) without
     // forwarding a prompt to the sharer.
@@ -1450,6 +1551,7 @@ fn maybe_route_ai_query_to_remote_target_blocks_read_only_viewer() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn maybe_route_ai_query_to_remote_target_forwards_executor_viewer_prompt() {
     // An executor viewer forwards the prompt to the sharer (SendAgentPrompt) instead of running
     // it on the viewer's local machine.
@@ -1499,6 +1601,7 @@ fn maybe_route_ai_query_to_remote_target_forwards_executor_viewer_prompt() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn attach_ambient_view_model_builds_composer_selectors_for_fresh_cloud_pane_in_view_pending() {
     // Regression: a fresh cloud-mode composer pane is created in `ViewPending` (see
     // `TerminalModel::new_for_cloud_mode_shared_session_viewer`), which
@@ -1544,6 +1647,7 @@ fn attach_ambient_view_model_builds_composer_selectors_for_fresh_cloud_pane_in_v
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn attach_ambient_view_model_skips_composer_selectors_for_actual_shared_session_viewer() {
     // An actual shared-session viewer (NOT a dummy cloud-mode session) that lazily discovers it is
     // viewing an ambient run must not build the composer-only selectors, even though its ambient VM
@@ -1588,6 +1692,7 @@ fn attach_ambient_view_model_skips_composer_selectors_for_actual_shared_session_
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cloud_mode_host_selector_shown_when_connected_workers_present() {
     // Regression: connected self-hosted workers must surface the host dropdown even
     // with no default host set.
@@ -1641,6 +1746,7 @@ fn cloud_mode_host_selector_shown_when_connected_workers_present() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn send_now_event_submits_through_active_pane_and_preserves_draft() {
     // A queued-prompt "send now" surfaces as a SendNow event on the input. The host should
     // immediately route the removed prompt through the active-pane submission path (here, the
@@ -1717,6 +1823,7 @@ fn send_now_event_submits_through_active_pane_and_preserves_draft() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn send_now_command_event_executes_command_and_arms_in_flight() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1777,6 +1884,7 @@ fn send_now_command_event_executes_command_and_arms_in_flight() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn queued_command_completion_preserves_draft() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1832,6 +1940,7 @@ fn queued_command_completion_preserves_draft() {
 
 /// Verifies deleting a queued row does not overwrite an existing draft.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn row_deleted_event_preserves_existing_draft() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1851,6 +1960,7 @@ fn row_deleted_event_preserves_existing_draft() {
 
 /// Seeds an active conversation in the history model for `terminal_view_id` so the queued
 /// prompts panel (and the empty-buffer Enter path) can resolve it.
+#[cfg(feature = "agent_runtime")]
 fn seed_active_conversation(app: &mut App, terminal_view_id: EntityId) -> AIConversationId {
     BlocklistAIHistoryModel::handle(app).update(app, |history, ctx| {
         let id = history.start_new_conversation(terminal_view_id, false, false, false, ctx);
@@ -1862,6 +1972,7 @@ fn seed_active_conversation(app: &mut App, terminal_view_id: EntityId) -> AIConv
 /// Enter on an empty buffer sends the top queued prompt; a second Enter sends the next row.
 /// The buffer stays empty throughout.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn empty_buffer_enter_sends_top_queued_prompt_then_next_on_repeat() {
     App::test((), |mut app| async move {
         let _queue_flag = FeatureFlag::QueueSlashCommand.override_enabled(true);
@@ -1917,6 +2028,7 @@ fn empty_buffer_enter_sends_top_queued_prompt_then_next_on_repeat() {
 /// With the input in (default) shell mode and an empty buffer, Enter executes the top queued
 /// command row instead of submitting an empty shell command.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn empty_buffer_enter_executes_top_queued_command() {
     App::test((), |mut app| async move {
         let _queue_flag = FeatureFlag::QueueSlashCommand.override_enabled(true);
@@ -1966,6 +2078,7 @@ fn empty_buffer_enter_executes_top_queued_command() {
 
 /// A non-empty buffer keeps Enter's existing behavior; the queued row is left in place.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn enter_with_nonempty_buffer_does_not_send_queued_row() {
     App::test((), |mut app| async move {
         let _queue_flag = FeatureFlag::QueueSlashCommand.override_enabled(true);
@@ -1998,6 +2111,7 @@ fn enter_with_nonempty_buffer_does_not_send_queued_row() {
 /// The locked initial cloud-mode head row never fires on Enter, and the locked head blocks the
 /// rows behind it (only the head row is Enter-sendable).
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn empty_buffer_enter_skips_locked_initial_cloud_mode_head() {
     App::test((), |mut app| async move {
         let _queue_flag = FeatureFlag::QueueSlashCommand.override_enabled(true);
@@ -2030,6 +2144,7 @@ fn empty_buffer_enter_skips_locked_initial_cloud_mode_head() {
 }
 
 /// Seeds an in-progress conversation for `terminal`.
+#[cfg(feature = "agent_runtime")]
 fn seed_in_progress_conversation(
     app: &mut App,
     terminal: &ViewHandle<TerminalView>,
@@ -2078,6 +2193,7 @@ fn seed_in_progress_conversation(
 }
 
 /// Puts the active block into the agent-requested, agent-in-control LRC state.
+#[cfg(feature = "agent_runtime")]
 fn simulate_agent_requested_lrc(
     app: &mut App,
     terminal: &ViewHandle<TerminalView>,
@@ -2107,6 +2223,7 @@ fn simulate_agent_requested_lrc(
     conversation_id
 }
 /// Puts the active block into the user-tagged, agent-in-control LRC state.
+#[cfg(feature = "agent_runtime")]
 fn simulate_user_tagged_agent_controlled_lrc(
     app: &mut App,
     terminal: &ViewHandle<TerminalView>,
@@ -2132,6 +2249,7 @@ fn simulate_user_tagged_agent_controlled_lrc(
 /// Selects `conversation_id` for the input so `selected_conversation_id` resolves to it.
 /// Routes through the context model, which enters agent view for the conversation. The
 /// conversation must already exist in history and no long-running command may be active.
+#[cfg(feature = "agent_runtime")]
 fn select_conversation(
     app: &mut App,
     terminal: &ViewHandle<TerminalView>,
@@ -2153,6 +2271,7 @@ fn select_conversation(
 /// While an agent controls an agent-requested long-running command, a prompt submission
 /// auto-queues (with the `LrcAutoQueue` origin) instead of being sent.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn prompt_submission_auto_queues_during_agent_requested_lrc() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2184,6 +2303,7 @@ fn prompt_submission_auto_queues_during_agent_requested_lrc() {
 /// LRC queued prompts do not fire on command finish while the conversation still has an active
 /// subagent. They fire when history shows the subagent has handed back to the main agent.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn lrc_queued_prompts_wait_while_subagent_is_active() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2255,6 +2375,7 @@ fn lrc_queued_prompts_wait_while_subagent_is_active() {
 /// If the conversation already has queued rows, LRC submissions append as regular queued rows
 /// when the current queue head is not LRC-queued, so command-finish delivery never jumps it.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn prompt_submission_during_lrc_with_non_lrc_queue_head_uses_generic_origin() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2309,6 +2430,7 @@ fn prompt_submission_during_lrc_with_non_lrc_queue_head_uses_generic_origin() {
 /// If the current queue head is LRC-queued, later LRC submissions join that same
 /// command-finish batch and fire in FIFO order.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn prompt_submission_during_lrc_with_lrc_queue_head_uses_lrc_origin() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2363,6 +2485,7 @@ fn prompt_submission_during_lrc_with_lrc_queue_head_uses_lrc_origin() {
 /// Explicitly tagging the agent into a user-started long-running command preserves steering:
 /// prompts submit immediately instead of using the LRC auto-queue path.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn prompt_submission_does_not_auto_queue_for_user_tagged_lrc() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2387,6 +2510,7 @@ fn prompt_submission_does_not_auto_queue_for_user_tagged_lrc() {
 /// With the LRC submission mode set to send immediately, a submission during an
 /// agent-requested LRC is not queued.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn prompt_submission_is_not_queued_during_lrc_when_set_to_send_immediately() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2418,6 +2542,7 @@ fn prompt_submission_is_not_queued_during_lrc_when_set_to_send_immediately() {
 /// during an agent-requested LRC still queues, but as a regular queued row (generic origin)
 /// that waits for the end of the full response rather than the end of the command.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn prompt_submission_during_lrc_with_queue_default_uses_generic_origin() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2450,6 +2575,7 @@ fn prompt_submission_during_lrc_with_queue_default_uses_generic_origin() {
 /// When the long-running command finishes, leading `LrcAutoQueue` rows fire to the agent in
 /// queue order; rows behind other origins stay queued for the normal end-of-response drain.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn lrc_queued_prompts_fire_from_queue_head_when_command_finishes() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2504,6 +2630,7 @@ fn lrc_queued_prompts_fire_from_queue_head_when_command_finishes() {
 /// While an agent controls an agent-requested LRC (and the setting is on), the empty-input
 /// ghost text shows the queue hint instead of the steer hint.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ghost_text_shows_queue_hint_during_agent_requested_lrc() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2526,6 +2653,7 @@ fn ghost_text_shows_queue_hint_during_agent_requested_lrc() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn shell_submission_queues_as_command_row_when_gated_under_v2() {
     // A shell-mode submission while a queued command is already in flight is captured as a
     // command row (not executed and not interrupting the queue), carries no attachments, and
@@ -2569,6 +2697,7 @@ fn shell_submission_queues_as_command_row_when_gated_under_v2() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn shell_submission_is_not_queued_when_v2_disabled() {
     // With QueuedPromptsV2 off, a shell submission is never captured as a command row even when
     // every other queue condition is met; it falls through to normal execution.
@@ -2605,6 +2734,7 @@ fn shell_submission_is_not_queued_when_v2_disabled() {
 /// prompt queuing and run immediately even while an agent is in progress with queued-prompts mode
 /// on.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn slash_fork_bypasses_prompt_queue_while_in_progress() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -2640,6 +2770,7 @@ fn slash_fork_bypasses_prompt_queue_while_in_progress() {
 /// into the conversation, so they are still queued while an agent is in progress. This keeps the
 /// bypass scoped to action-emitting commands only.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn slash_compact_still_queues_while_in_progress() {
     App::test((), |mut app| async move {
         let _agent_view = FeatureFlag::AgentView.override_enabled(false);
@@ -3937,6 +4068,7 @@ fn test_completions_while_typing_doesnt_hide_autosuggestion() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_agent_mode_set_while_typing_slash_command() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -3986,6 +4118,7 @@ fn test_agent_mode_set_while_typing_slash_command() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_plan_slash_command_argument_with_slash_does_not_disable_slash_command_parsing() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4012,6 +4145,7 @@ fn test_plan_slash_command_argument_with_slash_does_not_disable_slash_command_pa
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_slash_command_triggers_completions_on_space() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4049,6 +4183,7 @@ fn test_open_slash_command_triggers_completions_on_space() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_slash_command_does_not_autofill_single_file_completion() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4102,6 +4237,7 @@ fn test_open_slash_command_does_not_autofill_single_file_completion() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_slash_command_triggers_completions_when_selected() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4140,6 +4276,7 @@ fn test_open_slash_command_triggers_completions_when_selected() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_slash_command_requires_path() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4164,6 +4301,7 @@ fn test_open_slash_command_requires_path() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_changelog_slash_command_clears_buffer_on_success() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4191,6 +4329,7 @@ fn test_changelog_slash_command_clears_buffer_on_success() {
     });
 }
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_slash_command_opens_files_palette_when_entered_from_slash_menu() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4219,6 +4358,7 @@ fn test_open_slash_command_opens_files_palette_when_entered_from_slash_menu() {
 
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_slash_command_clears_buffer_on_success() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4264,6 +4404,7 @@ fn test_open_slash_command_clears_buffer_on_success() {
 
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_slash_command_expands_tilde() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4312,6 +4453,7 @@ fn test_open_slash_command_expands_tilde() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_shell_lock_respected_when_slash_command_typed() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -4350,6 +4492,7 @@ fn test_shell_lock_respected_when_slash_command_typed() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_new_conversation_keybinding_requires_double_press_in_non_empty_agent_view() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -4436,6 +4579,7 @@ fn test_new_conversation_keybinding_requires_double_press_in_non_empty_agent_vie
 /// inline editor is focused, so without the `QueuedPromptInlineEditorOpen` guard the help panel
 /// would wrongly open instead of inserting `?`.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn question_mark_does_not_toggle_shortcuts_while_editing_queued_prompt() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -4535,6 +4679,7 @@ fn question_mark_does_not_toggle_shortcuts_while_editing_queued_prompt() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_new_conversation_keybinding_does_not_require_confirmation_in_empty_agent_view() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -4585,6 +4730,7 @@ fn test_new_conversation_keybinding_does_not_require_confirmation_in_empty_agent
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_new_conversation_input_trigger_remains_single_step_in_non_empty_agent_view() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -4647,6 +4793,7 @@ fn test_new_conversation_input_trigger_remains_single_step_in_non_empty_agent_vi
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_create_docker_sandbox_slash_command_executes_and_clears_buffer() {
     App::test((), |mut app| async move {
         let _docker_sandbox_flag = FeatureFlag::LocalDockerSandbox.override_enabled(true);
@@ -4680,6 +4827,7 @@ fn test_create_docker_sandbox_slash_command_executes_and_clears_buffer() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_agent_mode_set_when_block_attached() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -5625,6 +5773,7 @@ fn test_powershell_should_insert_newline_on_enter() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_workflow_selected() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -5669,6 +5818,7 @@ fn test_workflow_selected() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_workflow_selected_with_default_value() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -5715,6 +5865,7 @@ fn test_workflow_selected_with_default_value() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_multiple_workflows_selected() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -5795,6 +5946,7 @@ fn test_multiple_workflows_selected() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_workflow_argument_tab_with_syntax_highlighting() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -5882,6 +6034,7 @@ fn test_workflow_argument_tab_with_syntax_highlighting() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_workflow_view_does_not_panic() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -6614,6 +6767,7 @@ fn test_alias_expansion_when_alias_expansion_is_disabled() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_alias_expansion_disabled_in_ai_input_mode() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -7163,6 +7317,7 @@ fn test_vim_escape_with_completions() {
 
 #[test]
 #[cfg(feature = "voice_input")]
+#[cfg(feature = "agent_runtime")]
 fn test_voice_input_toggle_preserves_lock_state() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -7260,6 +7415,7 @@ fn test_voice_input_toggle_preserves_lock_state() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_input_type_button_explicit_lock() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -7356,6 +7512,7 @@ fn test_input_type_button_explicit_lock() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_auto_detection_toggle() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -7474,6 +7631,7 @@ fn test_auto_detection_toggle() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_input_mode_setting_methods() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -7518,6 +7676,7 @@ fn test_input_mode_setting_methods() {
     });
 }
 
+#[cfg(feature = "agent_runtime")]
 fn run_input_mode_prefix_test(udi_enabled: bool, input_type: InputType) {
     let input_prefix = match input_type {
         InputType::Shell => super::TERMINAL_INPUT_PREFIX,
@@ -7578,6 +7737,7 @@ fn run_input_mode_prefix_test(udi_enabled: bool, input_type: InputType) {
     });
 }
 
+#[cfg(feature = "agent_runtime")]
 macro_rules! input_mode_prefix_tests {
     ($($name:ident: ($udi_enabled:literal, $input_mode:expr_2021),)*) => {
         $(
@@ -7589,12 +7749,14 @@ macro_rules! input_mode_prefix_tests {
     };
 }
 
+#[cfg(feature = "agent_runtime")]
 input_mode_prefix_tests! {
     test_ai_input_prefix_with_udi: (true, InputType::AI),
     test_ai_input_prefix_with_no_udi: (false, InputType::AI),
     test_shell_input_prefix_with_udi: (true, InputType::Shell),
     test_shell_input_prefix_with_no_udi: (false, InputType::Shell),
 }
+#[cfg(feature = "agent_runtime")]
 fn enter_fullscreen_agent_view_for_test(terminal: &ViewHandle<TerminalView>, app: &mut App) {
     terminal.update(app, |view, ctx| {
         view.agent_view_controller().update(ctx, |controller, ctx| {
@@ -7612,6 +7774,7 @@ fn enter_fullscreen_agent_view_for_test(terminal: &ViewHandle<TerminalView>, app
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_remains_text_when_handoff_flag_disabled() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -7636,6 +7799,7 @@ fn test_cloud_handoff_prefix_remains_text_when_handoff_flag_disabled() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_activates_when_handoff_flags_enabled() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -7670,6 +7834,7 @@ fn test_cloud_handoff_prefix_activates_when_handoff_flags_enabled() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_normal_deletion_does_not_exit() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -7722,6 +7887,7 @@ fn test_cloud_handoff_prefix_normal_deletion_does_not_exit() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_exits_on_backspace_at_beginning_of_buffer() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -7767,6 +7933,7 @@ fn test_cloud_handoff_prefix_exits_on_backspace_at_beginning_of_buffer() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_keeps_shell_prefix_as_query_text() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -7803,6 +7970,7 @@ fn test_cloud_handoff_prefix_keeps_shell_prefix_as_query_text() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_escape_exits_mode_preserving_prompt_text() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -7844,6 +8012,7 @@ fn test_cloud_handoff_prefix_escape_exits_mode_preserving_prompt_text() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_remains_text_in_powershell_with_nld_enabled() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -7876,6 +8045,7 @@ fn test_cloud_handoff_prefix_remains_text_in_powershell_with_nld_enabled() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_activates_in_powershell_when_nld_disabled() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -7907,6 +8077,7 @@ fn test_cloud_handoff_prefix_activates_in_powershell_when_nld_disabled() {
     });
 }
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_vim_escape_exits_insert_before_handoff_mode() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -7968,6 +8139,7 @@ fn test_cloud_handoff_prefix_vim_escape_exits_insert_before_handoff_mode() {
     });
 }
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_cloud_handoff_prefix_ignores_terminal_input_mode_toggle() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -8005,6 +8177,7 @@ fn test_cloud_handoff_prefix_ignores_terminal_input_mode_toggle() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_terminal_prefix_sets_shell_prefix_decision_source() {
     App::test((), |mut app| async move {
         let _am_flag = FeatureFlag::AgentMode.override_enabled(true);
@@ -8034,6 +8207,7 @@ fn test_terminal_prefix_sets_shell_prefix_decision_source() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_source_less_locked_config_clears_decision_source() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -8065,6 +8239,7 @@ fn test_source_less_locked_config_clears_decision_source() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_image_attachment_preserves_lock_state() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -8167,6 +8342,7 @@ fn test_image_attachment_preserves_lock_state() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_ai_context_menu_closes_when_space_immediately_after_at_symbol() {
     let _ai_context_menu_enabled = FeatureFlag::AIContextMenuEnabled.override_enabled(true);
 
@@ -8209,6 +8385,7 @@ fn test_ai_context_menu_closes_when_space_immediately_after_at_symbol() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_ai_context_menu_preserves_lock_state() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -8310,6 +8487,7 @@ fn test_ai_context_menu_preserves_lock_state() {
 
 #[test]
 #[cfg(feature = "voice_input")]
+#[cfg(feature = "agent_runtime")]
 fn test_input_config_transitions() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -8472,6 +8650,7 @@ fn test_remove_ignored_suggestion_on_command_execution() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_remove_ignored_suggestion_on_ai_query_execution() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -8523,6 +8702,7 @@ fn test_remove_ignored_suggestion_on_ai_query_execution() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_agent_view_terminal_only_initial_input_config_unlocked_when_autodetection_enabled() {
     App::test((), |mut app| async move {
         let _am_flag = FeatureFlag::AgentMode.override_enabled(true);
@@ -8557,8 +8737,9 @@ fn test_agent_view_terminal_only_initial_input_config_unlocked_when_autodetectio
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_terminal_only_ai_enter_enters_agent_view_and_clears_buffer() {
-    use crate::ai::blocklist::InputConfig;
+    use crate::terminal::session_types::InputConfig;
 
     App::test((), |mut app| async move {
         let _am_flag = FeatureFlag::AgentMode.override_enabled(true);
@@ -8615,8 +8796,9 @@ fn test_terminal_only_ai_enter_enters_agent_view_and_clears_buffer() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_terminal_only_escape_locks_shell_mode() {
-    use crate::ai::blocklist::InputConfig;
+    use crate::terminal::session_types::InputConfig;
 
     App::test((), |mut app| async move {
         let _am_flag = FeatureFlag::AgentMode.override_enabled(true);
@@ -8906,6 +9088,7 @@ fn test_custom_terminal_page_scroll_binding_applies_when_prompt_is_focused() {
 }
 
 // Helper: open the CLI-agent rich input for the terminal view under test.
+#[cfg(feature = "agent_runtime")]
 fn open_rich_input_for_terminal(terminal: &ViewHandle<TerminalView>, app: &mut App) {
     terminal.update(app, |view, ctx| {
         let view_id = view.view_id();
@@ -8932,8 +9115,8 @@ fn open_rich_input_for_terminal(terminal: &ViewHandle<TerminalView>, app: &mut A
             sessions.open_input(
                 view_id,
                 CLIAgentInputEntrypoint::CtrlG,
-                crate::ai::blocklist::InputConfig {
-                    input_type: crate::ai::blocklist::InputType::AI,
+                crate::terminal::session_types::InputConfig {
+                    input_type: crate::terminal::session_types::InputType::AI,
                     is_locked: true,
                 },
                 false,
@@ -8945,6 +9128,7 @@ fn open_rich_input_for_terminal(terminal: &ViewHandle<TerminalView>, app: &mut A
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn enter_submits_when_submit_on_ctrl_enter_is_false() {
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -9004,6 +9188,7 @@ fn enter_submits_when_submit_on_ctrl_enter_is_false() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_enter_emits_ctrl_enter_event_when_submit_on_ctrl_enter_is_false() {
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -9060,6 +9245,7 @@ fn ctrl_enter_emits_ctrl_enter_event_when_submit_on_ctrl_enter_is_false() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn enter_inserts_newline_when_submit_on_ctrl_enter_is_true() {
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -9115,6 +9301,7 @@ fn enter_inserts_newline_when_submit_on_ctrl_enter_is_true() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_enter_submits_when_submit_on_ctrl_enter_is_true() {
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -9183,6 +9370,7 @@ fn ctrl_enter_submits_when_submit_on_ctrl_enter_is_true() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_enter_with_selection_preserves_selection_in_submit_when_setting_is_true() {
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -9253,6 +9441,7 @@ fn ctrl_enter_with_selection_preserves_selection_in_submit_when_setting_is_true(
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn editor_keymap_context_excludes_ctrl_enter_enters_agent_view_when_rich_input_is_open() {
     App::test((), |mut app| async move {
         let _agent_view_flag = FeatureFlag::AgentView.override_enabled(true);
@@ -9286,6 +9475,7 @@ fn editor_keymap_context_excludes_ctrl_enter_enters_agent_view_when_rich_input_i
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn enter_accepts_inline_menu_item_when_submit_on_ctrl_enter_is_true() {
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -9365,6 +9555,7 @@ fn enter_accepts_inline_menu_item_when_submit_on_ctrl_enter_is_true() {
 /// Pre-fix this failed because `update_cli_agent_enter_settings` always set `ctrl_enter: Emit`
 /// regardless of toggle, causing `ctrl_enter()` to hit the `_ => ()` no-op arm (#11588).
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_enter_inserts_newline_when_submit_on_ctrl_enter_is_false() {
     use crate::editor::EnterAction;
 
@@ -9400,6 +9591,7 @@ fn ctrl_enter_inserts_newline_when_submit_on_ctrl_enter_is_false() {
 /// both the server (for new viewers) and existing viewers (via `InputUpdated`).
 /// Clearing the buffer here would cause CRDT inconsistencies (see the function doc).
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn unfreeze_agent_input_does_not_clear_buffer() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -9470,6 +9662,7 @@ fn unfreeze_agent_input_does_not_clear_buffer() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_enter_inserts_newline_in_normal_input_after_rich_input_closes() {
     use crate::editor::EnterAction;
 
@@ -9506,6 +9699,7 @@ fn ctrl_enter_inserts_newline_in_normal_input_after_rich_input_closes() {
 /// function must put the exact original prompt text back and leave the
 /// editor editable.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn restore_cloud_followup_input_after_upload_failure_restores_prompt() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -9553,6 +9747,7 @@ fn restore_cloud_followup_input_after_upload_failure_restores_prompt() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn should_upload_cloud_followup_attachments_matches_cloud_mode_image_context_flag() {
     use base64::Engine as _;
 
@@ -9586,6 +9781,7 @@ fn should_upload_cloud_followup_attachments_matches_cloud_mode_image_context_fla
 /// connects to a real server), the callback must restore the prompt text so the
 /// user can retry.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn upload_files_then_submit_cloud_followup_restores_input_on_upload_error() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -9637,5 +9833,88 @@ fn upload_files_then_submit_cloud_followup_restores_input_on_upload_error() {
             prompt,
             "input must be restored to the original prompt after a failed attachment upload"
         );
+    });
+}
+
+#[test]
+#[cfg(feature = "warp_lite")]
+fn lite_input_keeps_history_without_constructing_workflow_or_voltron_views() {
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let (window_id, terminal) = add_window_with_bootstrapped_terminal_and_window_id(
+            &mut app,
+            Some(vec!["echo 历史一".to_string(), "echo 历史二".to_string()]),
+            None,
+        )
+        .await;
+        let input = terminal.read(&app, |terminal, _| terminal.input().clone());
+        app.read(|ctx| {
+            assert!(
+                !ctx.editable_bindings()
+                    .any(|binding| binding.name == "input:toggle_workflows")
+            );
+            assert!(
+                ctx.editable_bindings()
+                    .any(|binding| binding.name == "input:search_command_history")
+            );
+            assert!(
+                ctx.editable_bindings()
+                    .any(|binding| binding.name == OPEN_COMPLETIONS_KEYBINDING_NAME)
+            );
+            assert!(
+                ctx.views_of_type::<crate::voltron::Voltron>(window_id)
+                    .expect("window exists")
+                    .is_empty()
+            );
+            assert!(
+                ctx.views_of_type::<crate::workflows::CategoriesView>(window_id)
+                    .expect("window exists")
+                    .is_empty()
+            );
+            assert!(
+                ctx.views_of_type::<crate::workflows::info_box::WorkflowsMoreInfoView>(window_id)
+                    .expect("window exists")
+                    .is_empty()
+            );
+            assert!(
+                !ctx.views_of_type::<crate::input_suggestions::InputSuggestions>(window_id)
+                    .expect("window exists")
+                    .is_empty()
+            );
+        });
+        input.update(&mut app, |input, ctx| {
+            assert!(!input.is_workflows_info_box_open());
+            input.editor_up(ctx);
+        });
+        input.read(&app, |input, ctx| {
+            let suggestions = input.input_suggestions.as_ref(ctx);
+            assert_eq!(suggestions.items().len(), 2);
+            assert_eq!(suggestions.item_text(0).as_str(), "echo 历史一");
+            assert_eq!(suggestions.item_text(1).as_str(), "echo 历史二");
+            assert_eq!(input.buffer_text(ctx), "echo 历史二");
+        });
+        input.update(&mut app, |input, ctx| {
+            input.editor_up(ctx);
+        });
+        input.read(&app, |input, ctx| {
+            assert_eq!(input.buffer_text(ctx), "echo 历史一");
+        });
+        input.update(&mut app, |input, ctx| {
+            input.editor_escape(ctx);
+        });
+        input.read(&app, |input, ctx| {
+            assert!(input.suggestions_mode_model.as_ref(ctx).is_closed());
+            assert!(input.buffer_text(ctx).is_empty());
+            assert!(
+                !Input::keymap_context(input, ctx)
+                    .set
+                    .contains("WorkflowInfoBox")
+            );
+            assert!(
+                !Input::keymap_context(input, ctx)
+                    .set
+                    .contains("VoltronActive")
+            );
+        });
     });
 }

@@ -602,6 +602,8 @@ impl ThemeChooser {
         .build()
         .on_click(|ctx, _, _| ctx.dispatch_typed_action(ThemeChooserAction::Close))
         .finish();
+        #[cfg(feature = "integration_tests")]
+        let close_button = SavePosition::new(close_button, "theme-chooser-close").finish();
 
         let header_element = ConstrainedBox::new(
             Flex::row()
@@ -656,7 +658,7 @@ impl ThemeChooser {
             );
 
         // Custom themes are only supported on desktop platforms currently.
-        if cfg!(not(target_family = "wasm")) {
+        if cfg!(not(target_family = "wasm")) && !cfg!(feature = "warp_lite") {
             let create_theme_button = SavePosition::new(
                 icon_button(
                     appearance,
@@ -778,14 +780,19 @@ impl ThemeChooser {
                             text_color,
                             selected_background_color.into(),
                         );
-                        EventHandler::new(element)
+                        #[cfg(feature = "integration_tests")]
+                        let position_id = format!("theme-chooser-item:{}", item.kind);
+                        let element = EventHandler::new(element)
                             .on_left_mouse_down(move |ctx, _, _| {
                                 ctx.dispatch_typed_action(ThemeChooserAction::Click(
                                     item.kind.clone(),
                                 ));
                                 DispatchEventResult::StopPropagation
                             })
-                            .finish()
+                            .finish();
+                        #[cfg(feature = "integration_tests")]
+                        let element = SavePosition::new(element, &position_id).finish();
+                        element
                     })
                     .collect::<Vec<_>>()
                     .into_iter()
@@ -829,8 +836,16 @@ impl TypedActionView for ThemeChooser {
             Click(kind) => self.click(kind.clone(), ctx),
             Close => self.close(ctx),
             Enter => self.enter(ctx),
-            OpenThemeCreator => self.open_theme_creator_modal(ctx),
-            OpenThemeDeletionModal(kind) => self.open_theme_deletion_modal(kind.clone(), ctx),
+            OpenThemeCreator => {
+                if !cfg!(feature = "warp_lite") {
+                    self.open_theme_creator_modal(ctx);
+                }
+            }
+            OpenThemeDeletionModal(kind) => {
+                if !cfg!(feature = "warp_lite") {
+                    self.open_theme_deletion_modal(kind.clone(), ctx);
+                }
+            }
         }
     }
 }
@@ -924,7 +939,10 @@ impl ThemeChooserItem {
                 .with_main_axis_alignment(MainAxisAlignment::SpaceBetween);
 
             // Only show deletion button if custom theme and on hover
-            if matches!(self.kind, ThemeKind::Custom(_)) && state.is_hovered() {
+            if !cfg!(feature = "warp_lite")
+                && matches!(self.kind, ThemeKind::Custom(_))
+                && state.is_hovered()
+            {
                 let horizontal_line = ConstrainedBox::new(
                     Rect::new()
                         .with_background_color(ColorU::from_u32(0x000000ff))

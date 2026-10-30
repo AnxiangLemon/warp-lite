@@ -2,13 +2,17 @@ pub mod get_warp_drive_updates;
 
 use std::collections::HashMap;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::Result;
+#[cfg(feature = "network_transport")]
+use anyhow::{Context, anyhow};
 use async_channel::Sender;
 use cynic::{QueryFragment, QueryVariables, StreamingOperation as CynicStreamingOperation};
+#[cfg(feature = "network_transport")]
 use futures::StreamExt as _;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+#[cfg(feature = "network_transport")]
 const PROTOCOL: &str = "graphql-transport-ws";
 
 /// This function is used to start a GraphQL subscription given an operation.
@@ -43,59 +47,80 @@ where
     F: Fn(Option<Q>) -> Result<T> + Unpin + Send,
     V: QueryVariables + Serialize + Unpin + Send + 'static,
 {
-    // TODO: eventually, we might want to explore re-using the client. But for now,
-    // we only have one subscription so let's just create a new one (we have to
-    // anyways for retry logic).
+    #[cfg(not(feature = "network_transport"))]
+    {
+        let _ = (
+            server_url,
+            init_payload,
+            operation,
+            transform_stream_message,
+            message_sender,
+            stream_ready_sender,
+            handshake_headers,
+        );
+        Err(crate::client::GraphQLError::Unavailable.into())
+    }
+    #[cfg(feature = "network_transport")]
+    {
+        // TODO: eventually, we might want to explore re-using the client. But for now,
+        // we only have one subscription so let's just create a new one (we have to
+        // anyways for retry logic).
 
-    let socket =
-        websocket::WebSocket::connect_with_headers(server_url, Some(PROTOCOL), handshake_headers)
+        let socket = websocket::WebSocket::connect_with_headers(
+            server_url,
+            Some(PROTOCOL),
+            handshake_headers,
+        )
+        .await
+        .context("failed to create websocket connection")?;
+        let mut stream = socket
+            .into_graphql_client_builder()
             .await
-            .context("failed to create websocket connection")?;
-    let mut stream = socket
-        .into_graphql_client_builder()
-        .await
-        .payload(init_payload)?
-        .subscribe(operation)
-        .await
-        .context("failed to initialize graphql subscription")?;
+            .payload(init_payload)?
+            .subscribe(operation)
+            .await
+            .context("failed to initialize graphql subscription")?;
 
-    stream_ready_sender.send(()).await?;
+        stream_ready_sender.send(()).await?;
 
-    while let Some(stream_item) = stream.next().await {
-        match stream_item {
-            Ok(response) => {
-                // If the response has errors, let's stop the subscription.
-                // A response error could be a schema mismatch for example.
-                if let Some(err) = response.errors.as_ref().and_then(|errs| errs.first()) {
-                    return Err(anyhow!(
-                        "Error in subscription message: {}. Stopping websocket.",
-                        err
-                    ));
-                } else {
-                    // Try to transform the stream message to the liking of the caller.
-                    // If it results in an error, don't stop the subscription; it was
-                    // the caller's choice to return an error in that case (e.g. a message
-                    // type the client doesn't yet know how to handle).
-                    match transform_stream_message(response.data) {
-                        Ok(transformed_message) => {
-                            if let Err(e) = message_sender.send(transformed_message).await {
-                                log::warn!("Failed to send transformed message over channel: {e}")
+        while let Some(stream_item) = stream.next().await {
+            match stream_item {
+                Ok(response) => {
+                    // If the response has errors, let's stop the subscription.
+                    // A response error could be a schema mismatch for example.
+                    if let Some(err) = response.errors.as_ref().and_then(|errs| errs.first()) {
+                        return Err(anyhow!(
+                            "Error in subscription message: {}. Stopping websocket.",
+                            err
+                        ));
+                    } else {
+                        // Try to transform the stream message to the liking of the caller.
+                        // If it results in an error, don't stop the subscription; it was
+                        // the caller's choice to return an error in that case (e.g. a message
+                        // type the client doesn't yet know how to handle).
+                        match transform_stream_message(response.data) {
+                            Ok(transformed_message) => {
+                                if let Err(e) = message_sender.send(transformed_message).await {
+                                    log::warn!(
+                                        "Failed to send transformed message over channel: {e}"
+                                    )
+                                }
                             }
-                        }
-                        Err(e) => {
-                            log::warn!("Failed to transform stream message: {e}");
+                            Err(e) => {
+                                log::warn!("Failed to transform stream message: {e}");
+                            }
                         }
                     }
                 }
-            }
-            // If we received an error over the stream, we should stop the subscription.
-            Err(e) => {
-                return Err(anyhow!(
-                    "Message received in subscriptions stream has error: {e}. Stopping websocket."
-                ));
+                // If we received an error over the stream, we should stop the subscription.
+                Err(e) => {
+                    return Err(anyhow!(
+                        "Message received in subscriptions stream has error: {e}. Stopping websocket."
+                    ));
+                }
             }
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }

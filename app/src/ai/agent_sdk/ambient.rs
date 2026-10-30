@@ -1460,6 +1460,6 @@ impl warpui::Entity for AmbientAgentRunner {
 
 impl SingletonEntity for AmbientAgentRunner {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "ambient_tests.rs"]
 mod tests;

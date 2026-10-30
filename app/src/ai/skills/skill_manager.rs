@@ -6,19 +6,21 @@ use std::path::{Path, PathBuf};
 use ai::skills::{
     ParsedSkill, SkillPathOrigin, SkillProvider, SkillReference, SkillScope, provider_rank,
 };
-pub use file_watchers::{
-    SkillWatcher, SkillWatcherEvent, extract_skill_parent_directory, read_skills_from_directories,
-};
+#[cfg(feature = "agent_runtime")]
+pub use file_watchers::read_skills_from_directories;
+pub use file_watchers::{SkillWatcher, SkillWatcherEvent, extract_skill_parent_directory};
 use warp_core::features::FeatureFlag;
 use warp_util::host_id::HostId;
 use warp_util::local_or_remote_path::LocalOrRemotePath;
 use warpui::{AppContext, Entity, ModelContext, ModelHandle, SingletonEntity};
 
+#[cfg(test)]
+use super::bundled::BundledSkillActivation;
 use super::bundled::{BundledSkill, BundledSkills};
 #[cfg(test)]
+#[cfg(feature = "agent_runtime")]
 use super::bundled::{
-    BundledSkillActivation, activation_for_bundled_skill, build_bundled_skill_context,
-    read_bundled_skills,
+    activation_for_bundled_skill, build_bundled_skill_context, read_bundled_skills,
 };
 use super::{ActiveSkillLookupError, SkillDescriptor, SkillManagerEvent, SkillPathQuery};
 use crate::ai::skills::skill_utils::SkillDeduplicator;
@@ -695,6 +697,6 @@ fn path_matches_reference_location(path: &LocalOrRemotePath, reference: &SkillRe
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "skill_manager_tests.rs"]
 mod tests;

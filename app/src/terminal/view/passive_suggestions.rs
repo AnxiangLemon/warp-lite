@@ -1,5 +1,7 @@
+#[cfg(feature = "agent_runtime")]
 use warpui::ViewContext;
 
+#[cfg(feature = "agent_runtime")]
 use super::TerminalView;
 use crate::server::telemetry::InteractionSource;
 use crate::terminal::view::CodeDiffAction;
@@ -23,6 +25,7 @@ impl From<PromptSuggestionResolution> for CodeDiffAction {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 impl TerminalView {
     pub(super) fn resolve_passive_suggestion(
         &mut self,

@@ -241,7 +241,7 @@ where
 /// - Whether this file is openable in Warp (skips binary files and directories)
 /// - Whether the file renders in Warp's notebook viewer, which is reached via a
 ///   different affordance (skips Markdown and, when enabled, Jupyter notebooks)
-#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
+#[cfg(feature = "local_fs")]
 pub fn should_show_open_in_warp_link(path: &Path, app: &AppContext) -> bool {
     use warpui::SingletonEntity;
 
@@ -256,24 +256,10 @@ pub fn should_show_open_in_warp_link(path: &Path, app: &AppContext) -> bool {
         return false;
     }
 
-    !renders_in_warp_notebook_viewer(path) && !is_binary_file(path) && !path.is_dir()
-}
-
-#[cfg(all(feature = "local_fs", feature = "warp_lite"))]
-pub fn should_show_open_in_warp_link(path: &Path, app: &AppContext) -> bool {
-    use warpui::SingletonEntity;
-
-    use crate::code::view::is_binary_file;
-    use crate::util::file::external_editor::EditorSettings;
-    use crate::util::file::external_editor::settings::EditorChoice;
-
-    let settings = EditorSettings::as_ref(app);
-
-    if matches!(*settings.open_file_editor, EditorChoice::Warp) {
-        return false;
-    }
-
-    !is_binary_file(path) && !path.is_dir()
+    !cfg!(feature = "warp_lite")
+        && !renders_in_warp_notebook_viewer(path)
+        && !is_binary_file(path)
+        && !path.is_dir()
 }
 
 #[cfg(not(feature = "local_fs"))]

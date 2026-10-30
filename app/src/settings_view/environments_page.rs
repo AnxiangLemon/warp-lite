@@ -33,6 +33,7 @@ use super::settings_page::{
     CONTENT_FONT_SIZE, MatchData, PageType, SettingsPageEvent, SettingsPageMeta,
     SettingsPageViewHandle, SettingsWidget,
 };
+pub use super::settings_types::EnvironmentsPage;
 use super::update_environment_form::{
     EnvironmentFormInitArgs, EnvironmentFormValues, UpdateEnvironmentForm,
     UpdateEnvironmentFormEvent,
@@ -46,7 +47,7 @@ use crate::cloud_object::{
     CloudObjectLocation, CloudObjectLookup as _, GenericStringObjectFormat, JsonObjectType, Owner,
     Space,
 };
-use crate::cloud_object::CloudObjectTypeAndId;
+use crate::drive::CloudObjectTypeAndId;
 use crate::editor::{
     EditorView, PropagateAndNoOpNavigationKeys, SingleLineEditorOptions, TextOptions,
 };
@@ -101,16 +102,6 @@ struct EmptyStateRowConfig {
     action_button: Box<dyn Element>,
     compact_action_button: Box<dyn Element>,
     icon_size: f32,
-}
-
-#[derive(Debug, Default, Clone, PartialEq)]
-pub enum EnvironmentsPage {
-    #[default]
-    List,
-    Edit {
-        env_id: SyncId,
-    },
-    Create,
 }
 
 /// A view-friendly representation of a cloud environment.

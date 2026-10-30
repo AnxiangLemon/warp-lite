@@ -11,7 +11,6 @@ use warpui::{
 use crate::appearance::Appearance;
 use crate::cloud_object::CloudObject;
 use crate::cloud_object::model::persistence::CloudModel;
-#[cfg(not(feature = "warp_lite"))]
 use crate::search::command_palette::warp_drive;
 use crate::search::data_source::{DataSourceSearchError, Query, QueryResult};
 use crate::search::mixer::DataSourceRunErrorWrapper;
@@ -40,18 +39,19 @@ impl InlineMenuAction for AcceptPrompt {
 }
 
 pub struct PromptsMenuDataSource {
-    #[cfg(not(feature = "warp_lite"))]
     warp_drive_data_source: ModelHandle<warp_drive::DataSource>,
     window_id: WindowId,
 }
 
 impl PromptsMenuDataSource {
     pub fn new(window_id: WindowId, ctx: &mut ModelContext<Self>) -> Self {
-        #[cfg(not(feature = "warp_lite"))]
+        // Ideally this would be a full-text searching but full text searching is slow, and
+        // currently its implementation is not well-setup for async use.
+        //
+        // TODO(zachbai): Revert to full-text search and make this an `AsyncDataSource`.
         let warp_drive_data_source =
             ctx.add_model(|ctx| warp_drive::DataSource::new_fuzzy(window_id, ctx));
         Self {
-            #[cfg(not(feature = "warp_lite"))]
             warp_drive_data_source,
             window_id,
         }
@@ -107,50 +107,33 @@ impl SyncDataSource for PromptsMenuDataSource {
                 .collect());
         }
 
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            return self
-                .warp_drive_data_source
-                .as_ref(app)
-                .search_workflows(query, true, false, app)
-                .map(|results| {
-                    results
-                        .into_iter()
-                        .filter_map(|result| {
-                            let score = result.score();
-                            (score > OrderedFloat(25.0)).then(|| {
-                                let workflow = result.cloud_workflow;
-                                if workflow.model().data.is_command_workflow() {
-                                    return None;
-                                }
+        self.warp_drive_data_source
+            .as_ref(app)
+            .search_workflows(query, true, false, app)
+            .map(|results| {
+                results
+                    .into_iter()
+                    .filter_map(|result| {
+                        let score = result.score();
+                        // Avoid spamming results with extremely weak matches.
+                        (score > OrderedFloat(25.0)).then(|| {
+                            let workflow = result.cloud_workflow;
+                            if workflow.model().data.is_command_workflow() {
+                                return None;
+                            }
 
-                                Some(QueryResult::from(
-                                    PromptSearchItem::from_workflow(&workflow)
-                                        .with_name_match_result(result.match_result.name_match_result)
-                                        .with_score(score),
-                                ))
-                            })?
-                        })
-                        .collect()
-                })
-                .map_err(|e| {
-                    Box::new(DataSourceSearchError::new(e.to_string())) as DataSourceRunErrorWrapper
-                });
-        }
-
-        #[cfg(feature = "warp_lite")]
-        Ok(self
-            .prompts_in_window(app)
-            .filter(|workflow| {
-                workflow
-                    .model()
-                    .data
-                    .name()
-                    .to_lowercase()
-                    .contains(&query_text.to_lowercase())
+                            Some(QueryResult::from(
+                                PromptSearchItem::from_workflow(&workflow)
+                                    .with_name_match_result(result.match_result.name_match_result)
+                                    .with_score(score),
+                            ))
+                        })?
+                    })
+                    .collect()
             })
-            .map(|workflow| QueryResult::from(PromptSearchItem::from_workflow(workflow)))
-            .collect())
+            .map_err(|e| {
+                Box::new(DataSourceSearchError::new(e.to_string())) as DataSourceRunErrorWrapper
+            })
     }
 }
 

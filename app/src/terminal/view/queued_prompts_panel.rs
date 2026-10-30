@@ -32,7 +32,6 @@ use warpui::{
     TypedActionView, View, ViewContext, ViewHandle,
 };
 
-use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::blocklist::agent_view::shortcuts::render_keystroke_with_color_overrides;
 use crate::ai::blocklist::block::cli_controller::{CLISubagentController, CLISubagentEvent};
 use crate::ai::blocklist::{
@@ -48,6 +47,7 @@ use crate::send_telemetry_from_ctx;
 use crate::server::telemetry::TelemetryEvent;
 use crate::terminal::cli_agent_sessions::{CLIAgentSessionsModel, CLIAgentSessionsModelEvent};
 use crate::terminal::input::suggestions_mode_model::InputSuggestionsModeModel;
+use crate::terminal::session_types::AIConversationId;
 use crate::ui_components::icons::Icon as TerminalIcon;
 use crate::util::truncation::truncate_from_end;
 use crate::view_components::action_button::{ActionButton, ButtonSize, NakedTheme};

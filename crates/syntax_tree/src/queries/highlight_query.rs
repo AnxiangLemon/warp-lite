@@ -1,4 +1,3 @@
-use std::iter;
 use std::ops::Range;
 
 use arborium::tree_sitter::{Node, Query, QueryCursor, TextProvider, Tree};
@@ -9,18 +8,7 @@ use warp_editor::content::buffer::{Buffer, ToBufferByteOffset, ToBufferCharOffse
 use warp_editor::content::text::Bytes;
 use warpui_core::color::ColorU;
 
-/// Color mapping from parsed syntax token name to its corresponding highlighting color.
-#[derive(Clone, Copy)]
-pub struct ColorMap {
-    pub keyword_color: ColorU,
-    pub function_color: ColorU,
-    pub string_color: ColorU,
-    pub type_color: ColorU,
-    pub number_color: ColorU,
-    pub comment_color: ColorU,
-    pub property_color: ColorU,
-    pub tag_color: ColorU,
-}
+pub use crate::types::ColorMap;
 
 /// Query for retrieving syntax highlighting information on the tokens.
 pub struct HighlightQuery {
@@ -103,27 +91,6 @@ fn convert_capture_name_to_color(name: &str, color_map: &ColorMap) -> Option<Col
 // The default tree-sitter implementation here is unsafe (since the cursor could query invalid ranges outside of content length).
 // TODO(kevin): Once we migrate buffer to store ArrayStrings. We should implement the chunks API on buffer directly to avoid collecting
 // into a String and then chunking them again for highlighting.
-pub struct TextSlice<'a>(pub &'a [u8]);
-
-impl TextSlice<'_> {
-    fn get(&self, range: Range<usize>) -> Self {
-        Self(self.0.get(range).unwrap_or_default())
-    }
-}
-
-impl AsRef<[u8]> for TextSlice<'_> {
-    fn as_ref(&self) -> &[u8] {
-        self.0
-    }
-}
-
-impl<'a> TextProvider<TextSlice<'a>> for TextSlice<'a> {
-    type I = iter::Once<TextSlice<'a>>;
-
-    fn text(&mut self, node: Node) -> Self::I {
-        iter::once(self.get(node.byte_range()))
-    }
-}
 
 pub struct TextBuffer<'a>(pub &'a Buffer);
 

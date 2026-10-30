@@ -205,7 +205,21 @@ pub enum ContextChipKind {
 }
 
 impl ContextChipKind {
+    pub(crate) fn is_available_in_terminal_build(&self) -> bool {
+        !cfg!(feature = "warp_lite")
+            || !matches!(
+                self,
+                Self::ShellGitBranch
+                    | Self::GitBranchStatus
+                    | Self::GitDiffStats
+                    | Self::GithubPullRequest
+            )
+    }
+
     pub fn to_chip(&self) -> Option<ContextChip> {
+        if !self.is_available_in_terminal_build() {
+            return None;
+        }
         match self {
             Self::WorkingDirectory => Some(ContextChip::builtin_with_runtime_policy(
                 "Working Directory",
@@ -585,6 +599,7 @@ pub fn available_chips() -> Vec<ContextChipKind> {
         ContextChipKind::SvnBranch,
         ContextChipKind::SvnDirtyItems,
     ]);
+    chips.retain(ContextChipKind::is_available_in_terminal_build);
     chips
 }
 

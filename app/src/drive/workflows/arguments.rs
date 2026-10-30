@@ -199,6 +199,6 @@ impl ArgumentsState {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "arguments_tests.rs"]
 mod tests;

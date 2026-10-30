@@ -24,18 +24,20 @@ pub struct Args {
 }
 
 pub fn main() -> Result<()> {
+    let application_name = if cfg!(target_os = "windows") && warp::features::IS_LITE_BUILD {
+        let run_id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos();
+        format!("WarpIntegrationLiteSmoke-{}-{run_id}", std::process::id())
+    } else if cfg!(target_os = "macos") {
+        "Warp-Integration".to_owned()
+    } else {
+        "WarpIntegration".to_owned()
+    };
     ChannelState::set(ChannelState::new(
         Channel::Integration,
         ChannelConfig {
-            app_id: AppId::new(
-                "dev",
-                "warp",
-                if cfg!(target_os = "macos") {
-                    "Warp-Integration"
-                } else {
-                    "WarpIntegration"
-                },
-            ),
+            app_id: AppId::new("dev", "warp", application_name),
             logfile_name: "warp_integration.log".into(),
             server_config: WarpServerConfig {
                 firebase_auth_api_key: "".into(),
@@ -84,6 +86,41 @@ pub fn main() -> Result<()> {
         .as_deref()
         .expect("Integration test name is required");
 
+    if (!warp::features::IS_LITE_BUILD || !cfg!(target_os = "windows"))
+        && matches!(
+            test_name,
+            "test_lite_terminal_smoke"
+                | "test_lite_terminal_management"
+                | "test_lite_chinese_settings"
+                | "test_lite_close_confirmation"
+                | "test_lite_fixed_background"
+                | "test_lite_missing_background"
+                | "test_lite_corrupt_background"
+                | "test_lite_oversized_background"
+                | "test_lite_restore_named_tabs"
+                | "test_lite_restore_saved_tabs"
+        )
+    {
+        println!("Skipping Windows Lite integration test on this build: {test_name}");
+        return Ok(());
+    }
+
+    if cfg!(target_os = "windows") && warp::features::IS_LITE_BUILD {
+        let app_name = ChannelState::app_id().application_name().to_owned();
+        for directory in [
+            warp_core::paths::state_dir(),
+            warp_core::paths::config_local_dir(),
+        ] {
+            assert!(
+                directory
+                    .components()
+                    .any(|component| component.as_os_str() == std::ffi::OsStr::new(&app_name)),
+                "Lite test data must stay in its dedicated application namespace: {directory:?}"
+            );
+            println!("Lite integration data directory: {}", directory.display());
+        }
+    }
+
     println!("Running integration test: {test_name}");
     let Some(builder) = tests.get(test_name).map(|func| func()) else {
         panic!("test not found for args: {:#?}", env::args());
@@ -101,6 +138,10 @@ pub fn main() -> Result<()> {
                 "Integration test binary should have set an ORIGINAL_HOME environment variable",
             );
             assert_ne!(home, original_home, "HOME should not be the same as ORIGINAL_HOME!");
+        } else if #[cfg(target_os = "windows")] {
+            if !warp::features::IS_LITE_BUILD {
+                unimplemented!("Need to add support for hermetic integration tests for the current platform!");
+            }
         } else {
             unimplemented!("Need to add support for hermetic integration tests for the current platform!");
         }
@@ -113,6 +154,60 @@ pub fn main() -> Result<()> {
 /// Type of a function that produces an integration test builder.
 type BoxedBuilderFn = Box<dyn Fn() -> Builder>;
 
+#[cfg(feature = "warp_lite")]
+fn register_tests() -> HashMap<&'static str, BoxedBuilderFn> {
+    #[cfg(target_os = "windows")]
+    {
+        HashMap::from([
+            (
+                "test_lite_terminal_smoke",
+                Box::new(test_lite_terminal_smoke) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_terminal_management",
+                Box::new(test_lite_terminal_management) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_chinese_settings",
+                Box::new(test_lite_chinese_settings) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_close_confirmation",
+                Box::new(test_lite_close_confirmation) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_fixed_background",
+                Box::new(test_lite_fixed_background) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_missing_background",
+                Box::new(test_lite_missing_background) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_corrupt_background",
+                Box::new(test_lite_corrupt_background) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_oversized_background",
+                Box::new(test_lite_oversized_background) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_restore_named_tabs",
+                Box::new(test_lite_restore_named_tabs) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_restore_saved_tabs",
+                Box::new(test_lite_restore_saved_tabs) as BoxedBuilderFn,
+            ),
+        ])
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        HashMap::new()
+    }
+}
+
+#[cfg(not(feature = "warp_lite"))]
 fn register_tests() -> HashMap<&'static str, BoxedBuilderFn> {
     let mut tests: HashMap<&str, BoxedBuilderFn> = HashMap::new();
 
@@ -127,6 +222,16 @@ fn register_tests() -> HashMap<&'static str, BoxedBuilderFn> {
     }
 
     // Add new tests here
+    #[cfg(target_os = "windows")]
+    register_test!(test_lite_terminal_smoke);
+    #[cfg(target_os = "windows")]
+    register_test!(test_lite_terminal_management);
+    #[cfg(windows)]
+    register_test!(test_lite_chinese_settings);
+    #[cfg(target_os = "windows")]
+    register_test!(test_lite_restore_named_tabs);
+    #[cfg(target_os = "windows")]
+    register_test!(test_lite_restore_saved_tabs);
     register_test!(test_single_command);
     register_test!(test_add_and_close_session);
     register_test!(test_add_many_sessions);

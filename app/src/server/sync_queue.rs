@@ -37,10 +37,10 @@ use crate::cloud_object::{
     ObjectType, Owner, Revision, RevisionAndLastEditor, ServerCloudObject, ServerCreationInfo,
     UpdateCloudObjectResult,
 };
-use crate::cloud_object::CloudObjectTypeAndId;
-use crate::cloud_object::CloudFolderModel;
+use crate::drive::CloudObjectTypeAndId;
+use crate::drive::folders::CloudFolderModel;
 use crate::env_vars::CloudEnvVarCollectionModel;
-use crate::cloud_object::CloudNotebookModel;
+use crate::notebooks::CloudNotebookModel;
 use crate::server::cloud_objects::update_manager::InitiatedBy;
 use crate::settings::cloud_preferences::CloudPreferenceModel;
 use crate::workflows::CloudWorkflowModel;
@@ -371,11 +371,18 @@ impl SyncQueue {
         object_client: Arc<dyn ObjectClient>,
         ctx: &mut ModelContext<Self>,
     ) -> Self {
-        let mut sync_queue = Self {
-            queue: queue_items
-                .into_iter()
-                .map(|queue_item| (QueueItemId::new(), queue_item))
-                .collect(),
+        let mut sync_queue = Self::new_offline(object_client);
+        sync_queue.queue = queue_items
+            .into_iter()
+            .map(|queue_item| (QueueItemId::new(), queue_item))
+            .collect();
+        sync_queue.initialize_queue_dependencies(ctx);
+        sync_queue
+    }
+
+    pub fn new_offline(object_client: Arc<dyn ObjectClient>) -> Self {
+        Self {
+            queue: Vec::new(),
             waiting_response: Default::default(),
             in_flight_bulk_create_objects: Default::default(),
             object_client,
@@ -384,10 +391,7 @@ impl SyncQueue {
             should_dequeue: false,
             spawned_futures: vec![],
             queue_dependencies: Default::default(),
-        };
-
-        sync_queue.initialize_queue_dependencies(ctx);
-        sync_queue
+        }
     }
 
     pub fn is_dequeueing(&self) -> bool {

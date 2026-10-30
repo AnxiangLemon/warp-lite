@@ -1,35 +1,57 @@
+#[cfg(feature = "agent_runtime")]
 use byte_unit::Byte;
+#[cfg(feature = "agent_runtime")]
 use instant::Duration;
 use serde::{Deserialize, Serialize};
-use session_sharing_protocol::common::{Role, Scrollback, ScrollbackBlock, SessionId};
+use session_sharing_protocol::common::{Role, SessionId};
+#[cfg(feature = "agent_runtime")]
+use session_sharing_protocol::common::{Scrollback, ScrollbackBlock};
 use session_sharing_protocol::sharer::SessionSourceType;
+use warpui::id;
 use warpui::keymap::ContextPredicate;
-use warpui::{AppContext, WindowId, id};
+#[cfg(feature = "agent_runtime")]
+use warpui::{AppContext, WindowId};
 
+use super::GridType;
+#[cfg(feature = "agent_runtime")]
+use super::TerminalModel;
+#[cfg(feature = "agent_runtime")]
 use super::model::block::SerializedBlock;
 use super::model::terminal_model::BlockIndex;
-use super::{GridType, TerminalModel};
 use crate::channel::{Channel, ChannelState};
 use crate::editor::{InteractionState, ReplicaId};
 use crate::features::FeatureFlag;
 
+#[cfg(feature = "agent_runtime")]
 pub mod ai_agent;
+#[cfg(feature = "agent_runtime")]
 pub mod manager;
+#[cfg(feature = "agent_runtime")]
 pub mod network;
+#[cfg(feature = "agent_runtime")]
 pub mod participant_avatar_view;
+#[cfg(feature = "agent_runtime")]
 pub mod permissions_manager;
+#[cfg(feature = "agent_runtime")]
 pub mod presence_manager;
 pub mod render_util;
+#[cfg(feature = "agent_runtime")]
 pub mod replay_agent_conversations;
+#[cfg(feature = "agent_runtime")]
 pub mod role_change_modal;
+#[cfg(feature = "agent_runtime")]
 mod selections;
 pub mod settings;
+#[cfg(feature = "agent_runtime")]
 pub mod share_modal;
+#[cfg(feature = "agent_runtime")]
 pub(super) mod shared_handlers;
+#[cfg(feature = "agent_runtime")]
 pub mod sharer;
+#[cfg(feature = "agent_runtime")]
 pub mod viewer;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 pub use tests::MAX_BYTES_SHAREABLE;
 
 /// The toast copy when copying a shared session link.
@@ -39,6 +61,7 @@ pub const COPY_LINK_TEXT: &str = "Sharing link copied";
 /// to send selections even when it updates fast, so it appears live.
 /// Our throttle implementation throttles on the trailing edge (does not drop messages at the end, so the
 /// most up to date will always be sent after some delay)
+#[cfg(feature = "agent_runtime")]
 const SELECTION_THROTTLE_PERIOD: Duration = Duration::from_millis(20);
 
 /// `SessionSourceType` paired with the orchestrator `task_id` that rides
@@ -226,6 +249,7 @@ pub enum SharedSessionScrollbackType {
     All,
 }
 
+#[cfg(feature = "agent_runtime")]
 impl SharedSessionScrollbackType {
     /// Returns the set of scrollback that adheres to the scrollback type.
     /// Note that some blocks might not actually be included in the scrollback
@@ -282,7 +306,7 @@ impl SharedSessionScrollbackType {
     }
 }
 
-#[cfg(not(test))]
+#[cfg(all(not(test), feature = "agent_runtime"))]
 pub fn max_session_size(window_id: WindowId, app: &AppContext) -> Byte {
     use warpui::SingletonEntity;
 
@@ -294,7 +318,7 @@ pub fn max_session_size(window_id: WindowId, app: &AppContext) -> Byte {
         .unwrap_or(Byte::from_u64_with_unit(100, byte_unit::Unit::MB).unwrap())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 pub fn max_session_size(_window_id: WindowId, _app: &AppContext) -> Byte {
     Byte::from_u64(MAX_BYTES_SHAREABLE as u64)
 }
@@ -372,8 +396,10 @@ pub fn connect_endpoint(path: String) -> Option<String> {
 /// The event number for events sent to the server. The newtype
 /// ensures that events are incremented correctly.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg(feature = "agent_runtime")]
 struct EventNumber(usize);
 
+#[cfg(feature = "agent_runtime")]
 impl EventNumber {
     fn new() -> Self {
         Self(0)
@@ -390,6 +416,7 @@ impl EventNumber {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 impl From<EventNumber> for usize {
     fn from(value: EventNumber) -> Self {
         value.0
@@ -445,6 +472,7 @@ impl From<&Role> for InteractionState {
 /// Decode scrollback blocks from their JSON wire format into [`SerializedBlock`]s.
 ///
 /// Blocks that fail to deserialize are silently dropped.
+#[cfg(feature = "agent_runtime")]
 pub(crate) fn decode_scrollback(scrollback: &Scrollback) -> Vec<SerializedBlock> {
     scrollback
         .blocks
@@ -453,6 +481,6 @@ pub(crate) fn decode_scrollback(scrollback: &Scrollback) -> Vec<SerializedBlock>
         .collect()
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "mod_tests.rs"]
 mod tests;

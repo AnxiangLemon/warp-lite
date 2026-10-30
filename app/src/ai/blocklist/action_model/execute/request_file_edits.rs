@@ -366,6 +366,6 @@ impl Entity for RequestFileEditsExecutor {
     type Event = ();
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "request_file_edits_tests.rs"]
 mod tests;

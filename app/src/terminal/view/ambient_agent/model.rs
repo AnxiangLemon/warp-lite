@@ -14,7 +14,6 @@ use warpui::{AppContext, Entity, EntityId, ModelContext, SingletonEntity};
 
 use super::AmbientAgentProgressUIState;
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
-use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::agent::extract_user_query_mode;
 use crate::ai::ambient_agents::github_auth_notifier::{GitHubAuthEvent, GitHubAuthNotifier};
 #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
@@ -45,6 +44,7 @@ use crate::server::server_api::ai::{
     AgentConfigSnapshot, AmbientAgentTaskState, AttachmentInput, SpawnAgentRequest,
 };
 use crate::terminal::CLIAgent;
+use crate::terminal::session_types::AIConversationId;
 use crate::terminal::view::ambient_agent::{SetupCommandGroupId, SetupCommandState};
 
 /// Tracks progress timestamps for each step during ambient agent spawning.

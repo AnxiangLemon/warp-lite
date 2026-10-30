@@ -12,6 +12,6 @@ pub(crate) use crate::server::retry_strategies::{
     MAX_ATTEMPTS, is_transient_graphql_or_http_error, is_transient_http_error,
 };
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "retry_tests.rs"]
 mod tests;

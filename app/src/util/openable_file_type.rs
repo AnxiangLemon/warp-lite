@@ -76,6 +76,9 @@ pub fn is_supported_code_file(_path: impl AsRef<Path>) -> bool {
 /// toggle): Markdown files always, Jupyter notebooks when the feature flag is
 /// enabled.
 pub fn renders_in_warp_notebook_viewer(path: impl AsRef<Path>) -> bool {
+    if cfg!(feature = "warp_lite") {
+        return false;
+    }
     let path = path.as_ref();
     is_markdown_file(path)
         || (FeatureFlag::JupyterNotebookRendering.is_enabled() && is_jupyter_notebook_file(path))
@@ -178,6 +181,9 @@ pub fn resolve_file_target_to_open_in_warp(
     settings: &EditorSettings,
     layout: Option<EditorLayout>,
 ) -> FileTarget {
+    if cfg!(feature = "warp_lite") {
+        return FileTarget::SystemDefault;
+    }
     let openable_file_type = is_file_openable_in_warp(path);
     let is_markdown = matches!(openable_file_type, Some(OpenableFileType::Markdown));
     let layout = layout.unwrap_or(*settings.open_file_layout);
@@ -220,6 +226,19 @@ pub fn resolve_file_target_with_editor_choice(
     default_layout: EditorLayout,
     layout: Option<EditorLayout>,
 ) -> FileTarget {
+    if cfg!(feature = "warp_lite") {
+        if matches!(editor_choice, EditorChoice::EnvEditor) {
+            return FileTarget::EnvEditor;
+        }
+        if is_binary_file(path) {
+            return FileTarget::SystemGeneric;
+        }
+        return match editor_choice {
+            EditorChoice::ExternalEditor(editor) => FileTarget::ExternalEditor(editor),
+            EditorChoice::EnvEditor => FileTarget::EnvEditor,
+            EditorChoice::Warp | EditorChoice::SystemDefault => FileTarget::SystemDefault,
+        };
+    }
     let is_openable_in_warp = is_file_openable_in_warp(path);
     let is_markdown = matches!(is_openable_in_warp, Some(OpenableFileType::Markdown));
     let layout = layout.unwrap_or(default_layout);

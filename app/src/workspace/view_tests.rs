@@ -1,19 +1,28 @@
 use std::collections::HashMap;
 
+#[cfg(feature = "agent_runtime")]
 use ai::index::full_source_code_embedding::manager::CodebaseIndexManager;
+#[cfg(feature = "agent_runtime")]
 use ai::project_context::model::ProjectContextModel;
-use pane_group::{NotebookPane, PaneState, SplitPaneState, TerminalPaneId};
+#[cfg(feature = "agent_runtime")]
+use pane_group::NotebookPane;
+use pane_group::{PaneState, SplitPaneState, TerminalPaneId};
 #[cfg(feature = "local_fs")]
+#[cfg(feature = "agent_runtime")]
 use repo_metadata::CanonicalizedPath;
 #[cfg(feature = "local_fs")]
 use repo_metadata::RepoMetadataModel;
 use repo_metadata::repositories::DetectedRepositories;
 use repo_metadata::watcher::DirectoryWatcher;
+#[cfg(feature = "agent_runtime")]
 use session_sharing_protocol::common::SessionId;
 #[cfg(feature = "local_fs")]
+#[cfg(feature = "agent_runtime")]
 use tempfile::TempDir;
+#[cfg(feature = "agent_runtime")]
 use terminal::shared_session::permissions_manager::SessionPermissionsManager;
 use terminal::view::ActiveSessionState;
+#[cfg(feature = "agent_runtime")]
 use warp_editor::editor::NavigationKey;
 #[cfg(feature = "local_fs")]
 use warp_files::FileModel;
@@ -22,38 +31,66 @@ use warpui::{AddSingletonModel, App, ViewHandle};
 use watcher::HomeDirectoryWatcher;
 
 use super::*;
+#[cfg(feature = "agent_runtime")]
+use crate::AgentNotificationsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::AIRequestUsageModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_conversations_model::AgentConversationsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_tips::AITipModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ambient_agents::github_auth_notifier::GitHubAuthNotifier;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::orchestration_pill_bar_model::OrchestrationPillBarModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{BlocklistAIHistoryModel, BlocklistAIPermissions};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::cloud_environments::CloudEnvironmentCatalog;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::document::ai_document_model::AIDocumentModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::facts::manager::AIFactManager;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::harness_availability::HarnessAvailabilityModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::llms::LLMPreferences;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::gallery::MCPGalleryManager;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::templatable_manager::TemplatableMCPServerManager;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::{FileBasedMCPManager, FileMCPWatcher};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::outline::RepoOutlines;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::persisted_workspace::PersistedWorkspace;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::restored_conversations::RestoredAgentConversations;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::skills::SkillManager;
+use crate::auth::auth_manager::AuthManager;
 use crate::cloud_object::model::persistence::CloudModel;
 use crate::cloud_object::model::view::CloudViewModel;
 use crate::context_chips::prompt::Prompt;
 use crate::editor::Event;
 use crate::gpu_state::GPUState;
 use crate::network::NetworkStatus;
+#[cfg(feature = "agent_runtime")]
 use crate::notebooks::editor::keys::NotebookKeybindings;
+#[cfg(feature = "agent_runtime")]
 use crate::notebooks::notebook::NotebookView;
 use crate::pane_group::{Direction, PaneGroupAction, PaneId};
+#[cfg(feature = "agent_runtime")]
 use crate::pricing::PricingInfoModel;
 #[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "agent_runtime")]
 use crate::remote_server::codebase_index_model::RemoteCodebaseIndexModel;
+#[cfg(feature = "agent_runtime")]
 use crate::resource_center::Tip;
 use crate::server::cloud_objects::listener::Listener;
 use crate::server::cloud_objects::update_manager::UpdateManager;
@@ -62,16 +99,19 @@ use crate::server::server_api::ServerApiProvider;
 use crate::server::sync_queue::SyncQueue;
 use crate::server::telemetry::context_provider::AppTelemetryContextProvider;
 use crate::settings::PrivacySettings;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::cloud_preferences_syncer::CloudPreferencesSyncer;
 use crate::settings_view::DisplayCount;
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
 use crate::suggestions::ignored_suggestions_model::IgnoredSuggestionsModel;
 use crate::system::SystemStats;
 use crate::tab_configs::tab_config::{TabConfigPaneNode, TabConfigPaneType};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
 use crate::terminal::history::History;
 use crate::terminal::keys::TerminalKeybindings;
 use crate::terminal::local_tty::spawner::PtySpawner;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::{
     SharedSessionScrollbackType, SharedSessionSource, SharedSessionStatus,
 };
@@ -87,9 +127,7 @@ use crate::workspaces::team_tester::TeamTesterStatus;
 use crate::workspaces::update_manager::TeamUpdateManager;
 use crate::workspaces::user_profiles::UserProfiles;
 use crate::workspaces::user_workspaces::UserWorkspaces;
-use crate::{
-    AgentNotificationsModel, GlobalResourceHandlesProvider, ObjectActions, experiments, workspace,
-};
+use crate::{GlobalResourceHandlesProvider, ObjectActions, experiments, workspace};
 pub(crate) fn initialize_app(app: &mut App) {
     initialize_settings_for_tests(app);
 
@@ -105,12 +143,14 @@ pub(crate) fn initialize_app(app: &mut App) {
     app.add_singleton_model(|_| SystemStats::new());
     app.add_singleton_model(SyncQueue::mock);
     app.add_singleton_model(CloudModel::mock);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(CloudEnvironmentCatalog::new);
     app.add_singleton_model(UserWorkspaces::default_mock);
     app.add_singleton_model(|_ctx| UserProfiles::new(Vec::new()));
     app.add_singleton_model(TeamTesterStatus::mock);
     app.add_singleton_model(TeamUpdateManager::mock);
     app.add_singleton_model(UpdateManager::mock);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(MCPGalleryManager::new);
     app.add_singleton_model(CloudViewModel::mock);
     app.add_singleton_model(Listener::mock);
@@ -121,18 +161,23 @@ pub(crate) fn initialize_app(app: &mut App) {
     app.add_singleton_model(|_| KeybindingChangedNotifier::new());
     app.add_singleton_model(|_ctx| RelaunchModel::new());
     app.add_singleton_model(|ctx| ChangelogModel::new(ServerApiProvider::as_ref(ctx).get()));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| GitHubAuthNotifier::new());
     app.add_singleton_model(|_ctx| SyncedInputState::mock());
     app.add_singleton_model(|_| ResizableData::default());
     app.add_singleton_model(LocalWorkflows::new);
     app.add_singleton_model(UndoCloseStack::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(terminal::shared_session::manager::Manager::new);
     app.add_singleton_model(|_| ActiveSession::default());
     app.add_singleton_model(|_| WorkspaceToastStack);
     app.add_singleton_model(|_| ObjectActions::new(Vec::new()));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(NotebookKeybindings::new);
     app.add_singleton_model(TerminalKeybindings::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(NotebookManager::mock);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         CloudPreferencesSyncer::new(
             false,                     // force_local_wins_on_startup
@@ -141,29 +186,43 @@ pub(crate) fn initialize_app(app: &mut App) {
             ctx,
         )
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| BlocklistAIHistoryModel::new_for_test());
     // QueuedQueryModel subscribes to history events; register after the
     // history model is in place.
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(crate::ai::blocklist::QueuedQueryModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| OrchestrationPillBarModel::new(Default::default(), ctx));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| CLIAgentSessionsModel::new());
     // The blocklist controller created during terminal bootstrap subscribes to
     // OrchestrationEventService and OrchestrationEventStreamer unconditionally,
     // so both singletons must be registered before bootstrap.
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(
         crate::ai::blocklist::orchestration_events::OrchestrationEventService::new,
     );
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(
         crate::ai::blocklist::orchestration_event_streamer::OrchestrationEventStreamer::new,
     );
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| ActiveAgentViewsModel::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(AgentNotificationsModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(AgentConversationsModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(SessionPermissionsManager::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(LLMPreferences::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(HarnessAvailabilityModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| AITipModel::new_for_agent_tips(ctx));
     app.add_singleton_model(|_| SettingsPaneManager::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| AIFactManager::new());
 
     // Initialize file-based MCP dependencies.
@@ -171,18 +230,24 @@ pub(crate) fn initialize_app(app: &mut App) {
     app.add_singleton_model(HomeDirectoryWatcher::new_for_test);
     app.add_singleton_model(DirectoryWatcher::new);
     app.add_singleton_model(WarpManagedPathsWatcher::new_for_testing);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(FileMCPWatcher::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| FileBasedMCPManager::default());
 
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| TemplatableMCPServerManager::default());
     #[cfg(feature = "local_fs")]
     app.add_singleton_model(FileModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         AIExecutionProfilesModel::new(&crate::LaunchMode::new_for_unit_test(), ctx)
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(RepoOutlines::new_for_test);
     #[cfg(feature = "voice_input")]
     app.add_singleton_model(voice_input::VoiceInput::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(BlocklistAIPermissions::new);
     app.add_singleton_model(|_| GPUState::new());
     // Register IapManager in a disabled state (no IapState). The settings
@@ -196,10 +261,13 @@ pub(crate) fn initialize_app(app: &mut App) {
             ctx,
         )
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| RestoredAgentConversations::new_seeded(vec![]));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         AIRequestUsageModel::new_for_test(ServerApiProvider::as_ref(ctx).get_ai_client(), ctx)
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(OneTimeModalModel::new);
     // Register GlobalResourceHandlesProvider before ServerExperiments which depends on it
     let global_resource_handles = GlobalResourceHandles::mock(app);
@@ -210,10 +278,12 @@ pub(crate) fn initialize_app(app: &mut App) {
     app.add_singleton_model(|_| crate::code_review::git_repo_model::GitRepoModels::new());
     app.add_singleton_model(remote_server::manager::RemoteServerManager::new);
     #[cfg(not(target_family = "wasm"))]
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(RemoteCodebaseIndexModel::new);
 
     #[cfg(feature = "local_fs")]
     app.add_singleton_model(RepoMetadataModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(search::files::model::FileSearchModel::new);
 
     #[cfg(windows)]
@@ -230,22 +300,30 @@ pub(crate) fn initialize_app(app: &mut App) {
 
     app.update(experiments::init);
 
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(
         crate::workspace::bonus_grant_notification_model::BonusGrantNotificationModel::new,
     );
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         CodebaseIndexManager::new_for_test(ServerApiProvider::as_ref(ctx).get(), ctx)
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| PersistedWorkspace::new(vec![], HashMap::new(), None, ctx));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| ProjectContextModel::default());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| PricingInfoModel::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(crate::ai::pricing_promotion::PricingPromotionState::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(AIDocumentModel::new);
     app.add_singleton_model(|_| History::new(vec![]));
 
     // SkillManager is registered after `HomeDirectoryWatcher`, `DirectoryWatcher`,
     // `WarpManagedPathsWatcher`, `DetectedRepositories`, and `RepoMetadataModel`
     // because `SkillWatcher::new` subscribes to all of them.
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(SkillManager::new);
 
     // Make sure to initialize the keybindings so that they are available for subviews
@@ -270,6 +348,7 @@ pub(crate) fn mock_workspace(app: &mut App) -> ViewHandle<Workspace> {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_new_window_for_team_reuses_existing_team_window() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -295,6 +374,7 @@ fn test_open_new_window_for_team_reuses_existing_team_window() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_new_window_for_team_creates_window_when_team_has_none() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -420,6 +500,8 @@ fn test_theme_chooser_does_not_suppress_tab_bar_traffic_light_padding() {
 /// automatically as account and AI availability change—without an off/on
 /// toggle.
 #[test]
+#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 fn test_tools_panel_preferences_activate_after_signup_and_ai_enablement() {
     let _skip_anon_guard = FeatureFlag::SkipFirebaseAnonymousUser.override_enabled(true);
     let _conversation_list_guard =
@@ -611,6 +693,7 @@ fn test_tools_panel_preferences_activate_after_signup_and_ai_enablement() {
     });
 }
 
+#[cfg(feature = "agent_runtime")]
 fn assert_vertical_tabs_tools_panel_preserves_padding(config: HeaderToolbarChipSelection) {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -644,6 +727,7 @@ fn assert_vertical_tabs_tools_panel_preserves_padding(config: HeaderToolbarChipS
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_tools_panel_does_not_suppress_vertical_tab_bar_traffic_light_padding() {
     let _vertical_tabs_guard = FeatureFlag::VerticalTabs.override_enabled(true);
     for config in [
@@ -677,6 +761,7 @@ fn test_tools_panel_does_not_suppress_vertical_tab_bar_traffic_light_padding() {
 /// id against the destination's default (instead of copying the raw override)
 /// would drop the override and let the source profile's default D win.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn copy_model_and_profile_preserves_explicit_model_over_source_profile_default() {
     use warpui::EntityId;
 
@@ -759,6 +844,7 @@ fn copy_model_and_profile_preserves_explicit_model_over_source_profile_default()
 }
 
 #[cfg(feature = "local_fs")]
+#[cfg(feature = "agent_runtime")]
 fn open_worktree_sidecar(workspace: &ViewHandle<Workspace>, app: &mut App) {
     workspace.update(app, |workspace, ctx| {
         workspace.open_new_session_dropdown_menu(
@@ -788,6 +874,7 @@ fn open_worktree_sidecar(workspace: &ViewHandle<Workspace>, app: &mut App) {
 
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_worktree_sidecar_hover_takes_precedence_over_selection() {
     let _tab_configs_guard = FeatureFlag::TabConfigs.override_enabled(true);
 
@@ -841,6 +928,7 @@ fn test_worktree_sidecar_hover_takes_precedence_over_selection() {
 
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_worktree_sidecar_pointer_entry_does_not_select_top_repo() {
     let _tab_configs_guard = FeatureFlag::TabConfigs.override_enabled(true);
 
@@ -910,6 +998,7 @@ fn test_worktree_sidecar_pointer_entry_does_not_select_top_repo() {
 
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_worktree_sidecar_close_via_select_item_executes_from_workspace() {
     let _tab_configs_guard = FeatureFlag::TabConfigs.override_enabled(true);
 
@@ -954,6 +1043,7 @@ fn test_worktree_sidecar_close_via_select_item_executes_from_workspace() {
 
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_file_notebook_focuses_existing_markdown_pane() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1017,6 +1107,7 @@ fn test_open_file_notebook_focuses_existing_markdown_pane() {
 /// target off the `CodeSource` opened the file at the top.
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_file_with_target_event_preserves_requested_line() {
     use crate::code::editor_management::CodeManager;
     use crate::code::global_buffer_model::GlobalBufferModel;
@@ -1071,6 +1162,7 @@ fn test_open_file_with_target_event_preserves_requested_line() {
 /// drop the `CodeSource` outright, so the raw view always started at line 1.
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_markdown_viewer_target_preserves_requested_line() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1115,6 +1207,7 @@ fn test_open_markdown_viewer_target_preserves_requested_line() {
 
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_worktree_sidecar_search_editor_enter_executes_selection() {
     let _tab_configs_guard = FeatureFlag::TabConfigs.override_enabled(true);
 
@@ -1190,6 +1283,7 @@ impl Drop for TabConfigCleanupGuard {
 }
 
 /// Creates a workspace with a single, shared session.
+#[cfg(feature = "agent_runtime")]
 fn mock_workspace_with_shared_session(app: &mut App) -> ViewHandle<Workspace> {
     use crate::terminal::shared_session::manager::Manager;
 
@@ -1240,6 +1334,7 @@ fn mock_workspace_with_shared_session(app: &mut App) -> ViewHandle<Workspace> {
 }
 
 // Creates a workspace as a viewer of a shared session.
+#[cfg(feature = "agent_runtime")]
 fn mock_workspace_viewing_shared_session(app: &mut App) -> ViewHandle<Workspace> {
     // Create the workspace as a session-sharing sharer.
     let global_resource_handles = GlobalResourceHandles::mock(app);
@@ -1322,6 +1417,7 @@ fn active_session_state(
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn restore_conversation_in_active_pane_enters_existing_live_conversation_without_loading() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -1377,12 +1473,18 @@ fn reopen_closed_session_menu_item(
     menu_items: &[MenuItem<WorkspaceAction>],
 ) -> &MenuItemFields<WorkspaceAction> {
     match menu_items.last() {
-        Some(MenuItem::Item(fields)) if fields.label() == "Reopen closed session" => fields,
+        Some(MenuItem::Item(fields))
+            if fields.label()
+                == crate::lite_i18n::choose("Reopen closed session", "重新打开已关闭的会话") =>
+        {
+            fields
+        }
         _ => panic!("expected Reopen closed session to be the last new-session menu item"),
     }
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_reward_modal_no_overlap() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1403,6 +1505,7 @@ fn test_reward_modal_no_overlap() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_reward_modal_shows_for_received_referral() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1709,6 +1812,7 @@ fn test_workspace_sessions_retrieves_panes() {
     });
 }
 
+#[cfg(feature = "agent_runtime")]
 fn number_of_shared_sessions_in_tab(
     workspace: &Workspace,
     index: usize,
@@ -1720,6 +1824,7 @@ fn number_of_shared_sessions_in_tab(
 }
 
 /// Sets up the workspace with three tabs. The middle tab has two panes, where one is shared.
+#[cfg(feature = "agent_runtime")]
 fn setup_session_sharing_test(workspace: &ViewHandle<Workspace>, app: &mut App) -> PaneId {
     let shared_pane_id = workspace.update(app, |workspace, ctx| {
         workspace.add_terminal_tab(false, ctx);
@@ -1763,6 +1868,7 @@ fn setup_session_sharing_test(workspace: &ViewHandle<Workspace>, app: &mut App) 
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_close_tab_confirmation_dialog() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
     App::test((), |mut app| async move {
@@ -1941,6 +2047,7 @@ fn test_close_last_vertical_tab_activates_tab_above() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_close_pane_confirmation_dialog() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
     App::test((), |mut app| async move {
@@ -1996,6 +2103,7 @@ fn test_close_pane_confirmation_dialog() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_reopen_closed_shared_tab() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
     App::test((), |mut app| async move {
@@ -2024,6 +2132,7 @@ fn test_reopen_closed_shared_tab() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_close_other_tabs_confirmation_dialog() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
     App::test((), |mut app| async move {
@@ -2063,6 +2172,7 @@ fn test_close_other_tabs_confirmation_dialog() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_close_tabs_right_confirmation_dialog() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
     App::test((), |mut app| async move {
@@ -2105,6 +2215,7 @@ fn test_close_tabs_right_confirmation_dialog() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_confirmation_dialog_dont_show_again() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
     App::test((), |mut app| async move {
@@ -2162,6 +2273,7 @@ fn test_confirmation_dialog_dont_show_again() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_close_last_tab_skip_confirmation() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
 
@@ -2190,6 +2302,26 @@ fn test_close_last_tab_skip_confirmation() {
 }
 
 #[test]
+#[cfg(not(feature = "agent_runtime"))]
+fn test_close_last_local_tab_skip_confirmation() {
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        app.update(disable_quit_warning);
+        let workspace = mock_workspace(&mut app);
+        workspace.update(&mut app, |workspace, ctx| {
+            assert_eq!(workspace.tab_count(), 1);
+            workspace.handle_action(&WorkspaceAction::CloseActiveTab, ctx);
+            assert!(
+                !workspace
+                    .current_workspace_state
+                    .is_close_session_confirmation_dialog_open
+            );
+        });
+    });
+}
+
+#[test]
+#[cfg(feature = "agent_runtime")]
 fn test_notebook_pane_tracking() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -2355,6 +2487,7 @@ fn test_terminal_model_isnt_leaked() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_or_toggle_warp_drive() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -2422,6 +2555,7 @@ fn test_open_or_toggle_warp_drive() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_stop_sharing_session() {
     use crate::terminal::shared_session::manager::Manager;
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
@@ -2459,6 +2593,7 @@ fn test_stop_sharing_session() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_stop_sharing_all_sessions_in_tab() {
     use crate::terminal::shared_session::manager::Manager;
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
@@ -2536,6 +2671,7 @@ fn test_stop_sharing_all_sessions_in_tab() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_tab_context_menu_share_session_items() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
 
@@ -2615,6 +2751,7 @@ fn test_tab_context_menu_share_session_items() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_view_only_session() {
     let _guard = FeatureFlag::ViewingSharedSessions.override_enabled(true);
 
@@ -2637,6 +2774,7 @@ fn test_view_only_session() {
 #[test]
 // This tests the end-to-end behavior to correctly switch focus among panels.
 // (The only panels that can be focused currently are WD, workspace, & the agent panel.)
+#[cfg(feature = "agent_runtime")]
 fn test_switch_focus_panels() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -2713,7 +2851,8 @@ fn test_switch_focus_panels() {
 }
 
 #[test]
-fn test_focus_notebook() {
+
+fn test_focus_nonterminal_pane() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
 
@@ -2731,12 +2870,21 @@ fn test_focus_notebook() {
                 .expect("should be a terminal pane")
         });
 
-        let notebook_id = pane_group.update(&mut app, |panes, ctx| {
-            // Add a notebook to the left.
-            let notebook_view = ctx.add_typed_action_view(NotebookView::new);
+        let nonterminal_id = pane_group.update(&mut app, |panes, ctx| {
+            // Add a non-terminal pane to the left.
+            #[cfg(feature = "agent_runtime")]
+            let nonterminal_pane =
+                NotebookPane::new(ctx.add_typed_action_view(NotebookView::new), ctx);
+            #[cfg(not(feature = "agent_runtime"))]
+            let nonterminal_pane = crate::pane_group::SettingsPane::new(
+                crate::settings_view::SettingsSection::Appearance,
+                None,
+                ctx.window_id(),
+                ctx,
+            );
             panes.add_pane_with_direction(
                 Direction::Left,
-                NotebookPane::new(notebook_view, ctx),
+                nonterminal_pane,
                 true, /* focus_new_pane */
                 ctx,
             );
@@ -2745,7 +2893,7 @@ fn test_focus_notebook() {
 
         // The new pane should be focused, but the terminal is still the active session.
         pane_group.read(&app, |panes, ctx| {
-            assert_eq!(panes.focused_pane_id(ctx), notebook_id);
+            assert_eq!(panes.focused_pane_id(ctx), nonterminal_id);
             assert_eq!(panes.active_session_id(ctx), Some(first_terminal_id));
             assert_eq!(
                 split_pane_state(panes, first_terminal_id, ctx),
@@ -2756,7 +2904,7 @@ fn test_focus_notebook() {
                 ActiveSessionState::Active
             );
             assert_eq!(
-                split_pane_state(panes, notebook_id, ctx),
+                split_pane_state(panes, nonterminal_id, ctx),
                 SplitPaneState::InSplitPane(PaneState::Focused)
             );
         });
@@ -2764,7 +2912,7 @@ fn test_focus_notebook() {
         // Add a terminal below.
         let second_terminal_id = pane_group.update(&mut app, |panes, ctx| {
             panes.add_terminal_pane(Direction::Down, None, ctx);
-            get_newly_created_pane_id(panes, &[first_terminal_id.into(), notebook_id])
+            get_newly_created_pane_id(panes, &[first_terminal_id.into(), nonterminal_id])
                 .as_terminal_pane_id()
                 .expect("should be a terminal pane")
         });
@@ -2790,7 +2938,7 @@ fn test_focus_notebook() {
                 ActiveSessionState::Active
             );
             assert_eq!(
-                split_pane_state(panes, notebook_id, ctx),
+                split_pane_state(panes, nonterminal_id, ctx),
                 SplitPaneState::InSplitPane(PaneState::Unfocused)
             );
         });
@@ -2800,17 +2948,17 @@ fn test_focus_notebook() {
             panes.close_pane(second_terminal_id.into(), ctx);
         });
 
-        // Focus should switch to the notebook, and the first terminal session
+        // Focus should switch to the non-terminal pane, and the first terminal session
         // will activate.
         pane_group.read(&app, |panes, ctx| {
-            assert_eq!(panes.focused_pane_id(ctx), notebook_id);
+            assert_eq!(panes.focused_pane_id(ctx), nonterminal_id);
             assert_eq!(panes.active_session_id(ctx), Some(first_terminal_id));
             assert_eq!(
                 split_pane_state(panes, first_terminal_id, ctx),
                 SplitPaneState::InSplitPane(PaneState::Unfocused)
             );
             assert_eq!(
-                split_pane_state(panes, notebook_id, ctx),
+                split_pane_state(panes, nonterminal_id, ctx),
                 SplitPaneState::InSplitPane(PaneState::Focused)
             );
             assert_eq!(
@@ -2848,12 +2996,21 @@ fn test_close_active_session() {
                 .expect("should be a terminal pane")
         });
 
-        let notebook_id = pane_group.update(&mut app, |panes, ctx| {
-            // Add a notebook to the left.
-            let notebook_view = ctx.add_typed_action_view(NotebookView::new);
+        let nonterminal_id = pane_group.update(&mut app, |panes, ctx| {
+            // Add a non-terminal pane to the left.
+            #[cfg(feature = "agent_runtime")]
+            let nonterminal_pane =
+                NotebookPane::new(ctx.add_typed_action_view(NotebookView::new), ctx);
+            #[cfg(not(feature = "agent_runtime"))]
+            let nonterminal_pane = crate::pane_group::SettingsPane::new(
+                crate::settings_view::SettingsSection::Appearance,
+                None,
+                ctx.window_id(),
+                ctx,
+            );
             panes.add_pane_with_direction(
                 Direction::Left,
-                NotebookPane::new(notebook_view, ctx),
+                nonterminal_pane,
                 true, /* focus_new_pane */
                 ctx,
             );
@@ -2864,18 +3021,18 @@ fn test_close_active_session() {
         });
 
         pane_group.read(&app, |panes, ctx| {
-            assert_eq!(panes.focused_pane_id(ctx), notebook_id);
+            assert_eq!(panes.focused_pane_id(ctx), nonterminal_id);
             assert_eq!(panes.active_session_id(ctx), Some(second_terminal_id));
         });
 
         pane_group.update(&mut app, |panes, ctx| {
-            // Close the active session, which should leave the notebook focused and activate the
+            // Close the active session, which should leave the non-terminal pane focused and activate the
             // remaining session.
             panes.close_pane(second_terminal_id.into(), ctx);
         });
 
         pane_group.read(&app, |panes, ctx| {
-            assert_eq!(panes.focused_pane_id(ctx), notebook_id);
+            assert_eq!(panes.focused_pane_id(ctx), nonterminal_id);
             assert_eq!(panes.active_session_id(ctx), Some(first_terminal_id));
             assert_eq!(
                 split_pane_state(panes, first_terminal_id, ctx),
@@ -2900,7 +3057,7 @@ fn test_close_active_session() {
                 SplitPaneState::InSplitPane(PaneState::Focused)
             );
             assert_eq!(
-                split_pane_state(panes, notebook_id, ctx),
+                split_pane_state(panes, nonterminal_id, ctx),
                 SplitPaneState::InSplitPane(PaneState::Unfocused)
             );
             assert_eq!(
@@ -2920,6 +3077,7 @@ fn set_left_panel_visibility_across_tabs(is_enabled: bool, ctx: &mut ViewContext
     });
 }
 
+#[cfg(feature = "agent_runtime")]
 fn add_get_started_tab(workspace: &mut Workspace, ctx: &mut ViewContext<Workspace>) {
     workspace.add_tab_with_pane_layout(
         PanesLayout::Snapshot(Box::new(PaneNodeSnapshot::Leaf(LeafSnapshot {
@@ -2941,6 +3099,7 @@ fn find_terminal_tab_index(workspace: &Workspace, ctx: &AppContext) -> usize {
         .expect("Expected a terminal tab")
 }
 
+#[cfg(feature = "agent_runtime")]
 fn find_non_following_tab_index(workspace: &Workspace, ctx: &AppContext) -> usize {
     workspace
         .tabs
@@ -2954,6 +3113,7 @@ fn find_non_following_tab_index(workspace: &Workspace, ctx: &AppContext) -> usiz
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_left_panel_window_scoped_reconciles_between_terminal_tabs_when_enabled() {
     let _conversation_list_guard =
         FeatureFlag::AgentViewConversationListView.override_enabled(false);
@@ -3015,6 +3175,7 @@ fn test_left_panel_window_scoped_reconciles_between_terminal_tabs_when_enabled()
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_left_panel_window_scoped_non_following_tab_does_not_reconcile_but_updates_window_state() {
     let _conversation_list_guard =
         FeatureFlag::AgentViewConversationListView.override_enabled(false);
@@ -3093,6 +3254,7 @@ fn test_left_panel_window_scoped_non_following_tab_does_not_reconcile_but_update
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_left_panel_window_scoped_disabled_keeps_per_tab_state() {
     let _conversation_list_guard =
         FeatureFlag::AgentViewConversationListView.override_enabled(false);
@@ -3608,6 +3770,7 @@ fn test_toggle_tab_configs_menu_does_not_change_vertical_tabs_panel_in_horizonta
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_unified_new_session_menu_uses_new_worktree_config_label_and_order() {
     let _tab_configs_guard = FeatureFlag::TabConfigs.override_enabled(true);
 
@@ -3675,6 +3838,7 @@ fn test_unified_new_session_menu_includes_reopen_closed_session() {
 
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_worktree_sidecar_search_editor_proxies_navigation_and_escape() {
     let _tab_configs_guard = FeatureFlag::TabConfigs.override_enabled(true);
 
@@ -3787,6 +3951,7 @@ fn test_worktree_sidecar_search_editor_proxies_navigation_and_escape() {
 
 #[cfg(feature = "local_fs")]
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_worktree_sidecar_hides_linked_worktrees_from_repo_list() {
     let _tab_configs_guard = FeatureFlag::TabConfigs.override_enabled(true);
 
@@ -3926,6 +4091,7 @@ fn test_standard_tab_context_menu_shows_hover_only_tab_bar() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_open_cloud_agent_setup_guide_action_opens_management_view_and_is_idempotent() {
     let _agent_management_guard = FeatureFlag::AgentManagementView.override_enabled(true);
 
@@ -4270,35 +4436,103 @@ fn test_close_tab_group_removes_group_and_members() {
         initialize_app(&mut app);
 
         let workspace = mock_workspace(&mut app);
-        workspace.update(&mut app, |workspace, ctx| {
-            // Create a group, then add another tab which inherits the
-            // active tab's group_id via `add_tab_with_pane_layout`.
-            workspace.handle_action(
-                &WorkspaceAction::SelectNewSessionMenuItem(NewSessionMenuItem::CreateNewTabGroup),
-                ctx,
-            );
-            let group_id = workspace.tabs[workspace.active_tab_index()]
-                .group_id
-                .expect("active tab should be in a group");
+        let (group_id, original_tab_ids, original_active_index) =
+            workspace.update(&mut app, |workspace, ctx| {
+                // Create a group, then add another tab which inherits the
+                // active tab's group_id via `add_tab_with_pane_layout`.
+                workspace.handle_action(
+                    &WorkspaceAction::SelectNewSessionMenuItem(
+                        NewSessionMenuItem::CreateNewTabGroup,
+                    ),
+                    ctx,
+                );
+                let group_id = workspace.tabs[workspace.active_tab_index()]
+                    .group_id
+                    .expect("active tab should be in a group");
 
-            workspace.add_terminal_tab(false, ctx);
+                workspace.add_terminal_tab(false, ctx);
 
-            let group_members: Vec<usize> = workspace
-                .tabs
-                .iter()
-                .enumerate()
-                .filter(|(_, tab)| tab.group_id == Some(group_id))
-                .map(|(idx, _)| idx)
-                .collect();
-            assert_eq!(
-                group_members.len(),
-                2,
-                "new tab should inherit the active tab's group_id"
-            );
+                let group_members: Vec<usize> = workspace
+                    .tabs
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, tab)| tab.group_id == Some(group_id))
+                    .map(|(idx, _)| idx)
+                    .collect();
+                assert_eq!(
+                    group_members.len(),
+                    2,
+                    "new tab should inherit the active tab's group_id"
+                );
+                let original_tab_ids = workspace
+                    .tabs
+                    .iter()
+                    .map(|tab| tab.pane_group.id())
+                    .collect_vec();
+                let original_active_index = workspace.active_tab_index();
 
-            workspace.handle_action(&WorkspaceAction::CloseTabGroup(group_id), ctx);
+                workspace.handle_action(&WorkspaceAction::CloseTabGroup(group_id), ctx);
+                if cfg!(feature = "warp_lite") {
+                    assert!(workspace.is_native_quit_modal_open(ctx));
+                    assert!(workspace.tab_groups.contains_key(&group_id));
+                    assert_eq!(
+                        workspace
+                            .tabs
+                            .iter()
+                            .map(|tab| tab.pane_group.id())
+                            .collect_vec(),
+                        original_tab_ids
+                    );
+                    assert_eq!(workspace.active_tab_index(), original_active_index);
+                } else {
+                    assert!(!workspace.tab_groups.contains_key(&group_id));
+                    assert!(
+                        workspace
+                            .tabs
+                            .iter()
+                            .all(|tab| tab.group_id != Some(group_id))
+                    );
+                }
+                (group_id, original_tab_ids, original_active_index)
+            });
 
-            // All group members are closed and the group entry is removed.
+        if cfg!(feature = "warp_lite") {
+            let modal = workspace.read(&app, |workspace, _| workspace.native_modal.clone());
+            modal.update(&mut app, |modal, ctx| {
+                modal.handle_action(
+                    &crate::workspace::native_modal::NativeModalAction::Close,
+                    ctx,
+                );
+            });
+            workspace.read(&app, |workspace, ctx| {
+                assert!(!workspace.is_native_quit_modal_open(ctx));
+                assert!(workspace.tab_groups.contains_key(&group_id));
+                assert_eq!(
+                    workspace
+                        .tabs
+                        .iter()
+                        .map(|tab| tab.pane_group.id())
+                        .collect_vec(),
+                    original_tab_ids
+                );
+                assert_eq!(workspace.active_tab_index(), original_active_index);
+                assert_eq!(
+                    workspace
+                        .tabs
+                        .iter()
+                        .filter(|tab| tab.group_id == Some(group_id))
+                        .count(),
+                    2
+                );
+            });
+            workspace.update(&mut app, |workspace, ctx| {
+                workspace.handle_action(&WorkspaceAction::CloseTabGroup(group_id), ctx);
+                assert!(workspace.is_native_quit_modal_open(ctx));
+            });
+            app.update(|ctx| Workspace::press_native_modal_button(&workspace, 0, ctx));
+        }
+
+        workspace.read(&app, |workspace, ctx| {
             assert!(!workspace.tab_groups.contains_key(&group_id));
             assert!(
                 workspace
@@ -4306,6 +4540,9 @@ fn test_close_tab_group_removes_group_and_members() {
                     .iter()
                     .all(|tab| tab.group_id != Some(group_id))
             );
+            if cfg!(feature = "warp_lite") {
+                assert!(!workspace.is_native_quit_modal_open(ctx));
+            }
         });
     });
 }
@@ -4763,6 +5000,8 @@ fn test_pin_tab_on_grouped_tab_extracts_then_pins() {
 /// selectable again (the original report was that Warp Drive could vanish from
 /// the tools panel with no way back).
 #[test]
+#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 fn test_tools_panel_warp_drive_toggle_updates_available_views() {
     // Force the non-anonymous path so `is_warp_drive_enabled` follows the
     // `enable_warp_drive` setting rather than the auth state.
@@ -4842,6 +5081,39 @@ fn test_tools_panel_warp_drive_toggle_updates_available_views() {
                 ToolPanelView::WarpDrive,
                 "Warp Drive should be selectable again after re-enabling"
             );
+        });
+    });
+}
+
+#[test]
+#[cfg(feature = "warp_lite")]
+fn lite_new_session_menu_keeps_terminal_configs_without_git_worktrees() {
+    let _tab_configs_guard = FeatureFlag::TabConfigs.override_enabled(true);
+    let _grouped_tabs_guard = FeatureFlag::GroupedTabs.override_enabled(true);
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let workspace = mock_workspace(&mut app);
+        workspace.update(&mut app, |workspace, ctx| {
+            let labels = workspace
+                .unified_new_session_menu_items(ctx)
+                .iter()
+                .map(new_session_menu_label)
+                .collect::<Vec<_>>();
+            assert!(
+                labels.iter().any(|label| label == "新建终端配置"),
+                "Menu labels: {labels:?}"
+            );
+            assert!(labels.iter().any(|label| label == "新建标签页分组"));
+            assert!(
+                !labels
+                    .iter()
+                    .any(|label| label.to_ascii_lowercase().contains("worktree"))
+            );
+            let terminal = workspace.active_session_view(ctx).expect("local terminal");
+            let terminal = terminal.as_ref(ctx);
+            assert!(terminal.current_git_branch(ctx).is_none());
+            assert!(terminal.current_pull_request_url(ctx).is_none());
+            assert!(terminal.current_diff_line_changes(ctx).is_none());
         });
     });
 }

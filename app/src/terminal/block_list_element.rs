@@ -7,9 +7,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use enum_iterator::Sequence;
+#[cfg(feature = "agent_runtime")]
 use itertools::Itertools;
 use parking_lot::FairMutex;
 use pathfinder_color::ColorU;
+#[cfg(feature = "agent_runtime")]
 use session_sharing_protocol::common::{ParticipantId, Selection};
 use vec1::Vec1;
 use warp_core::semantic_selection::SemanticSelection;
@@ -50,9 +52,11 @@ use super::model::image_map::StoredImageMetadata;
 use super::model::mouse::{MouseAction, MouseButton, MouseState};
 use super::model::session::SessionId;
 use super::model::terminal_model::{SelectedBlocks, WithinBlock, WithinModel};
+#[cfg(feature = "agent_runtime")]
 use super::shared_session::presence_manager::{
     MUTED_PARTICIPANT_COLOR, PresenceManager, text_selection_color,
 };
+#[cfg(feature = "agent_runtime")]
 use super::shared_session::render_util::SHARED_SESSION_AVATAR_DIAMETER;
 use super::view::{
     BLOCK_BANNER_HEIGHT, BlocklistAIRenderContext, InlineBannerId, RichContentMetadata,
@@ -63,7 +67,7 @@ use super::{HEIGHT_FUDGE_FACTOR_LINES, TerminalModel, heights_approx_eq};
 use crate::ai::blocklist::{ATTACH_AS_AGENT_MODE_CONTEXT_TEXT, ai_brand_color};
 use crate::ai_assistant::{AI_ASSISTANT_SVG_PATH, ASK_AI_ASSISTANT_TEXT};
 use crate::appearance::Appearance;
-use crate::settings::WarpDriveSettings;
+use crate::drive::settings::WarpDriveSettings;
 use crate::features::FeatureFlag;
 use crate::pane_group::SplitPaneState;
 use crate::settings::{
@@ -87,7 +91,9 @@ use crate::terminal::safe_mode_settings::get_secret_obfuscation_mode;
 use crate::terminal::view::TerminalAction;
 use crate::terminal::warpify::SubshellSource;
 use crate::terminal::{SizeInfo, grid_renderer};
-use crate::themes::theme::{Fill, WarpTheme};
+#[cfg(feature = "agent_runtime")]
+use crate::themes::theme::Fill;
+use crate::themes::theme::WarpTheme;
 use crate::ui_components::{self, icons as UIIcon};
 use crate::util::color::Opacity;
 
@@ -126,6 +132,7 @@ impl Default for SelectionBorderWidth {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 const SHARED_SESSION_PARTICIPANT_SELECTION_BORDER_WIDTH: f32 = 1.5;
 
 const SNACKBAR_HOVER_OPACITY: Opacity = 60;
@@ -179,8 +186,10 @@ const SNACKBAR_TOGGLE_BUTTON_WIDTH: f32 = 30.;
 const SNACKBAR_TOGGLE_BUTTON_HEIGHT: f32 = 16.;
 
 /// How far away from the right edge of the blocklist the selected block avatar should be
+#[cfg(feature = "agent_runtime")]
 const SELECTED_BLOCK_AVATAR_EDGE_OFFSET: f32 = 25.;
 /// Space between multiple avatars on a selected block.
+#[cfg(feature = "agent_runtime")]
 const SPACE_BETWEEN_SELECTED_BLOCK_AVATARS: f32 = 2.;
 
 const CLI_SUBAGENT_HORIZONTAL_MARGIN: f32 = 8.;
@@ -722,7 +731,9 @@ pub struct BlockListElement {
     rich_content_metadata: HashMap<EntityId, RichContentMetadata>,
 
     shared_session_banner_state: SharedSessionBanners,
+    #[cfg(feature = "agent_runtime")]
     presence_manager: Option<ModelHandle<PresenceManager>>,
+    #[cfg(feature = "agent_runtime")]
     presence_avatars: HashMap<ParticipantId, Box<dyn Element>>,
 
     horizontal_clipped_scroll_state: ClippedScrollStateHandle,
@@ -963,7 +974,9 @@ impl BlockListElement {
             rich_content_elements: HashMap::new(),
             rich_content_metadata: HashMap::new(),
             shared_session_banner_state: shared_session_banners,
+            #[cfg(feature = "agent_runtime")]
             presence_manager: None,
+            #[cfg(feature = "agent_runtime")]
             presence_avatars: HashMap::new(),
             horizontal_clipped_scroll_state: terminal_view_render_context
                 .horizontal_clipped_scroll_state,
@@ -1266,6 +1279,7 @@ impl BlockListElement {
         self
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn with_shared_session_presence(
         mut self,
         presence_avatars: HashMap<ParticipantId, Box<dyn Element>>,
@@ -2111,6 +2125,7 @@ impl BlockListElement {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn render_shared_session_participants_selections(
         &self,
         origin: Vector2F,
@@ -2237,6 +2252,7 @@ impl BlockListElement {
     ///
     /// Returns Some(()) if the selection was rendered, which will happen as long as the block indices are in bounds.
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "agent_runtime")]
     fn render_shared_session_participant_selection_relative_inverted_blocklist(
         &self,
         start_block_list_point: BlockListPoint,
@@ -3397,15 +3413,19 @@ impl Element for BlockListElement {
                     let banner_intro_text = if is_historical_conversation_restoration {
                         "Conversation restored".to_string()
                     } else {
-                        "Previous session".to_string()
+                        crate::lite_i18n::text("Previous session").to_string()
                     };
 
                     let separator_text =
                         if let Some(ts) = (*model).block_list().restored_session_ts() {
-                            format!(
-                                "{banner_intro_text} from {}",
-                                ts.format("%a %b %-d at %-I:%M %p")
-                            )
+                            if cfg!(feature = "warp_lite") {
+                                format!("{banner_intro_text} · {}", ts.format("%Y-%m-%d %H:%M"))
+                            } else {
+                                format!(
+                                    "{banner_intro_text} from {}",
+                                    ts.format("%a %b %-d at %-I:%M %p")
+                                )
+                            }
                         } else {
                             banner_intro_text
                         };
@@ -3508,6 +3528,7 @@ impl Element for BlockListElement {
             );
         }
 
+        #[cfg(feature = "agent_runtime")]
         for avatar_element in self.presence_avatars.values_mut() {
             avatar_element.layout(
                 SizeConstraint::new(
@@ -3889,46 +3910,54 @@ impl Element for BlockListElement {
                     }
 
                     // Current block is selected by ourselves or by another shared session participant
+                    #[cfg(feature = "agent_runtime")]
                     let mut is_current_block_selected_by_anyone = is_current_block_selected;
-                    let mut participant_ids_for_avatar_render = vec![];
-                    if let Some(presence_manager) = &self.presence_manager {
-                        let is_self_reconnecting = presence_manager.as_ref(app).is_reconnecting();
-                        // Sort participants by reverse participant ID so we construct participant_ids_for_avatar_render in an ordering that's consistent with the pane header (avatars get rendered from right to left below).
-                        // Sorting here before rendering borders also ensures that the border color that gets rendered is always the color of participant on the furthest left,
-                        // since that is the color that gets rendered last.
-                        for participant in presence_manager
-                            .as_ref(app)
-                            .get_participants_at_selected_block(*block_index, block_list)
-                            .into_iter()
-                            .sorted_by(|a, b| b.participant.info.id.cmp(&a.participant.info.id))
-                        {
-                            if participant.should_show_avatar {
-                                participant_ids_for_avatar_render
-                                    .push(participant.participant.info.id.clone());
-                            }
-                            // Don't render any shared session participant background or border if we're rendering our own selection background and border.
-                            if is_current_block_selected {
-                                continue;
-                            }
-                            let color: Fill = if is_self_reconnecting {
-                                MUTED_PARTICIPANT_COLOR
-                            } else {
-                                participant.participant.color
-                            }
-                            .into();
-                            ctx.scene
-                                .draw_rect_with_hit_recording(RectF::new(
-                                    header_origin,
-                                    Vector2F::new(
-                                        self.bounds
-                                            .expect("bounds must be set at paint time")
-                                            .width(),
-                                        selection_height,
-                                    ),
-                                ))
-                                .with_background(color.with_opacity(10))
-                                .with_border(
-                                    Border::new(SHARED_SESSION_PARTICIPANT_SELECTION_BORDER_WIDTH)
+                    #[cfg(not(feature = "agent_runtime"))]
+                    let is_current_block_selected_by_anyone = is_current_block_selected;
+                    #[cfg(feature = "agent_runtime")]
+                    {
+                        let mut participant_ids_for_avatar_render = vec![];
+                        if let Some(presence_manager) = &self.presence_manager {
+                            let is_self_reconnecting =
+                                presence_manager.as_ref(app).is_reconnecting();
+                            // Sort participants by reverse participant ID so we construct participant_ids_for_avatar_render in an ordering that's consistent with the pane header (avatars get rendered from right to left below).
+                            // Sorting here before rendering borders also ensures that the border color that gets rendered is always the color of participant on the furthest left,
+                            // since that is the color that gets rendered last.
+                            for participant in presence_manager
+                                .as_ref(app)
+                                .get_participants_at_selected_block(*block_index, block_list)
+                                .into_iter()
+                                .sorted_by(|a, b| b.participant.info.id.cmp(&a.participant.info.id))
+                            {
+                                if participant.should_show_avatar {
+                                    participant_ids_for_avatar_render
+                                        .push(participant.participant.info.id.clone());
+                                }
+                                // Don't render any shared session participant background or border if we're rendering our own selection background and border.
+                                if is_current_block_selected {
+                                    continue;
+                                }
+                                let color: Fill = if is_self_reconnecting {
+                                    MUTED_PARTICIPANT_COLOR
+                                } else {
+                                    participant.participant.color
+                                }
+                                .into();
+                                ctx.scene
+                                    .draw_rect_with_hit_recording(RectF::new(
+                                        header_origin,
+                                        Vector2F::new(
+                                            self.bounds
+                                                .expect("bounds must be set at paint time")
+                                                .width(),
+                                            selection_height,
+                                        ),
+                                    ))
+                                    .with_background(color.with_opacity(10))
+                                    .with_border(
+                                        Border::new(
+                                            SHARED_SESSION_PARTICIPANT_SELECTION_BORDER_WIDTH,
+                                        )
                                         .with_sides(
                                             participant.is_top_of_continuous_selection,
                                             true,
@@ -3936,41 +3965,42 @@ impl Element for BlockListElement {
                                             true,
                                         )
                                         .with_border_fill(color),
-                                );
-                            // If we drew a colored top border here due to a participant's selection, don't also draw a gray border at the top.
-                            if participant.is_top_of_continuous_selection {
-                                draw_border_above_block = false;
+                                    );
+                                // If we drew a colored top border here due to a participant's selection, don't also draw a gray border at the top.
+                                if participant.is_top_of_continuous_selection {
+                                    draw_border_above_block = false;
+                                }
+                                is_current_block_selected_by_anyone = true;
                             }
-                            is_current_block_selected_by_anyone = true;
+                        }
+                        // Render their avatar in the top right of the block.
+                        let mut avatar_origin = vec2f(
+                            header_origin.x()
+                                + self.size_info.pane_width_px().as_f32()
+                                + self.horizontal_clipped_scroll_state.scroll_start().as_f32()
+                                - SELECTED_BLOCK_AVATAR_EDGE_OFFSET
+                                - SHARED_SESSION_AVATAR_DIAMETER,
+                            header_origin.y() - SHARED_SESSION_AVATAR_DIAMETER / 2.,
+                        );
+                        // participant_ids_for_avatar_render is already sorted in reverse order,
+                        // so the ordering will be consistent with the pane header as we go right to left.
+                        for participant_id in participant_ids_for_avatar_render {
+                            if let Some(avatar_element) =
+                                self.presence_avatars.get_mut(&participant_id)
+                            {
+                                avatar_element.paint(avatar_origin, ctx, app);
+                                avatar_origin.set_x(
+                                    avatar_origin.x()
+                                        - SHARED_SESSION_AVATAR_DIAMETER
+                                        - SPACE_BETWEEN_SELECTED_BLOCK_AVATARS,
+                                );
+                            } else {
+                                log::warn!(
+                                    "Should show avatar for shared session participant at selected block but avatar element was not found"
+                                )
+                            }
                         }
                     }
-                    // Render their avatar in the top right of the block.
-                    let mut avatar_origin = vec2f(
-                        header_origin.x()
-                            + self.size_info.pane_width_px().as_f32()
-                            + self.horizontal_clipped_scroll_state.scroll_start().as_f32()
-                            - SELECTED_BLOCK_AVATAR_EDGE_OFFSET
-                            - SHARED_SESSION_AVATAR_DIAMETER,
-                        header_origin.y() - SHARED_SESSION_AVATAR_DIAMETER / 2.,
-                    );
-                    // participant_ids_for_avatar_render is already sorted in reverse order,
-                    // so the ordering will be consistent with the pane header as we go right to left.
-                    for participant_id in participant_ids_for_avatar_render {
-                        if let Some(avatar_element) = self.presence_avatars.get_mut(&participant_id)
-                        {
-                            avatar_element.paint(avatar_origin, ctx, app);
-                            avatar_origin.set_x(
-                                avatar_origin.x()
-                                    - SHARED_SESSION_AVATAR_DIAMETER
-                                    - SPACE_BETWEEN_SELECTED_BLOCK_AVATARS,
-                            );
-                        } else {
-                            log::warn!(
-                                "Should show avatar for shared session participant at selected block but avatar element was not found"
-                            )
-                        }
-                    }
-
                     // Check if this block is in a subshell. If it is, draw a gray stripe on the
                     // left-hand side.
                     if subshell_session_id.is_some() {
@@ -4376,6 +4406,7 @@ impl Element for BlockListElement {
                 );
             }
         };
+        #[cfg(feature = "agent_runtime")]
         self.render_shared_session_participants_selections(origin, block_list, app, ctx);
 
         if !cli_subagent_views_to_paint.is_empty() {
@@ -4515,6 +4546,7 @@ impl Element for BlockListElement {
                     snackbar_toggle_button.dispatch_event(event, ctx, app);
             }
 
+            #[cfg(feature = "agent_runtime")]
             for avatar_element in self.presence_avatars.values_mut() {
                 handled_by_floating_button |= avatar_element.dispatch_event(event, ctx, app);
             }

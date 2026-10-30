@@ -54,6 +54,6 @@ pub fn render_context_window_usage_icon(
     icon.to_warpui_icon(fill).finish()
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "mod_tests.rs"]
 mod tests;

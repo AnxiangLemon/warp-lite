@@ -1,4 +1,6 @@
+#[cfg(feature = "agent_runtime")]
 use std::sync::Arc;
+#[cfg(feature = "agent_runtime")]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -218,6 +220,7 @@ pub fn assert_execute_command_successfully(
 
 /// Creates an event function that saves whether AI mode is active, switches to terminal
 /// input mode if needed, and returns a `TypedCharacters` event for the given command.
+#[cfg(feature = "agent_runtime")]
 fn switch_to_terminal_mode_and_type_command(
     tab_idx: usize,
     pane_idx: usize,
@@ -248,6 +251,7 @@ fn switch_to_terminal_mode_and_type_command(
 ///
 /// This is an action (not an assertion) so it always runs before assertions,
 /// ensuring the input mode is restored even if a subsequent assertion fails.
+#[cfg(feature = "agent_runtime")]
 fn restore_ai_mode_if_needed(
     tab_idx: usize,
     pane_idx: usize,
@@ -276,28 +280,39 @@ fn execute_command_step(
     command: String,
     validate_output_fn: impl FnMut(&mut warpui::App, warpui::WindowId) -> AssertionOutcome + 'static,
 ) -> TestStep {
+    #[cfg(feature = "agent_runtime")]
     let was_ai_mode = Arc::new(AtomicBool::new(false));
+    #[cfg(feature = "agent_runtime")]
     let was_ai_mode_for_restore = was_ai_mode.clone();
     let command_for_event = command.clone();
 
-    new_step_with_default_assertions_for_pane(
+    let step = new_step_with_default_assertions_for_pane(
         &format!("Run '{command}' and verify block exists"),
         tab_idx,
         pane_idx,
-    )
-    .with_event_fn(switch_to_terminal_mode_and_type_command(
-        tab_idx,
-        pane_idx,
-        was_ai_mode,
-        command_for_event,
-    ))
-    .with_keystrokes(&["enter"])
-    .set_timeout(Duration::from_secs(10))
-    .with_action({
-        let restore = restore_ai_mode_if_needed(tab_idx, pane_idx, was_ai_mode_for_restore);
-        move |app, window_id, _| restore(app, window_id)
-    })
-    .add_named_assertion(
+    );
+    #[cfg(feature = "agent_runtime")]
+    let step = step
+        .with_event_fn(switch_to_terminal_mode_and_type_command(
+            tab_idx,
+            pane_idx,
+            was_ai_mode,
+            command_for_event,
+        ))
+        .with_keystrokes(&["enter"])
+        .set_timeout(Duration::from_secs(10))
+        .with_action({
+            let restore = restore_ai_mode_if_needed(tab_idx, pane_idx, was_ai_mode_for_restore);
+            move |app, window_id, _| restore(app, window_id)
+        });
+    #[cfg(not(feature = "agent_runtime"))]
+    let step = step
+        .with_event_fn(move |_, _| Event::TypedCharacters {
+            chars: command_for_event.clone(),
+        })
+        .with_keystrokes(&["enter"])
+        .set_timeout(Duration::from_secs(10));
+    step.add_named_assertion(
         format!("assert '{command}' ran"),
         assert_command_executed(tab_idx, pane_idx, command),
     )

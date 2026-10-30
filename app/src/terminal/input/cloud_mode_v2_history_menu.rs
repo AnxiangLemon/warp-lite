@@ -61,6 +61,7 @@ impl CloudModeV2HistoryMenuView {
             InlineHistoryMenuDataSource::new(
                 terminal_view_id,
                 active_session,
+                #[cfg(feature = "agent_runtime")]
                 agent_view_controller.clone(),
             )
         });
@@ -77,6 +78,7 @@ impl CloudModeV2HistoryMenuView {
                 mixer.clone(),
                 positioner.clone(),
                 input_suggestions_model,
+                #[cfg(feature = "agent_runtime")]
                 agent_view_controller,
                 ctx,
             )

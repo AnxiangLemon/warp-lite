@@ -1,25 +1,92 @@
 use std::borrow::Cow;
 
+use chrono::{DateTime, Local};
+use session_sharing_protocol::common::SessionId;
+use warp_core::channel::ChannelState;
 use warp_core::ui::appearance::Appearance;
 use warpui::color::ColorU;
 use warpui::ui_components::components::{UiComponent, UiComponentStyles};
-use warpui::{AppContext, SingletonEntity};
+use warpui::{AppContext, SingletonEntity, WeakViewHandle};
 
+use crate::ai::agent::conversation::AIConversationId;
+use crate::ai::blocklist::BlocklistAIHistoryModel;
+use crate::cloud_object::model::persistence::CloudModel;
+use crate::server::ids::ServerId;
 use crate::server::server_api::object::GuestIdentifier;
+use crate::terminal::TerminalView;
+use crate::terminal::shared_session::join_link;
 use crate::ui_components::avatar::{Avatar, AvatarContent};
 use crate::ui_components::icons::Icon;
 use crate::workspaces::user_profiles::UserProfiles;
 use crate::workspaces::user_workspaces::UserWorkspaces;
 
+#[cfg(feature = "agent_runtime")]
 pub mod dialog;
 mod qr_code;
 mod style;
 
-// Re-export types from cloud_objects / cloud_object.
+// Re-export types from cloud_objects.
 pub use cloud_objects::drive::sharing::{
     LinkSharingSubjectType, SharingAccessLevel, Subject, TeamKind, UserKind,
 };
-pub use crate::cloud_object::{ContentEditability, ShareableObject};
+
+/// Identifier for an object that's shareable via the Warp Drive ACL model. Not all sharing in Warp
+/// is _currently_ tied into this model (e.g. block sharing).
+#[derive(Debug, Clone)]
+pub enum ShareableObject {
+    /// A shareable Warp Drive object.
+    WarpDriveObject(ServerId),
+    /// A shared terminal session. Shared sessions are identified by the participating terminal
+    /// pane.
+    Session {
+        handle: WeakViewHandle<TerminalView>,
+        session_id: SessionId,
+        started_at: DateTime<Local>,
+    },
+    /// An AI conversation.
+    AIConversation(AIConversationId),
+}
+
+impl ShareableObject {
+    /// The canonical link to this object.
+    pub fn link(&self, app: &AppContext) -> Option<String> {
+        match self {
+            ShareableObject::WarpDriveObject(id) => CloudModel::as_ref(app)
+                .get_by_uid(&id.uid())
+                .and_then(|object| object.object_link()),
+            ShareableObject::Session { session_id, .. } => Some(join_link(session_id)),
+            ShareableObject::AIConversation(id) => {
+                // Use the unified helper that checks both loaded conversation and historical metadata
+                BlocklistAIHistoryModel::as_ref(app)
+                    .get_server_conversation_metadata(id)
+                    .map(|m| {
+                        format!(
+                            "{}/conversation/{}",
+                            ChannelState::server_root_url(),
+                            m.server_conversation_token.as_str()
+                        )
+                    })
+            }
+        }
+    }
+}
+
+/// Whether not a shared object's contents are editable by the current user.
+///
+/// This is not purely a function of their access level since anonymous users are not allowed to
+/// edit (due to the lack of attribution).
+#[derive(Debug, Clone, Copy)]
+pub enum ContentEditability {
+    ReadOnly,
+    RequiresLogin,
+    Editable,
+}
+
+impl ContentEditability {
+    pub fn can_edit(self) -> bool {
+        matches!(self, ContentEditability::Editable)
+    }
+}
 
 /// Extension trait for Subject with methods that require AppContext.
 pub trait SubjectExt {

@@ -52,6 +52,7 @@ impl From<GenerateMetadataForCommandSuccess> for GeneratedCommandMetadata {
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum GeneratedCommandMetadataError {
+    Unavailable,
     /// OpenAI failed to generate a parsable response.
     BadCommand,
     /// Request to OpenAI failed
@@ -64,6 +65,7 @@ pub enum GeneratedCommandMetadataError {
 impl GeneratedCommandMetadataError {
     pub fn user_facing_message(&self) -> String {
         match self {
+            Self::Unavailable => "AI services are not included in this build.",
             Self::BadCommand => {
                 "Failed to generate metadata. Please try again with a different command."
             }

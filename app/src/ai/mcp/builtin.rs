@@ -113,6 +113,6 @@ fn factory_mcp_url(server_root: &str) -> String {
     format!("{}/api/v1/mcp/factory", server_root.trim_end_matches('/'))
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "builtin_tests.rs"]
 mod tests;

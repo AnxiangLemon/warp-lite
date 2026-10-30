@@ -18,14 +18,18 @@ use super::{
     BlockVisibilitySettings, ChangelogSettings, CodeSettings, DebugSettings, EmacsBindingsSettings,
     FontSettings, FontSettingsChangedEvent, GPUSettings, InputBoxType, InputModeSettings,
     InputSettings, LocalControlSettings, PaneSettings, SameLinePromptBlockSettings, ScrollSettings,
-    SelectionSettings, SharedObjectLimitBannerSettings, SshSettings, ThemeSettings,
-    TuiAutoupdateSettings, TuiThemeSettings, TuiVoiceSettings, TuiZeroStateSettings,
-    VimBannerSettings, WarpDrivePrivacySettings,
+    SelectionSettings, SshSettings, ThemeSettings, VimBannerSettings, WarpDrivePrivacySettings,
 };
+#[cfg(feature = "agent_runtime")]
+use super::{
+    SharedObjectLimitBannerSettings, TuiAutoupdateSettings, TuiThemeSettings, TuiVoiceSettings,
+    TuiZeroStateSettings,
+};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::cloud_agent_settings::CloudAgentSettings;
 use crate::appearance;
 use crate::banner::BannerState;
-use crate::settings::WarpDriveSettings;
+use crate::drive::settings::WarpDriveSettings;
 use crate::resource_center::TipsCompleted;
 use crate::search::command_search::settings::CommandSearchSettings;
 use crate::terminal::BlockListSettings;
@@ -36,6 +40,7 @@ use crate::terminal::ligature_settings::LigatureSettings;
 use crate::terminal::safe_mode_settings::SafeModeSettings;
 use crate::terminal::session_settings::{SessionSettings, SessionSettingsChangedEvent};
 use crate::terminal::settings::TerminalSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::settings::SharedSessionSettings;
 use crate::terminal::warpify::settings::WarpifySettings;
 use crate::undo_close::UndoCloseSettings;
@@ -75,14 +80,19 @@ pub fn register_all_settings(ctx: &mut AppContext) {
     ChangelogSettings::register(ctx);
     GeneralSettings::register(ctx);
     AISettings::register_and_subscribe_to_events(ctx);
+    #[cfg(feature = "agent_runtime")]
     CloudAgentSettings::register(ctx);
     ScrollSettings::register(ctx);
     SelectionSettings::register(ctx);
     InputModeSettings::register(ctx);
     ThemeSettings::register(ctx);
+    #[cfg(feature = "agent_runtime")]
     TuiAutoupdateSettings::register(ctx);
+    #[cfg(feature = "agent_runtime")]
     TuiThemeSettings::register(ctx);
+    #[cfg(feature = "agent_runtime")]
     TuiVoiceSettings::register(ctx);
+    #[cfg(feature = "agent_runtime")]
     TuiZeroStateSettings::register(ctx);
     AccessibilitySettings::register(ctx);
     NativePreferenceSettings::register(ctx);
@@ -97,7 +107,9 @@ pub fn register_all_settings(ctx: &mut AppContext) {
     UndoCloseSettings::register(ctx);
     SshSettings::register(ctx);
     VimBannerSettings::register(ctx);
+    #[cfg(feature = "agent_runtime")]
     SharedObjectLimitBannerSettings::register(ctx);
+    #[cfg(feature = "agent_runtime")]
     SharedSessionSettings::register(ctx);
     WarpDriveSettings::register(ctx);
     WorkflowAliases::register(ctx);
@@ -135,6 +147,9 @@ pub fn init(
         migrate_native_settings_to_settings_file(ctx);
     }
 
+    #[cfg(feature = "warp_lite")]
+    crate::workspace::tab_settings::migrate_lite_sidebar_settings(ctx);
+
     let use_thin_strokes = *FontSettings::as_ref(ctx).use_thin_strokes;
 
     let general_settings = GeneralSettings::as_ref(ctx);
@@ -144,15 +159,10 @@ pub fn init(
         *general_settings.user_default_shell_unsupported_banner_state;
     let should_restore_session = *general_settings.restore_session;
 
-    // Validate settings-file values only when that backend is active. Native
-    // stores (registry / UserDefaults) persist serde JSON (e.g. "FancyDracula"),
-    // while validate_all_public_settings expects file-format snake_case
-    // ("fancy_dracula") — running it against the native store false-positives.
-    let invalid_setting_keys = if FeatureFlag::SettingsFile.is_enabled() {
-        settings::SettingsManager::as_ref(ctx).validate_all_public_settings(ctx)
-    } else {
-        Vec::new()
-    };
+    // Validate all public settings to detect values that parsed as TOML
+    // but cannot be deserialized into the expected Rust types.
+    let invalid_setting_keys =
+        settings::SettingsManager::as_ref(ctx).validate_all_public_settings(ctx);
     let settings_file_error = if let Some(err) = startup_toml_parse_error {
         Some(super::SettingsFileError::FileParseFailed(err.to_string()))
     } else if !invalid_setting_keys.is_empty() {

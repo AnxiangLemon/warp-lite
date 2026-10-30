@@ -191,6 +191,6 @@ impl TelemetryEventDesc for PricingPromotionTelemetryEventDiscriminants {
 
 warp_core::register_telemetry_event!(PricingPromotionTelemetryEvent);
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "pricing_promotion_tests.rs"]
 mod tests;

@@ -66,9 +66,17 @@ impl CodeEditorStatus {
         tab: &ViewHandle<PaneGroup>,
         app: &'a AppContext,
     ) -> impl Iterator<Item = Self> + 'a + use<'a> {
-        tab.as_ref(app)
-            .code_panes(app)
-            .map(move |(_, editor)| Self::editor_status(&editor, app))
+        #[cfg(feature = "agent_runtime")]
+        {
+            tab.as_ref(app)
+                .code_panes(app)
+                .map(move |(_, editor)| Self::editor_status(&editor, app))
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = (tab, app);
+            std::iter::empty()
+        }
     }
 
     pub fn editor_status(editor: &ViewHandle<CodeView>, app: &AppContext) -> Self {

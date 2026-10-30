@@ -3183,5 +3183,5 @@ impl TypedActionView for FileTreeView {
         }
     }
 }
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 mod view_tests;

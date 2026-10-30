@@ -382,6 +382,6 @@ fn resolve_upload_association_from_sources(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "artifact_upload_tests.rs"]
 mod tests;

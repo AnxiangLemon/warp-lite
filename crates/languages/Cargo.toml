@@ -5,11 +5,27 @@ authors = ["Warp Team <dev@warp.dev>"]
 publish.workspace = true
 license.workspace = true
 
+[features]
+default = ["all_languages"]
+parsing = ["dep:arborium", "dep:serde", "dep:serde_yaml", "dep:rust-embed", "dep:lazy_static"]
+all_languages = [
+    "parsing",
+    "arborium/lang-rust", "arborium/lang-go", "arborium/lang-yaml", "arborium/lang-python",
+    "arborium/lang-javascript", "arborium/lang-typescript", "arborium/lang-tsx",
+    "arborium/lang-java", "arborium/lang-cpp", "arborium/lang-bash", "arborium/lang-c-sharp",
+    "arborium/lang-html", "arborium/lang-css", "arborium/lang-c", "arborium/lang-json",
+    "arborium/lang-jq", "arborium/lang-hcl", "arborium/lang-lua", "arborium/lang-nix",
+    "arborium/lang-ruby", "arborium/lang-php", "arborium/lang-toml", "arborium/lang-swift",
+    "arborium/lang-kotlin", "arborium/lang-scala", "arborium/lang-powershell",
+    "arborium/lang-elixir", "arborium/lang-sql", "arborium/lang-starlark", "arborium/lang-objc",
+    "arborium/lang-xml", "arborium/lang-vue", "arborium/lang-dockerfile", "arborium/lang-markdown",
+]
+
 [dependencies]
-serde.workspace = true
-serde_yaml.workspace = true
-rust-embed.workspace = true
-arborium.workspace = true
-lazy_static.workspace = true
-warp_editor = { path = "../editor" }
+serde = { workspace = true, optional = true }
+serde_yaml = { workspace = true, optional = true }
+rust-embed = { workspace = true, optional = true }
+arborium = { workspace = true, optional = true }
+lazy_static = { workspace = true, optional = true }
+warp_editor = { workspace = true, default-features = false }
 warp_util.workspace = true

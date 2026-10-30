@@ -12,6 +12,7 @@ pub use cloud_object_models::{
     DEFAULT_COMMAND_EXECUTION_DENYLIST,
 };
 use indexmap::IndexMap;
+#[cfg(feature = "agent_runtime")]
 use regex::Regex;
 use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
@@ -23,15 +24,20 @@ use strum_macros::EnumIter;
 use warp_core::execution_mode::AppExecutionMode;
 use warp_core::features::FeatureFlag;
 use warp_errors::report_if_error;
+#[cfg(feature = "agent_runtime")]
+use warpui::UpdateModel;
 use warpui::platform::OperatingSystem;
 use warpui::platform::keyboard::KeyCode;
-use warpui::{AppContext, Entity, ModelContext, SingletonEntity, UpdateModel};
+use warpui::{AppContext, Entity, ModelContext, SingletonEntity};
 
 use crate::ai::execution_profiles::ExecutionProfilesConfig;
 use crate::ai::request_usage_model::RequestLimitInfo;
+#[cfg(feature = "agent_runtime")]
 use crate::auth::AuthStateProvider;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::PrivacySettings;
 use crate::terminal::CLIAgent;
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::user_workspaces::UserWorkspaces;
 
 pub enum FocusedTerminalInfoEvent {
@@ -150,6 +156,7 @@ settings::macros::implement_setting_for_enum!(
     private: false,
     toml_path: "agents.voice.voice_input_toggle_key",
     description: "The key used to toggle voice input.",
+    schema_cfg: feature = "agent_runtime",
 );
 
 impl VoiceInputToggleKey {
@@ -513,6 +520,7 @@ settings::macros::implement_setting_for_enum!(
     private: false,
     toml_path: "general.default_session_mode",
     description: "The default mode for new terminal sessions.",
+    schema_cfg: feature = "agent_runtime",
 );
 
 impl DefaultSessionMode {
@@ -564,6 +572,7 @@ settings::macros::implement_setting_for_enum!(
     private: false,
     toml_path: "agents.warp_agent.other.thinking_display_mode",
     description: "Controls how agent thinking traces are displayed after streaming.",
+    schema_cfg: feature = "agent_runtime",
 );
 
 impl ThinkingDisplayMode {
@@ -629,6 +638,7 @@ settings::macros::implement_setting_for_enum!(
     private: false,
     toml_path: "agents.warp_agent.other.orchestration_message_display_mode",
     description: "Controls how child-agent messages are displayed.",
+    schema_cfg: feature = "agent_runtime",
 );
 
 /// Which unit the usage entry displays in Warp Agent CLI.
@@ -665,6 +675,7 @@ settings::macros::implement_setting_for_enum!(
     private: false,
     toml_path: "agents.usage_display_mode",
     description: "Which unit the usage entry displays in Warp Agent CLI: credits or provider cost.",
+    schema_cfg: feature = "agent_runtime",
 );
 /// One configurable item in the Warp Agent CLI statusline.
 #[derive(
@@ -896,6 +907,7 @@ settings::macros::implement_setting_for_enum!(
     toml_path: "agents.warp_agent.other.default_prompt_submission_mode",
     description: "Default behavior when submitting a new prompt while the agent is still responding.",
     feature_flag: FeatureFlag::QueueSlashCommand,
+    schema_cfg: feature = "agent_runtime",
 );
 
 impl PromptSubmissionMode {
@@ -958,6 +970,7 @@ settings::macros::implement_setting_for_enum!(
     toml_path: "agents.warp_agent.other.long_running_command_submission_mode",
     description: "What happens when a prompt is submitted while an agent controls an agent-requested long-running command.",
     feature_flag: FeatureFlag::QueueSlashCommand,
+    schema_cfg: feature = "agent_runtime",
 );
 
 impl LongRunningCommandSubmissionMode {
@@ -1154,11 +1167,11 @@ impl settings_value::SettingsValue for ToolbarCommandMap {
     }
 }
 
-define_settings_group!(AISettings, settings: [
+define_settings_group!(AISettings, schema_cfg: feature = "agent_runtime", settings: [
     // If `false`, all AI features are disabled.
     is_any_ai_enabled: IsAnyAIEnabled {
         type: bool,
-        default: !cfg!(feature = "warp_lite"),
+        default: true,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::No),
         surface: settings::SettingSurfaces::GUI,
@@ -2148,21 +2161,31 @@ define_settings_group!(AISettings, settings: [
 impl AISettings {
     pub fn register_and_subscribe_to_events(app: &mut AppContext) {
         Self::register(app);
-        app.add_singleton_model(FocusedTerminalInfo::new);
-        CompiledCommandsForCodingAgentToolbar::register(app);
+        #[cfg(feature = "agent_runtime")]
+        {
+            app.add_singleton_model(FocusedTerminalInfo::new);
+            CompiledCommandsForCodingAgentToolbar::register(app);
 
-        app.update_model(&Self::handle(app), |_me, ctx| {
-            ctx.subscribe_to_model(&FocusedTerminalInfo::handle(ctx), |_me, _, event, ctx| {
-                if matches!(event, FocusedTerminalInfoEvent::TerminalInfoUpdated) {
-                    // Pipe the event so that any view that listens for settings changes will be notified.
-                    ctx.emit(AISettingsChangedEvent::IsAnyAIEnabled {
-                        change_event_reason: ChangeEventReason::LocalChange,
-                    });
-                }
+            app.update_model(&Self::handle(app), |_me, ctx| {
+                ctx.subscribe_to_model(&FocusedTerminalInfo::handle(ctx), |_me, _, event, ctx| {
+                    if matches!(event, FocusedTerminalInfoEvent::TerminalInfoUpdated) {
+                        // Pipe the event so that any view that listens for settings changes will be notified.
+                        ctx.emit(AISettingsChangedEvent::IsAnyAIEnabled {
+                            change_event_reason: ChangeEventReason::LocalChange,
+                        });
+                    }
+                });
             });
-        });
+        }
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_ai_disabled_due_to_remote_session_org_policy(&self, app: &AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_ai_disabled_due_to_remote_session_org_policy(&self, app: &AppContext) -> bool {
         let contains_remote_blocks = FocusedTerminalInfo::as_ref(app).contains_any_remote_blocks();
 
@@ -2179,6 +2202,13 @@ impl AISettings {
         contains_remote_blocks || contains_restored_remote_blocks
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_any_ai_enabled(&self, app: &AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_any_ai_enabled(&self, app: &AppContext) -> bool {
         if cfg!(feature = "warp_lite") {
             return false;
@@ -2352,6 +2382,13 @@ impl AISettings {
     /// Returns true when local-to-cloud handoff is effectively enabled.
     /// False when the user/org has disabled it, cloud conversations are off,
     /// or AI is globally off.
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_cloud_handoff_enabled(&self, app: &warpui::AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_cloud_handoff_enabled(&self, app: &warpui::AppContext) -> bool {
         if !self.is_any_ai_enabled(app) || *self.should_force_disable_cloud_handoff {
             return false;
@@ -2475,6 +2512,13 @@ impl AISettings {
         self.is_any_ai_enabled(app)
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_command_allowlist_editable(&self, app: &AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_command_allowlist_editable(&self, app: &AppContext) -> bool {
         let set_by_workspace = UserWorkspaces::as_ref(app)
             .ai_autonomy_settings()
@@ -2483,6 +2527,13 @@ impl AISettings {
         self.is_any_ai_enabled(app) && !set_by_workspace
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_directory_allowlist_editable(&self, app: &AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_directory_allowlist_editable(&self, app: &AppContext) -> bool {
         let set_by_workspace = UserWorkspaces::as_ref(app)
             .ai_autonomy_settings()
@@ -2491,6 +2542,13 @@ impl AISettings {
         self.is_any_ai_enabled(app) && !set_by_workspace
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_execute_commands_permissions_editable(&self, app: &AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_execute_commands_permissions_editable(&self, app: &AppContext) -> bool {
         let set_by_workspace = UserWorkspaces::as_ref(app)
             .ai_autonomy_settings()
@@ -2499,6 +2557,13 @@ impl AISettings {
         self.is_any_ai_enabled(app) && !set_by_workspace
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_write_to_pty_permissions_editable(&self, app: &AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_write_to_pty_permissions_editable(&self, app: &AppContext) -> bool {
         let set_by_workspace = UserWorkspaces::as_ref(app)
             .ai_autonomy_settings()
@@ -2506,6 +2571,13 @@ impl AISettings {
         self.is_any_ai_enabled(app) && !set_by_workspace
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_computer_use_permissions_editable(&self, app: &AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_computer_use_permissions_editable(&self, app: &AppContext) -> bool {
         let set_by_workspace = UserWorkspaces::as_ref(app)
             .ai_autonomy_settings()
@@ -2513,6 +2585,13 @@ impl AISettings {
         self.is_any_ai_enabled(app) && !set_by_workspace
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_read_files_permissions_editable(&self, app: &AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_read_files_permissions_editable(&self, app: &AppContext) -> bool {
         let set_by_workspace = UserWorkspaces::as_ref(app)
             .ai_autonomy_settings()
@@ -2521,6 +2600,13 @@ impl AISettings {
         self.is_any_ai_enabled(app) && !set_by_workspace
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn is_code_diffs_permissions_editable(&self, app: &AppContext) -> bool {
+        let _ = app;
+        false
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn is_code_diffs_permissions_editable(&self, app: &AppContext) -> bool {
         let set_by_workspace = UserWorkspaces::as_ref(app)
             .ai_autonomy_settings()
@@ -2699,10 +2785,12 @@ impl AISettings {
 /// Singleton model that caches compiled regexes for the `cli_agent_footer_enabled_commands`
 /// setting. Each entry pairs a compiled regex with the CLI agent it maps to.
 pub struct CompiledCommandsForCodingAgentToolbar {
+    #[cfg(feature = "agent_runtime")]
     regexes: Vec<(Regex, CLIAgent)>,
 }
 
 impl CompiledCommandsForCodingAgentToolbar {
+    #[cfg(feature = "agent_runtime")]
     fn parse(app: &AppContext) -> Vec<(Regex, CLIAgent)> {
         AISettings::as_ref(app)
             .cli_agent_footer_enabled_commands
@@ -2716,6 +2804,7 @@ impl CompiledCommandsForCodingAgentToolbar {
             .collect()
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn register(app: &mut AppContext) {
         let handle = app.add_singleton_model(|ctx| Self {
             regexes: Self::parse(ctx),
@@ -2736,6 +2825,13 @@ impl CompiledCommandsForCodingAgentToolbar {
 
     /// Returns the CLI agent assigned to the first matching pattern, or `None`
     /// if no pattern matches the command.
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn matched_agent(app: &AppContext, command: &str) -> Option<CLIAgent> {
+        let _ = (app, command);
+        None
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn matched_agent(app: &AppContext, command: &str) -> Option<CLIAgent> {
         Self::as_ref(app)
             .regexes

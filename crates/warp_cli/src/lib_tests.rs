@@ -2977,3 +2977,10 @@ fn report_external_reference_missing_reference_type_fails() {
         "missing --reference-type should fail to parse"
     );
 }
+
+#[test]
+fn child_process_flags_parse_as_local_app_options() {
+    let args = Args::try_parse_from(["warp", &finish_update_flag(), &parent_flag()]).unwrap();
+    assert!(args.app_args().finish_update);
+    assert_eq!(args.app_args().parent.pid, Some(std::process::id()));
+}

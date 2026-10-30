@@ -82,7 +82,6 @@ pub(crate) fn handle(
             target,
             ctx,
         ),
-        #[cfg(not(feature = "warp_lite"))]
         ActionKind::SurfaceWarpDriveOpen => surface_workspace_action(
             instance_id,
             action,
@@ -91,16 +90,6 @@ pub(crate) fn handle(
             target,
             ctx,
         ),
-        #[cfg(feature = "warp_lite")]
-        ActionKind::SurfaceWarpDriveOpen => surface_workspace_action(
-            instance_id,
-            action,
-            SurfaceDestination::WarpDrive,
-            WorkspaceAction::OpenProjectExplorer,
-            target,
-            ctx,
-        ),
-        #[cfg(not(feature = "warp_lite"))]
         ActionKind::SurfaceAgentManagementOpen => surface_workspace_action(
             instance_id,
             action,
@@ -109,11 +98,6 @@ pub(crate) fn handle(
             target,
             ctx,
         ),
-        #[cfg(feature = "warp_lite")]
-        ActionKind::SurfaceAgentManagementOpen => Err(ControlError::new(
-            ErrorCode::UnsupportedAction,
-            format!("{} is not supported in warp lite", action.as_str()),
-        )),
         ActionKind::SessionNext => workspace_action(
             instance_id,
             action,
@@ -137,7 +121,6 @@ pub(crate) fn handle(
             surface_command_search_open(instance_id, params, target, ctx)
         }
         ActionKind::SurfaceThemePickerOpen => surface_theme_picker_open(instance_id, target, ctx),
-        #[cfg(not(feature = "warp_lite"))]
         ActionKind::SurfaceWarpDriveToggle => workspace_action(
             instance_id,
             action,
@@ -152,23 +135,13 @@ pub(crate) fn handle(
             target,
             ctx,
         ),
-        ActionKind::SurfaceAiAssistantToggle => {
-            #[cfg(not(feature = "warp_lite"))]
-            {
-                workspace_action(
-                    instance_id,
-                    action,
-                    WorkspaceAction::ToggleAIAssistant,
-                    target,
-                    ctx,
-                )
-            }
-            #[cfg(feature = "warp_lite")]
-            {
-                let _ = (instance_id, action, target, ctx);
-                Ok(serde_json::Value::Null)
-            }
-        }
+        ActionKind::SurfaceAiAssistantToggle => workspace_action(
+            instance_id,
+            action,
+            WorkspaceAction::ToggleAIAssistant,
+            target,
+            ctx,
+        ),
         ActionKind::SurfaceCodeReviewOpen => surface_code_review_open(instance_id, target, ctx),
         ActionKind::SurfaceCodeReviewToggle | ActionKind::SurfaceRightPanelToggle => {
             workspace_action(
@@ -195,7 +168,6 @@ pub(crate) fn handle(
             target,
             ctx,
         ),
-        #[cfg(not(feature = "warp_lite"))]
         ActionKind::SurfaceConversationListOpen => surface_workspace_action(
             instance_id,
             action,
@@ -204,11 +176,6 @@ pub(crate) fn handle(
             target,
             ctx,
         ),
-        #[cfg(feature = "warp_lite")]
-        ActionKind::SurfaceConversationListOpen => Err(ControlError::new(
-            ErrorCode::UnsupportedAction,
-            format!("{} is not supported in warp lite", action.as_str()),
-        )),
         ActionKind::SurfaceLeftPanelToggle => workspace_action(
             instance_id,
             action,

@@ -2413,6 +2413,6 @@ pub fn unregister_agent_event_consumer<C>(
     });
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "orchestration_event_streamer_tests.rs"]
 mod tests;

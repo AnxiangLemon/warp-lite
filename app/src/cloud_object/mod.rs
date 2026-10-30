@@ -22,12 +22,11 @@ use self::model::generic_string_model::{
     GenericStringModel, GenericStringObjectId, Serializer, StringModel,
 };
 use self::model::persistence::CloudModel;
-#[cfg(not(feature = "warp_lite"))]
 use crate::appearance::Appearance;
 use crate::auth::UserUid;
 use crate::channel::ChannelState;
-#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::WarpDriveItem;
+use crate::drive::{CloudObjectTypeAndId, OpenWarpDriveObjectArgs, OpenWarpDriveObjectSettings};
 use crate::persistence::ModelEvent;
 use crate::server::cloud_objects::update_manager::InitiatedBy;
 use crate::server::ids::{HashableId, HashedSqliteId, ObjectUid, ServerId, SyncId, ToServerId};
@@ -38,64 +37,12 @@ use crate::workflows::{CloudWorkflow, WorkflowSource};
 use crate::workspaces::user_profiles::UserProfiles;
 use crate::workspaces::user_workspaces::UserWorkspaces;
 
-pub mod anonymous_limits;
 pub mod breadcrumbs;
-pub mod folder;
 pub mod grab_edit_access_modal;
 pub mod model;
-pub mod notebook_model;
-pub mod shareable;
 pub mod toast_message;
 
-pub use shareable::ShareableObject;
-
 pub use cloud_objects::cloud_object::*;
-pub use cloud_objects::drive::CloudObjectTypeAndId;
-pub use cloud_objects::drive::sharing::SharingAccessLevel;
-
-/// Whether a shared object's contents are editable by the current user.
-///
-/// This is not purely a function of their access level since anonymous users are not allowed to
-/// edit (due to the lack of attribution).
-#[derive(Debug, Clone, Copy)]
-pub enum ContentEditability {
-    ReadOnly,
-    RequiresLogin,
-    Editable,
-}
-
-impl ContentEditability {
-    pub fn can_edit(self) -> bool {
-        matches!(self, ContentEditability::Editable)
-    }
-}
-pub use folder::{CloudFolder, CloudFolderModel, FolderId};
-pub use notebook_model::{
-    CloudNotebook, CloudNotebookModel, NotebookId, NotebookLocation, SerializedNotebook,
-};
-
-/// Settings used when opening a Warp Drive object (full client) or parsing drive links.
-#[derive(Debug, Clone, Eq, PartialEq, Default)]
-pub struct OpenWarpDriveObjectSettings {
-    /// The folder that should be focused in the Warp Drive when the object is opened.
-    pub focused_folder_id: Option<ServerId>,
-    /// The email of the user to invite to the object, if the object is being opened via the request access flow.
-    pub invitee_email: Option<String>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct OpenWarpDriveObjectArgs {
-    pub object_type: ObjectType,
-    pub server_id: ServerId,
-    pub settings: OpenWarpDriveObjectSettings,
-}
-
-/// Index listing context previously owned by the Drive UI module.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum DriveIndexVariant {
-    MainIndex,
-    Trash,
-}
 
 /// A CloudObject represents
 /// therefore shareable and editable (i.e. Notebooks and Workflows). In order
@@ -205,7 +152,6 @@ pub trait CloudObject: Debug {
     fn update_object_queue_item(&self, revision_ts: Option<Revision>) -> QueueItem;
 
     /// Returns whether this model type should render as a warp drive item.
-    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool;
 
     /// Returns whether this model type should show update toasts in the UI.
@@ -215,7 +161,6 @@ pub trait CloudObject: Debug {
 
     /// Creates a new Warp Drive item for this object.  Returns None if this
     /// object is not rendered in Warp Drive.
-    #[cfg(not(feature = "warp_lite"))]
     fn to_warp_drive_item(&self, appearance: &Appearance) -> Option<Box<dyn WarpDriveItem>>;
 
     /// Returns the web link of this object. Will return none if we do not support web links
@@ -265,7 +210,6 @@ pub trait CloudObject: Debug {
         let space = self.space(app);
 
         match self.metadata().folder_id {
-            #[cfg(not(feature = "warp_lite"))]
             Some(folder_id) => {
                 let cloud_model = CloudModel::as_ref(app);
                 if let Some(folder) = cloud_model.get_folder_by_uid(&folder_id.uid()) {
@@ -280,8 +224,6 @@ pub trait CloudObject: Debug {
                     vec![space.into_containing_object(app)]
                 }
             }
-            #[cfg(feature = "warp_lite")]
-            Some(_) => vec![space.into_containing_object(app)],
             None => vec![space.into_containing_object(app)],
         }
     }
@@ -491,7 +433,6 @@ pub trait CloudModelType: Debug + Clone + Send + Sync {
     fn object_type(&self) -> ObjectType;
 
     /// Returns whether this model type should render as a warp drive item.
-    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool;
 
     /// Returns whether this model type should show update toasts in the UI.
@@ -507,7 +448,6 @@ pub trait CloudModelType: Debug + Clone + Send + Sync {
 
     /// Creates a new warp drive item for this model type. Returns None
     /// if this object does not render in Warp Drive.
-    #[cfg(not(feature = "warp_lite"))]
     fn to_warp_drive_item(
         &self,
         id: SyncId,
@@ -830,12 +770,10 @@ where
         self.model().update_object_queue_item(revision_ts, self)
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool {
         self.model().renders_in_warp_drive()
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn to_warp_drive_item(&self, appearance: &Appearance) -> Option<Box<dyn WarpDriveItem>> {
         self.model().to_warp_drive_item(self.id, appearance, self)
     }

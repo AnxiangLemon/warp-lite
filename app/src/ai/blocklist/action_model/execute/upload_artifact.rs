@@ -1,7 +1,7 @@
 #[cfg(not(target_family = "wasm"))]
 use std::path::PathBuf;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "upload_artifact_tests.rs"]
 mod tests;
 

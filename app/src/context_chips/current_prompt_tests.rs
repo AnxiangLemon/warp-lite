@@ -1,51 +1,72 @@
+#[cfg(not(feature = "warp_lite"))]
 use std::any::Any;
+#[cfg(not(feature = "warp_lite"))]
 use std::collections::{HashMap, VecDeque};
+#[cfg(not(feature = "warp_lite"))]
 use std::sync::Arc;
 
+#[cfg(not(feature = "warp_lite"))]
 use async_trait::async_trait;
 use itertools::Itertools;
+#[cfg(not(feature = "warp_lite"))]
 use parking_lot::Mutex;
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 use repo_metadata::DirectoryWatcher;
+#[cfg(not(feature = "warp_lite"))]
 use settings::Setting as _;
+#[cfg(not(feature = "warp_lite"))]
 use warp_completer::completer::{CommandExitStatus, CommandOutput};
+#[cfg(not(feature = "warp_lite"))]
 use warp_core::command::ExitCode;
-use warpui::{App, SingletonEntity};
+use warpui::App;
+#[cfg(not(feature = "warp_lite"))]
+use warpui::SingletonEntity;
 use warpui_extras::user_preferences;
 
 use super::{ChipUpdateStatus, CurrentPrompt, PromptContext};
+#[cfg(not(feature = "warp_lite"))]
 use crate::auth::AuthStateProvider;
+#[cfg(not(feature = "warp_lite"))]
 use crate::auth::auth_manager::AuthManager;
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 use crate::code_review::diff_state::DiffStats;
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 use crate::code_review::git_repo_model::{GitRepoStatusModel, GitStatusMetadata};
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 use crate::code_review::github_repo_model::GitHubRepoModel;
-use crate::context_chips::context_chip::{Environment, PromptGenerator};
-#[cfg(feature = "local_fs")]
+use crate::context_chips::ContextChipKind;
+use crate::context_chips::context_chip::Environment;
+#[cfg(not(feature = "warp_lite"))]
+use crate::context_chips::context_chip::PromptGenerator;
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 use crate::context_chips::display_chip::GitBranchTrackingStatus;
 use crate::context_chips::prompt::Prompt;
-use crate::context_chips::{ChipAvailability, ChipDisabledReason, ContextChipKind};
+#[cfg(not(feature = "warp_lite"))]
+use crate::context_chips::{ChipAvailability, ChipDisabledReason};
+#[cfg(not(feature = "warp_lite"))]
 use crate::features::FeatureFlag;
 use crate::menu::MenuItem;
+#[cfg(not(feature = "warp_lite"))]
 use crate::server::server_api::ServerApiProvider;
+#[cfg(not(feature = "warp_lite"))]
 use crate::server::telemetry::context_provider::AppTelemetryContextProvider;
 use crate::settings::WarpPromptSeparator;
-#[cfg(windows)]
+#[cfg(all(windows, not(feature = "warp_lite")))]
 use crate::system::SystemInfo;
+#[cfg(not(feature = "warp_lite"))]
 use crate::terminal::History;
 use crate::terminal::model::block::BlockMetadata;
-use crate::terminal::model::session::{
-    CommandExecutor, ExecuteCommandOptions, SessionId, SessionInfo, Sessions,
-};
+#[cfg(not(feature = "warp_lite"))]
+use crate::terminal::model::session::{CommandExecutor, ExecuteCommandOptions, SessionInfo};
+use crate::terminal::model::session::{SessionId, Sessions};
 use crate::terminal::session_settings::SessionSettings;
+#[cfg(not(feature = "warp_lite"))]
 use crate::terminal::shell::Shell;
 use crate::terminal::view::PromptPosition;
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 use crate::util::git::PrInfo;
 
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 fn git_status_metadata(branch: &str) -> GitStatusMetadata {
     GitStatusMetadata {
         current_branch_name: branch.to_string(),
@@ -106,12 +127,16 @@ fn test_context_menu_items() {
                 })
                 .collect_vec();
 
-            assert_eq!(menu_items, vec!["Copy Working Directory"]);
+            assert_eq!(
+                menu_items,
+                vec![crate::lite_i18n::copy_label("Working Directory")]
+            );
         })
     });
 }
 
 #[test]
+#[cfg(not(feature = "warp_lite"))]
 fn test_prompt_to_string() {
     App::test((), |mut app| async move {
         app.add_singleton_model(|_| {
@@ -232,6 +257,7 @@ fn test_fingerprint_skips_contextual_chip_recompute_when_context_is_unchanged() 
 }
 
 #[test]
+#[cfg(not(feature = "warp_lite"))]
 fn test_shell_chip_is_disabled_when_required_executable_is_missing() {
     App::test((), |mut app| async move {
         let session_id = SessionId::from(456);
@@ -262,7 +288,7 @@ fn test_shell_chip_is_disabled_when_required_executable_is_missing() {
         crate::settings::InputSettings::register(&mut app);
         app.update(crate::settings::AISettings::register_and_subscribe_to_events);
         app.add_singleton_model(crate::workspaces::user_workspaces::UserWorkspaces::default_mock);
-        #[cfg(windows)]
+        #[cfg(all(windows, not(feature = "warp_lite")))]
         app.add_singleton_model(SystemInfo::new);
 
         let executor = Arc::new(RecordingCommandExecutor::default());
@@ -317,6 +343,7 @@ fn test_shell_chip_is_disabled_when_required_executable_is_missing() {
 }
 
 #[test]
+#[cfg(not(feature = "warp_lite"))]
 fn test_github_pr_chip_runtime_policy_configuration() {
     let _flag_guard = FeatureFlag::GithubPrPromptChip.override_enabled(true);
     let chip = ContextChipKind::GithubPullRequest
@@ -382,6 +409,7 @@ fn test_invalidating_command_count_unaffected_for_chips_without_invalidate_on_co
 }
 
 #[test]
+#[cfg(not(feature = "warp_lite"))]
 fn test_disabling_chips() {
     App::test((), |mut app| async move {
         let session_id = SessionId::from(123);
@@ -414,7 +442,7 @@ fn test_disabling_chips() {
         crate::settings::InputSettings::register(&mut app);
         app.update(crate::settings::AISettings::register_and_subscribe_to_events);
         app.add_singleton_model(crate::workspaces::user_workspaces::UserWorkspaces::default_mock);
-        #[cfg(windows)]
+        #[cfg(all(windows, not(feature = "warp_lite")))]
         app.add_singleton_model(SystemInfo::new);
 
         let executor = Arc::new(RecordingCommandExecutor::default());
@@ -497,8 +525,9 @@ fn test_disabling_chips() {
     });
 }
 
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 #[test]
+#[cfg(not(feature = "warp_lite"))]
 fn test_externally_driven_chip_skips_periodic_timer() {
     App::test((), |mut app| async move {
         app.add_singleton_model(|_| {
@@ -558,8 +587,9 @@ fn test_externally_driven_chip_skips_periodic_timer() {
     });
 }
 
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 #[test]
+#[cfg(not(feature = "warp_lite"))]
 fn test_git_status_change_updates_chip_value() {
     App::test((), |mut app| async move {
         app.add_singleton_model(|_| {
@@ -629,8 +659,9 @@ fn test_git_status_change_updates_chip_value() {
     });
 }
 
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 #[test]
+#[cfg(not(feature = "warp_lite"))]
 fn test_git_status_change_updates_branch_status_chip_value() {
     App::test((), |mut app| async move {
         app.add_singleton_model(|_| {
@@ -709,8 +740,9 @@ fn test_git_status_change_updates_branch_status_chip_value() {
     });
 }
 
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 #[test]
+#[cfg(not(feature = "warp_lite"))]
 fn test_git_status_pr_info_updates_github_pr_chip_value() {
     let _flag_guard = FeatureFlag::GithubPrPromptChip.override_enabled(true);
     App::test((), |mut app| async move {
@@ -857,12 +889,14 @@ fn test_git_status_pr_info_updates_github_pr_chip_value() {
 
 /// A [`CommandExecutor`] implementation that records which commands were run, but does not
 /// execute them.
+#[cfg(not(feature = "warp_lite"))]
 #[derive(Debug, Default)]
 struct RecordingCommandExecutor {
     commands: Mutex<Vec<String>>,
     response_queue: Mutex<VecDeque<CommandOutput>>,
 }
 
+#[cfg(not(feature = "warp_lite"))]
 impl RecordingCommandExecutor {
     pub fn with_success_responses(responses: impl IntoIterator<Item = &'static str>) -> Self {
         Self::with_outputs(
@@ -903,6 +937,7 @@ impl RecordingCommandExecutor {
     }
 }
 
+#[cfg(not(feature = "warp_lite"))]
 #[async_trait]
 impl CommandExecutor for RecordingCommandExecutor {
     async fn execute_command(

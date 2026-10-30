@@ -582,6 +582,6 @@ impl ActiveAgentViewsModel {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "active_agent_views_model_tests.rs"]
 mod tests;

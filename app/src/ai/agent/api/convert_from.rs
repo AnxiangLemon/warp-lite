@@ -27,7 +27,7 @@ use crate::ai::agent::{
     TodoOperation, UserQueryMode, WebFetchStatus, WebSearchStatus,
 };
 use crate::ai::artifact_download::sanitized_basename;
-use ai::document::{AIDocumentId, AIDocumentVersion};
+use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
 
 impl TryFrom<api::Attachment> for AIAgentAttachment {
     type Error = anyhow::Error;
@@ -944,6 +944,6 @@ fn convert_api_question(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "convert_from_tests.rs"]
 mod tests;

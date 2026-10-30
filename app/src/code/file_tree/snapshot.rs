@@ -366,6 +366,6 @@ impl FileTreeSnapshot {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "snapshot_tests.rs"]
 mod tests;

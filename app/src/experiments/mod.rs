@@ -16,7 +16,9 @@ use std::ops::Range;
 use std::str::FromStr;
 
 use anyhow::Result;
-pub use block_onboarding_layer::{BLOCK_ONBOARDING_LAYER, BlockOnboarding};
+pub use block_onboarding_layer::BLOCK_ONBOARDING_LAYER;
+#[cfg(feature = "agent_runtime")]
+pub use block_onboarding_layer::BlockOnboarding;
 use dashmap::DashMap;
 pub use improved_palette_search_layer::{IMPROVED_PALETTE_SEARCH_LAYER, ImprovedPaletteSearch};
 use lazy_static::lazy_static;
@@ -27,6 +29,7 @@ use warpui::{AppContext, SingletonEntity};
 
 use crate::auth::auth_state::AuthStateProvider;
 use crate::channel::{Channel, ChannelState};
+#[cfg(feature = "cloud_services")]
 use crate::send_telemetry_sync_from_app_ctx;
 
 /// Number of buckets we are using to partition user traffic. The largest valid
@@ -331,6 +334,7 @@ pub trait Experiment<T: Experiment<T>>: FromStr {
             let anonymous_id = AuthStateProvider::as_ref(ctx).get().anonymous_id();
             assigned_group = Self::layer().get_assigned_group(&anonymous_id);
 
+            #[cfg(feature = "cloud_services")]
             if let Some(group) = assigned_group.as_ref() {
                 let group_assignment = group.variant();
                 // Send synchronously since this we rely on this event to collect experiment data.

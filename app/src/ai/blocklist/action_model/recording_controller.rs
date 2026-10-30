@@ -588,6 +588,6 @@ impl Entity for RecordingController {
 
 impl SingletonEntity for RecordingController {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "recording_controller_tests.rs"]
 mod tests;

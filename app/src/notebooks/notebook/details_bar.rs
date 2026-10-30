@@ -206,6 +206,6 @@ fn editor_display_name(email: Option<&str>, app: &AppContext) -> String {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "details_bar_tests.rs"]
 mod tests;

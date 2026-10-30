@@ -1,9 +1,12 @@
 use warpui::integration::AssertionCallback;
 use warpui::{async_assert, async_assert_eq};
 
-use crate::integration_testing::view_getters::{input_view, single_input_view_for_tab};
+#[cfg(feature = "agent_runtime")]
+use crate::integration_testing::view_getters::input_view;
+use crate::integration_testing::view_getters::single_input_view_for_tab;
 use crate::terminal::input::InputSuggestionsMode;
 
+#[cfg(feature = "agent_runtime")]
 pub fn assert_workflow_info_box_is_open(tab_idx: usize, pane_idx: usize) -> AssertionCallback {
     Box::new(move |app, window_id| {
         let input = input_view(app, window_id, tab_idx, pane_idx);
@@ -59,6 +62,7 @@ pub fn input_is_empty(tab_idx: usize) -> AssertionCallback {
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 pub fn inline_model_selector_is_open(tab_idx: usize) -> AssertionCallback {
     Box::new(move |app, window_id| {
         let input = single_input_view_for_tab(app, window_id, tab_idx);

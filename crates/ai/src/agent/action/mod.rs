@@ -31,6 +31,10 @@ use crate::agent::action_result::{
 use crate::agent::{AIAgentCitation, FileLocations};
 use crate::diff_validation::ParsedDiff;
 use crate::document::AIDocumentId;
+pub use crate::pty::{
+    PtyWriteMode as AIAgentPtyWriteMode,
+    PtyWriteModeDiscriminants as AIAgentPtyWriteModeDiscriminants,
+};
 use crate::skills::SkillReference;
 
 #[derive(Debug, Clone, Eq, PartialEq, EnumDiscriminants)]
@@ -818,59 +822,6 @@ pub struct ReadSkillRequest {
 pub enum ShellCommandDelay {
     Duration(Duration),
     OnCompletion,
-}
-
-#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, EnumDiscriminants)]
-pub enum AIAgentPtyWriteMode {
-    #[default]
-    Raw,
-    Line,
-    Block,
-}
-
-impl AIAgentPtyWriteMode {
-    /// Decorates input bytes according to the write mode.
-    pub fn decorate_bytes(
-        self,
-        bytes: impl Into<Vec<u8>>,
-        is_bracketed_paste_enabled: bool,
-    ) -> Vec<u8> {
-        use warp_terminal::model::escape_sequences;
-
-        let bytes = bytes.into();
-        match self {
-            AIAgentPtyWriteMode::Raw => bytes,
-            AIAgentPtyWriteMode::Line => {
-                // Move to beginning of line, write input, then submit (Enter).
-                let mut v = Vec::with_capacity(bytes.len() + 2);
-                // ^A (SOH) is "beginning of line" for readline/prompt-toolkit style editors.
-                v.push(escape_sequences::C0::SOH);
-                v.extend_from_slice(&bytes);
-                cfg_if::cfg_if! {
-                    if #[cfg(target_os = "windows")] {
-                        // Use CR to submit on Windows hosts.
-                        v.push(escape_sequences::C0::CR);
-                    } else {
-                        // Use LF to submit on POSIX.
-                        v.push(escape_sequences::C0::LF);
-                    }
-                }
-                v
-            }
-            AIAgentPtyWriteMode::Block => {
-                if is_bracketed_paste_enabled {
-                    escape_sequences::BRACKETED_PASTE_START
-                        .iter()
-                        .copied()
-                        .chain(bytes)
-                        .chain(escape_sequences::BRACKETED_PASTE_END.iter().copied())
-                        .collect()
-                } else {
-                    bytes
-                }
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

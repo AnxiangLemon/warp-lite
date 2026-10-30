@@ -59,17 +59,17 @@ use crate::cloud_object::{
     ServerScheduledAmbientAgent, ServerTemplatableMCPServer, ServerWorkflowEnum, Space,
     UpdateCloudObjectResult,
 };
-use crate::cloud_object::CloudObjectTypeAndId;
-use crate::cloud_object::anonymous_limits::{
+use crate::drive::CloudObjectTypeAndId;
+use crate::drive::drive_helpers::{
     is_feature_gated_anonymous_user_past_env_var_limit,
     is_feature_gated_anonymous_user_past_notebook_limit,
     is_feature_gated_anonymous_user_past_workflow_limit,
 };
-use crate::cloud_object::{CloudFolderModel, FolderId};
-use crate::cloud_object::SharingAccessLevel;
+use crate::drive::folders::{CloudFolderModel, FolderId};
+use crate::drive::sharing::SharingAccessLevel;
 use crate::env_vars::{CloudEnvVarCollectionModel, EnvVarCollection};
 use crate::network::{NetworkStatus, NetworkStatusEvent, NetworkStatusKind};
-use crate::cloud_object::{CloudNotebookModel, NotebookId};
+use crate::notebooks::{CloudNotebookModel, NotebookId};
 use crate::persistence::ModelEvent;
 use crate::server::ids::{
     ClientId, HashableId, HashedSqliteId, ObjectUid, ServerId, SyncId, ToServerId,
@@ -220,6 +220,13 @@ impl UpdateManager {
             me.handle_model_event(event, ctx);
         });
 
+        Self::new_offline(model_event_sender, object_client)
+    }
+
+    pub fn new_offline(
+        model_event_sender: Option<SyncSender<ModelEvent>>,
+        object_client: Arc<dyn ObjectClient>,
+    ) -> Self {
         Self {
             model_event_sender,
             object_client,

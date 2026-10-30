@@ -2,7 +2,8 @@ use warp_multi_agent_api as api;
 
 use super::{exchanges_for_blocklist, should_show_task_in_blocklist};
 use crate::ai::agent::MessageId;
-use crate::ai::agent::conversation::{AIConversation, AIConversationId};
+use crate::ai::agent::conversation::AIConversation;
+use crate::terminal::session_types::AIConversationId;
 use crate::test_util::ai_agent_tasks::{
     create_api_subtask, create_api_task, create_message, create_subagent_tool_call_message,
 };

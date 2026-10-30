@@ -11,9 +11,9 @@ use super::model_events::ModelEventDispatcher;
 use super::terminal_manager::BlockSpacing;
 use super::{ShellLaunchState, TerminalManager, TerminalModel, TerminalView};
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
-use crate::ai::blocklist::SerializedBlockListItem;
 use crate::context_chips::prompt_type::PromptType;
 use crate::pane_group::TerminalViewResources;
+use crate::terminal::model::block::SerializedBlockListItem;
 use crate::terminal::view::ConversationRestorationInNewPaneType;
 
 pub struct MockTerminalManager {

@@ -39,7 +39,6 @@ use crate::ai::agent::{
     RequestCost, Suggestions,
 };
 use crate::ai::artifacts::Artifact;
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::document::ai_document_model::AIDocumentModel;
 use crate::input_suggestions::HistoryOrder;
 use crate::persistence::ModelEvent;
@@ -52,10 +51,13 @@ use crate::terminal::view::blocklist_filter;
 use crate::ui_components::icons::Icon;
 
 mod conversation_loader;
-pub use conversation_loader::{
-    CLIAgentConversation, CloudConversationData,
-    convert_persisted_conversation_to_ai_conversation_with_metadata, load_conversation_from_server,
-};
+pub use conversation_loader::CLIAgentConversation;
+#[cfg(feature = "agent_runtime")]
+pub use conversation_loader::CloudConversationData;
+#[cfg(feature = "agent_runtime")]
+pub use conversation_loader::convert_persisted_conversation_to_ai_conversation_with_metadata;
+#[cfg(feature = "agent_runtime")]
+pub use conversation_loader::load_conversation_from_server;
 use warp_errors::report_error;
 
 /// Mirrors [`crate::persistence::agent::MAX_PERSISTED_CONVERSATION_COUNT`].
@@ -2036,7 +2038,6 @@ impl BlocklistAIHistoryModel {
                 log::warn!("Failed to mark exchange as cancelled: {e}");
             }
         }
-        #[cfg(not(feature = "warp_lite"))]
         AIDocumentModel::handle(ctx).update(ctx, |model, ctx| {
             model.clear_streaming_documents_for_conversation(&conversation_id, ctx);
         });
@@ -3544,6 +3545,6 @@ pub const FORK_PREFIX: &str = "(Fork) ";
 /// The prefix used when saving a conversation before a rewind operation.
 pub const PRE_REWIND_PREFIX: &str = "(Pre-Rewind) ";
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "history_model_tests.rs"]
 mod tests;

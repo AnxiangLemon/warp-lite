@@ -1,18 +1,23 @@
 // We don't resolve managed MCPs from agent run CLI flows on WASM, so this code is unused there.
 #![cfg_attr(target_family = "wasm", expect(dead_code))]
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
+#[cfg(feature = "cloud_services")]
+use anyhow::anyhow;
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use cynic::MutationBuilder;
 #[cfg(test)]
 use mockall::automock;
+use warp_graphql::mutations::create_managed_mcp_client_config::CreateManagedMcpClientConfigOutput;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_managed_mcp_client_config::{
     CreateManagedMcpClientConfig, CreateManagedMcpClientConfigInput,
-    CreateManagedMcpClientConfigOutput, CreateManagedMcpClientConfigResult,
-    CreateManagedMcpClientConfigVariables,
+    CreateManagedMcpClientConfigResult, CreateManagedMcpClientConfigVariables,
 };
 
 use super::ServerApi;
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
 
 #[cfg_attr(test, automock)]
@@ -24,9 +29,13 @@ pub trait ManagedMcpClient: 'static + Send + Sync {
     async fn create_managed_mcp_client_config(
         &self,
         uid: String,
-    ) -> Result<CreateManagedMcpClientConfigOutput>;
+    ) -> Result<CreateManagedMcpClientConfigOutput> {
+        let _ = uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 }
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl ManagedMcpClient for ServerApi {
@@ -56,3 +65,8 @@ impl ManagedMcpClient for ServerApi {
         }
     }
 }
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl ManagedMcpClient for ServerApi {}

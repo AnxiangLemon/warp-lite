@@ -82,6 +82,6 @@ pub(crate) fn collect_env_vars(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "cloud_provider_tests.rs"]
 mod tests;

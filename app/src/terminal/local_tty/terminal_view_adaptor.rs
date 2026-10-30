@@ -1,74 +1,112 @@
 use std::any::Any;
+#[cfg(feature = "agent_runtime")]
 use std::cell::RefCell;
+#[cfg(feature = "agent_runtime")]
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::mpsc::SyncSender;
 
 use parking_lot::FairMutex;
+#[cfg(feature = "agent_runtime")]
 use session_sharing_protocol::common::{
     ActivePrompt, AgentPromptFailureReason, CLIAgentSessionState, CommandExecutionFailureReason,
     ControlAction, ControlActionFailureReason, LongRunningCommandAgentInteraction,
     SelectedAgentModel, UniversalDeveloperInputContextUpdate, WriteToPtyFailureReason,
 };
 #[cfg(not(any(test, feature = "integration_tests")))]
+#[cfg(feature = "agent_runtime")]
 use session_sharing_protocol::common::{
     LongRunningCommandAgentInteractionState, SelectedConversation, UniversalDeveloperInputContext,
 };
+#[cfg(feature = "agent_runtime")]
 use session_sharing_protocol::sharer::{
     AddGuestsResponse, FailedToInitializeSessionReason, Lifetime, LinkAccessLevelUpdateResponse,
     QuotaType, RemoveGuestResponse, SessionEndedReason, SessionSourceType,
     TeamAccessLevelUpdateResponse, UpdatePendingUserRoleResponse,
 };
+#[cfg(feature = "agent_runtime")]
 use warp_core::execution_mode::AppExecutionMode;
+#[cfg(feature = "agent_runtime")]
 use warp_core::send_telemetry_from_ctx;
+#[cfg(feature = "agent_runtime")]
 use warp_errors::report_error;
-use warpui::{AppContext, ModelHandle, SingletonEntity, ViewContext, ViewHandle, WindowId};
+use warpui::{AppContext, ModelHandle, ViewHandle, WindowId};
+#[cfg(feature = "agent_runtime")]
+use warpui::{SingletonEntity, ViewContext};
 
 use super::terminal_manager::{TerminalManager, TerminalSurfaceInit, TerminalSurfaceResult};
+#[cfg(feature = "agent_runtime")]
 use crate::NetworkStatus;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::conversation::AIConversation;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::{AgentViewController, AgentViewControllerEvent};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{
     BlocklistAIContextEvent, BlocklistAIContextModel, BlocklistAIControllerEvent,
-    BlocklistAIHistoryEvent, BlocklistAIHistoryModel, InputConfig, SerializedBlockListItem,
+    BlocklistAIHistoryEvent, BlocklistAIHistoryModel,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::llms::{LLMPreferences, LLMPreferencesEvent};
 use crate::context_chips::current_prompt::CurrentPrompt;
+#[cfg(feature = "agent_runtime")]
 use crate::context_chips::prompt_snapshot::PromptSnapshot;
 use crate::context_chips::prompt_type::PromptType;
 use crate::editor::CrdtOperation;
+#[cfg(feature = "agent_runtime")]
 use crate::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use crate::network::{NetworkStatusEvent, NetworkStatusKind};
 use crate::pane_group::TerminalViewResources;
 use crate::persistence::ModelEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::server::telemetry::{TelemetryAgentViewEntryOrigin, TelemetryEvent};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::{
     CLIAgentInputState, CLIAgentSessionsModel, CLIAgentSessionsModelEvent,
 };
+use crate::terminal::model::block::SerializedBlockListItem;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::safe_mode_settings::get_secret_obfuscation_mode;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::session_settings::{SessionSettings, SessionSettingsChangedEvent};
+use crate::terminal::session_types::InputConfig;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::manager::Manager;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::shared_session::max_session_size;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::permissions_manager::SessionPermissionsManager;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::presence_manager::PresenceManager;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::replay_agent_conversations::reconstruct_response_events_from_conversations;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::settings::SharedSessionSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::shared_handlers::{
     RemoteUpdateGuard, apply_auto_approve_agent_actions_update, apply_cli_agent_state_update,
     apply_input_mode_update, apply_selected_agent_model_update, apply_selected_conversation_update,
     build_selected_conversation_update,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::sharer::network::{
     Network, NetworkEvent, failed_to_add_guests_user_error,
     failed_to_initialize_session_user_error, session_terminated_reason_string,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::{
     SharedSessionActionSource, SharedSessionScrollbackType, SharedSessionSource,
-    SharedSessionStatus, max_session_size,
+    SharedSessionStatus,
 };
-use crate::terminal::view::{ConversationRestorationInNewPaneType, Event as TerminalViewEvent};
+use crate::terminal::view::ConversationRestorationInNewPaneType;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::view::Event as TerminalViewEvent;
 use crate::terminal::writeable_pty::terminal_manager_util::wire_up_remote_server_controller_with_view;
 use crate::terminal::{TerminalManager as TerminalManagerTrait, TerminalModel, TerminalView};
+#[cfg(feature = "agent_runtime")]
 use crate::view_components::ToastFlavor;
 
 const ACL_UPDATE_FAILURE_RESPONSE: &str = "Something went wrong. Please try again.";
@@ -195,7 +233,7 @@ pub(crate) fn create_terminal_view_surface(
             // In unit tests, we know we aren't going to bootstrap a shell
             // so if we're waiting on starting a shared session until bootstrapped,
             // just attempt to start it now.
-            #[cfg(test)]
+            #[cfg(all(test, feature = "agent_runtime"))]
             if matches!(
                 terminal_manager.model().lock().shared_session_status(),
                 SharedSessionStatus::SharePendingPreBootstrap { .. }
@@ -219,14 +257,17 @@ pub(crate) fn create_terminal_view_surface(
 
             // Wire up TerminalView-specific session sharing (sharer setup, prompt/presence/LLM/
             // input-mode/conversation broadcasts, agent-view registration, network status).
-            terminal_manager.session_sharer = wire_up_terminal_view_session_sharing(
-                view,
-                current_prompt,
-                prompt_type,
-                terminal_manager.model(),
-                window_id,
-                ctx,
-            );
+            #[cfg(feature = "agent_runtime")]
+            {
+                terminal_manager.session_sharer = wire_up_terminal_view_session_sharing(
+                    view,
+                    current_prompt,
+                    prompt_type,
+                    terminal_manager.model(),
+                    window_id,
+                    ctx,
+                );
+            }
         },
     }
 }
@@ -240,6 +281,7 @@ pub(crate) fn create_terminal_view_surface(
 /// remain unchanged; this helper groups the `TerminalView`-dependent wiring so it is
 /// easy to identify and work on separately from the generic manager.
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "agent_runtime")]
 fn wire_up_terminal_view_session_sharing(
     view: &ViewHandle<TerminalView>,
     current_prompt: ModelHandle<CurrentPrompt>,
@@ -617,6 +659,7 @@ impl TerminalManager<TerminalView> {
     /// Streams all historical agent conversations from this terminal to viewers.
     /// This is called when starting a shared  session mid-conversation so that viewers
     /// can see all conversation history and properly continue conversations.
+    #[cfg(feature = "agent_runtime")]
     fn stream_historical_agent_conversations(
         terminal_view: &ViewHandle<TerminalView>,
         model: &Arc<FairMutex<TerminalModel>>,
@@ -659,6 +702,7 @@ impl TerminalManager<TerminalView> {
     }
 
     /// Send selected_conversation update to viewers based on current selection.
+    #[cfg(feature = "agent_runtime")]
     fn send_selected_conversation_update_for_sharer(
         session_sharer: &Rc<RefCell<Option<ModelHandle<Network>>>>,
         agent_view_controller: &ModelHandle<AgentViewController>,
@@ -676,6 +720,7 @@ impl TerminalManager<TerminalView> {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "agent_runtime")]
     fn start_sharing_session(
         terminal_view: ViewHandle<TerminalView>,
         prompt_type: ModelHandle<PromptType>,
@@ -1562,6 +1607,7 @@ impl TerminalManager<TerminalView> {
         *session_sharer = Some(network);
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn log_shared_session_lifecycle(
         terminal_view: &ViewHandle<TerminalView>,
         model: &Arc<FairMutex<TerminalModel>>,
@@ -1592,6 +1638,7 @@ impl TerminalManager<TerminalView> {
     }
 
     /// Contains necessary logic for stopping the current shared session.
+    #[cfg(feature = "agent_runtime")]
     fn cleanup_shared_session(
         terminal_view: &ViewHandle<TerminalView>,
         model: Arc<FairMutex<TerminalModel>>,
@@ -1623,6 +1670,7 @@ impl TerminalManager<TerminalView> {
     }
 
     /// Called when the server terminates the current session.
+    #[cfg(feature = "agent_runtime")]
     fn shared_session_terminated(
         terminal_view: &ViewHandle<TerminalView>,
         session_sharer: Rc<RefCell<Option<ModelHandle<Network>>>>,
@@ -1636,6 +1684,7 @@ impl TerminalManager<TerminalView> {
 
     /// Called when the client explicitly wants to end the current session.
     /// Guarantees we also notify viewers of a session ended reason.
+    #[cfg(feature = "agent_runtime")]
     fn end_shared_session(
         terminal_view: &ViewHandle<TerminalView>,
         session_sharer: Rc<RefCell<Option<ModelHandle<Network>>>>,
@@ -1660,6 +1709,7 @@ impl TerminalManager<TerminalView> {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn wire_up_session_sharer_with_view(
         terminal_view: &ViewHandle<TerminalView>,
         prompt_type: ModelHandle<PromptType>,
@@ -1911,6 +1961,7 @@ impl TerminalManager<TerminalView> {
         });
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn handle_network_status_events(
         view: &ViewHandle<TerminalView>,
         session_sharer: Rc<RefCell<Option<ModelHandle<Network>>>>,
@@ -1945,7 +1996,7 @@ impl TerminalManager<TerminalView> {
         });
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "agent_runtime"))]
     pub fn session_sharer(&self) -> Rc<RefCell<Option<ModelHandle<Network>>>> {
         self.session_sharer.clone()
     }
@@ -1970,35 +2021,40 @@ impl TerminalManagerTrait for TerminalManager<TerminalView> {
         detach_type: crate::pane_group::pane::DetachType,
         app: &mut AppContext,
     ) {
-        let shared_session_status = self.model.lock().shared_session_status().clone();
-        if shared_session_status.is_sharer() {
-            Self::log_shared_session_lifecycle(
-                &self.view,
-                &self.model,
-                "view_detached",
-                format_args!("detach_type={detach_type:?}"),
-                app,
-            );
-            let is_confirm_close_session =
-                *SessionSettings::as_ref(app).should_confirm_close_session;
-            self.view.update(app, |terminal_view, ctx| {
-                // This emits an event that is handled in [`Self::end_shared_session`].
-                // We still need to call this in order to emit a telemetry event.
-                terminal_view.stop_sharing_session(
-                    SharedSessionActionSource::Closed {
-                        is_confirm_close_session,
-                    },
-                    ctx,
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (detach_type, app);
+        #[cfg(feature = "agent_runtime")]
+        {
+            let shared_session_status = self.model.lock().shared_session_status().clone();
+            if shared_session_status.is_sharer() {
+                Self::log_shared_session_lifecycle(
+                    &self.view,
+                    &self.model,
+                    "view_detached",
+                    format_args!("detach_type={detach_type:?}"),
+                    app,
+                );
+                let is_confirm_close_session =
+                    *SessionSettings::as_ref(app).should_confirm_close_session;
+                self.view.update(app, |terminal_view, ctx| {
+                    // This emits an event that is handled in [`Self::end_shared_session`].
+                    // We still need to call this in order to emit a telemetry event.
+                    terminal_view.stop_sharing_session(
+                        SharedSessionActionSource::Closed {
+                            is_confirm_close_session,
+                        },
+                        ctx,
+                    )
+                });
+                // The window could close before the event from above is processed, so directly stop sharing here.
+                Self::end_shared_session(
+                    &self.view,
+                    self.session_sharer.clone(),
+                    SessionEndedReason::EndedBySharer,
+                    self.model.clone(),
+                    app,
                 )
-            });
-            // The window could close before the event from above is processed, so directly stop sharing here.
-            Self::end_shared_session(
-                &self.view,
-                self.session_sharer.clone(),
-                SessionEndedReason::EndedBySharer,
-                self.model.clone(),
-                app,
-            )
+            }
         }
     }
 
@@ -2017,6 +2073,7 @@ impl TerminalManagerTrait for TerminalManager<TerminalView> {
 /// Scoped to those sessions because a cloud agent's sharer is a process that can hold the session
 /// open on the strength of this signal. Ordinary shared sessions have no consumer for it, and
 /// these fire at keystroke frequency.
+#[cfg(feature = "agent_runtime")]
 fn emit_shared_session_viewer_input(view: &TerminalView, ctx: &mut ViewContext<TerminalView>) {
     if !view.model.lock().is_shared_ambient_agent_session() {
         return;

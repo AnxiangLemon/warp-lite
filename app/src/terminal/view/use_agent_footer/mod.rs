@@ -4,27 +4,36 @@
 //! offering users the option to bring in the agent. For CLI agent commands (e.g., Claude Code,
 //! Gemini CLI, Codex), it displays a specialized footer with additional functionality.
 
+#[cfg(feature = "agent_runtime")]
 use base64::Engine;
+#[cfg(feature = "agent_runtime")]
 use warpui::clipboard::{ClipboardContent, ImageData};
 
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::ImageContext;
 use crate::ai::blocklist::agent_view::agent_input_footer::{
     AgentInputFooter, AgentInputFooterEvent,
 };
-use crate::terminal::cli_agent_sessions::{CLIAgentInputEntrypoint, CLIAgentSessionsModel};
-use crate::terminal::shared_session::{
-    SharedSessionActionSource, SharedSessionScrollbackType, SharedSessionSource,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::cli_agent_sessions::CLIAgentInputEntrypoint;
+use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
+use crate::terminal::shared_session::SharedSessionScrollbackType;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::shared_session::{SharedSessionActionSource, SharedSessionSource};
+#[cfg(feature = "agent_runtime")]
 use crate::util::image::{MAX_IMAGE_SIZE_BYTES_FOR_CLI_AGENT, MIME_SNIFF_BYTES, infer_mime_type};
 mod warpify_footer;
 
+#[cfg(feature = "agent_runtime")]
 use std::path::Path;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use parking_lot::FairMutex;
 use pathfinder_color::ColorU;
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use warp_core::send_telemetry_from_ctx;
 use warp_core::settings::Setting;
 use warp_core::ui::appearance::Appearance;
@@ -34,8 +43,10 @@ use warp_core::ui::color::contrast::{
 use warp_core::ui::theme::Fill as ThemeFill;
 use warp_core::ui::theme::color::internal_colors;
 use warp_errors::report_error;
+#[cfg(feature = "agent_runtime")]
 use warp_terminal::model::escape_sequences::{BRACKETED_PASTE_END, BRACKETED_PASTE_START};
 use warpify_footer::{WarpifyFooterView, WarpifyFooterViewEvent};
+#[cfg(feature = "agent_runtime")]
 use warpui::r#async::Timer;
 use warpui::elements::{
     ChildView, Container, CrossAxisAlignment, Empty, Expanded, Flex, MainAxisSize, ParentElement,
@@ -46,17 +57,26 @@ use warpui::{
     ViewContext, ViewHandle,
 };
 
-use super::{RichContentInsertionPosition, TerminalAction, TerminalView};
+use super::TerminalAction;
+#[cfg(feature = "agent_runtime")]
+use super::{RichContentInsertionPosition, TerminalView};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::block::cli_controller::CLISubagentEvent;
 use crate::cmd_or_ctrl_shift;
+#[cfg(feature = "agent_runtime")]
 use crate::code_review::diff_state::GitDeltaPreference;
+#[cfg(feature = "agent_runtime")]
 use crate::code_review::telemetry_event::CodeReviewPaneEntrypoint;
+#[cfg(feature = "agent_runtime")]
 use crate::server::telemetry::{CLIAgentType, CLISubagentControlState, TelemetryEvent};
+use crate::settings::AISettings;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::{
-    AISettings, AISettingsChangedEvent, CompiledCommandsForCodingAgentToolbar, InputModeSettings,
+    AISettingsChangedEvent, CompiledCommandsForCodingAgentToolbar, InputModeSettings,
 };
 pub use crate::terminal::CLIAgent;
 use crate::terminal::TerminalModel;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::CLIAgentRichInputCloseReason;
 use crate::terminal::model_events::{ModelEvent, ModelEventDispatcher};
 use crate::ui_components::blended_colors;
@@ -145,6 +165,7 @@ fn rich_input_submit_strategy(agent: CLIAgent) -> RichInputSubmitStrategy {
 static USE_AGENT_KEYSTROKE: LazyLock<Keystroke> =
     LazyLock::new(|| Keystroke::parse(cmd_or_ctrl_shift("enter")).expect("valid keystroke"));
 
+#[cfg(feature = "agent_runtime")]
 impl TerminalView {
     pub(super) fn register_subscriptions_for_use_agent_footer(
         &mut self,
@@ -297,6 +318,10 @@ impl TerminalView {
         model: &TerminalModel,
         app: &AppContext,
     ) -> bool {
+        if cfg!(feature = "warp_lite") {
+            return false;
+        }
+
         let ai_settings = AISettings::as_ref(app);
 
         // If the warpify footer is active, a subshell was detected and we should show the footer.
@@ -1574,4 +1599,5 @@ impl ActionButtonTheme for AgentFooterButtonTheme {
 
 #[cfg(test)]
 #[path = "mod_tests.rs"]
+#[cfg(feature = "agent_runtime")]
 mod tests;

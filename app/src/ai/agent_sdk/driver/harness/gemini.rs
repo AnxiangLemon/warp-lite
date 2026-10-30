@@ -365,6 +365,6 @@ struct GeminiContext {
     extra: Map<String, Value>,
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "gemini_tests.rs"]
 mod tests;

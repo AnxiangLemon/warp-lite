@@ -273,6 +273,6 @@ pub fn logout(ctx: &mut AppContext) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "admin_tests.rs"]
 mod tests;

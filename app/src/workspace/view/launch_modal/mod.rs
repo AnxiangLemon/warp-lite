@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use markdown_parser::{FormattedText, FormattedTextLine, parse_markdown};
 // Re-export slide types for convenience
+#[cfg(feature = "agent_runtime")]
 pub use oz_launch::OzLaunchSlide;
 use pathfinder_color::ColorU;
 use warp_core::ui::appearance::Appearance;

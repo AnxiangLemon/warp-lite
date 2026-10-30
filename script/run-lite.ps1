@@ -1,17 +1,30 @@
 param(
     [switch] $Release,
+    [switch] $BuildOnly,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]] $WarpArgs
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Debug builds are ~350MB+ because they keep full debuginfo and skip LTO.
-# Prefer -Release for a distributable binary (still large: full Warp GUI stack).
-$profileArgs = @()
+$cargoArgs = @('run')
+if ($BuildOnly) {
+    $cargoArgs = @('build')
+}
 if ($Release) {
-    $profileArgs = @('--release')
+    $cargoArgs += @('--profile', 'lite')
+}
+$cargoArgs += @('--bin', 'warp-lite', '--no-default-features', '--features', 'warp_lite', '--locked')
+if (!$BuildOnly) {
+    $cargoArgs += '--'
+    $cargoArgs += $WarpArgs
 }
 
-& cargo run @profileArgs --bin warp-lite --no-default-features --features 'warp_lite' -- @WarpArgs
-exit $LASTEXITCODE
+Push-Location -LiteralPath (Split-Path -Parent $PSScriptRoot)
+try {
+    & cargo @cargoArgs
+    $cargoExitCode = $LASTEXITCODE
+} finally {
+    Pop-Location
+}
+exit $cargoExitCode

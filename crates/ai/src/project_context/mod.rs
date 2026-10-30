@@ -1,3 +1,4 @@
+#[cfg(feature = "runtime")]
 cfg_if::cfg_if! {
     if #[cfg(feature = "local_fs")] {
         mod global_rules;
@@ -7,4 +8,11 @@ cfg_if::cfg_if! {
         pub(crate) use dummy_global_rules::GlobalRules;
     }
 }
+#[cfg(feature = "runtime")]
 pub mod model;
+mod types;
+
+#[cfg(not(feature = "runtime"))]
+pub mod model {
+    pub use super::types::ProjectRulePath;
+}

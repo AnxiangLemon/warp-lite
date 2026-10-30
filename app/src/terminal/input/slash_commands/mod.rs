@@ -14,62 +14,92 @@ pub use mixer::{SlashCommandMixer, build_slash_command_mixer, slash_command_quer
 pub use view::{CloseReason, InlineSlashCommandView, SlashCommandsEvent};
 #[cfg(not(target_family = "wasm"))]
 use warp_cli::agent::Harness;
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
 use warp_core::send_telemetry_from_ctx;
+#[cfg(feature = "agent_runtime")]
 use warp_core::ui::appearance::Appearance;
+#[cfg(feature = "agent_runtime")]
 use warp_core::ui::theme::AnsiColorIdentifier;
+#[cfg(feature = "agent_runtime")]
 use warp_errors::report_error;
 #[cfg(feature = "local_fs")]
 use warp_util::path::{CleanPathResult, LineAndColumnArg};
+#[cfg(feature = "agent_runtime")]
+use warpui::ViewContext;
+#[cfg(feature = "agent_runtime")]
 use warpui::clipboard::ClipboardContent;
-use warpui::{AppContext, SingletonEntity, ViewContext};
+use warpui::{AppContext, SingletonEntity};
 
 use crate::TelemetryEvent;
-use crate::ai::agent::conversation::AIConversationId;
 #[cfg(not(target_family = "wasm"))]
 use crate::ai::agent_conversations_model::AgentConversationsModel;
 #[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_management::telemetry::AgentManagementTelemetryEvent;
 #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ambient_agents::telemetry::HandoffEntryPoint;
+use crate::ai::blocklist::BlocklistAIHistoryModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::{
     AgentViewEntryOrigin, DismissalStrategy, ENTER_OR_EXIT_CONFIRMATION_WINDOW, EphemeralMessage,
 };
 #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::handoff::PendingCloudLaunch;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{
-    BlocklistAIHistoryModel, InputTypeAutoDetectionSource, PendingAttachment, QueuedQuery,
-    QueuedQueryId, QueuedQueryModel, QueuedQueryOrigin, SlashCommandRequest,
+    InputTypeAutoDetectionSource, PendingAttachment, QueuedQuery, QueuedQueryId, QueuedQueryModel,
+    QueuedQueryOrigin, SlashCommandRequest,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::conversation_rename::rename_conversation;
 use crate::cloud_object::model::persistence::CloudModel;
+#[cfg(feature = "agent_runtime")]
 use crate::code_review::telemetry_event::CodeReviewPaneEntrypoint;
+#[cfg(feature = "agent_runtime")]
+use crate::search::slash_command_menu::static_commands::Availability;
+use crate::search::slash_command_menu::static_commands::SlashCommandKind;
 #[cfg(not(target_family = "wasm"))]
 use crate::search::slash_command_menu::static_commands::commands;
+#[cfg(feature = "agent_runtime")]
 use crate::search::slash_command_menu::static_commands::commands::COMMAND_REGISTRY;
-use crate::search::slash_command_menu::static_commands::{Availability, SlashCommandKind};
 use crate::search::slash_command_menu::{SlashCommandId, StaticCommand};
 use crate::server::ids::SyncId;
 use crate::server::telemetry::{AgentModeAutoDetectionSettingOrigin, SlashCommandAcceptedDetails};
+#[cfg(feature = "agent_runtime")]
 use crate::settings::AISettings;
+#[cfg(feature = "agent_runtime")]
 use crate::tab::SelectedTabColor;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::decorations::InputBackgroundJobOptions;
 use crate::terminal::input::inline_menu::{InlineMenuAction, InlineMenuType};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::message_bar::Message;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::models::InlineModelSelectorTab;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::slash_command_model::{
     SlashCommandEntryState, UpdatedSlashCommandModel,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::{
     CompletionsTrigger, Event, Input, InputAction, InputSuggestionsMode, UserQueryMenuAction,
 };
 #[cfg(feature = "local_fs")]
 use crate::terminal::model::session::Session;
+use crate::terminal::session_types::AIConversationId;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::TerminalAction;
+#[cfg(feature = "agent_runtime")]
 use crate::ui_components::color_dot;
+#[cfg(feature = "agent_runtime")]
 use crate::view_components::DismissibleToast;
 use crate::workflows::command_parser::compute_workflow_display_data;
+#[cfg(feature = "agent_runtime")]
 use crate::workflows::{WorkflowSelectionSource, WorkflowSource, WorkflowType};
+#[cfg(feature = "agent_runtime")]
 use crate::workspace::{ForkedConversationDestination, ToastStack, WorkspaceAction};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -243,9 +273,9 @@ fn open_file_command_path(
     (file_path, parsed_path.line_and_column_num)
 }
 
+#[cfg(feature = "agent_runtime")]
 impl Input {
     fn is_slash_command_available(&self, command: &StaticCommand, ctx: &AppContext) -> bool {
-        #[cfg(not(feature = "warp_lite"))]
         let slash_command_data_source = if self.is_cloud_mode_input_v2_composing(ctx) {
             let Some(data_source) = self.cloud_mode_composer_slash_command_data_source.as_ref()
             else {
@@ -255,8 +285,6 @@ impl Input {
         } else {
             &self.slash_command_data_source
         };
-        #[cfg(feature = "warp_lite")]
-        let slash_command_data_source = &self.slash_command_data_source;
         slash_command_data_source
             .as_ref(ctx)
             .command_is_active(command, ctx)
@@ -414,7 +442,7 @@ impl Input {
                     return;
                 };
                 let is_in_agent_view = FeatureFlag::AgentView.is_enabled()
-                    && self.is_agent_view_fullscreen(ctx);
+                    && self.agent_view_controller.as_ref(ctx).is_fullscreen();
                 record_saved_prompt_accepted(is_in_agent_view, ctx);
 
                 self.show_workflows_info_box_on_workflow_selection(
@@ -502,7 +530,6 @@ impl Input {
                     .as_ref(ctx)
                     .can_start_new_conversation()
                 {
-                    #[cfg(not(feature = "warp_lite"))]
                     self.ephemeral_message_model.update(ctx, |model, ctx| {
                         let appearance = Appearance::handle(ctx).as_ref(ctx);
                         let message = Message::from_text(
@@ -517,26 +544,21 @@ impl Input {
                             ctx,
                         );
                     });
-                    #[cfg(feature = "warp_lite")]
-                    let _ = ctx;
                     return true;
                 }
                 // Keybindings can be triggered reflexively while users are already in an active
                 // conversation, so we gate only this path behind a second-press confirmation.
                 // Typed `/agent`/`/new` and slash-menu execution stay single-step by design.
-                if trigger.is_keybinding() && self.is_agent_view_active(ctx) {
-                    #[cfg(not(feature = "warp_lite"))]
-                    {
-                        let should_start_new_conversation =
-                            self.agent_view_controller.update(ctx, |controller, ctx| {
-                                controller
-                                    .should_start_new_conversation_for_keybinding(command.name, ctx)
-                            });
-                        if !should_start_new_conversation {
-                            // Keep the current input/conversation untouched on first press; only the
-                            // ephemeral confirmation prompt should change.
-                            return true;
-                        }
+                if trigger.is_keybinding() && self.agent_view_controller.as_ref(ctx).is_active() {
+                    let should_start_new_conversation =
+                        self.agent_view_controller.update(ctx, |controller, ctx| {
+                            controller
+                                .should_start_new_conversation_for_keybinding(command.name, ctx)
+                        });
+                    if !should_start_new_conversation {
+                        // Keep the current input/conversation untouched on first press; only the
+                        // ephemeral confirmation prompt should change.
+                        return true;
                     }
                 }
 
@@ -573,7 +595,6 @@ impl Input {
                 ctx.emit(Event::CreateDockerSandbox);
             }
             SlashCommandKind::Conversations => {
-                #[cfg(not(feature = "warp_lite"))]
                 if self.is_cloud_mode_input_v2_composing(ctx) {
                     self.suggestions_mode_model.update(ctx, |model, ctx| {
                         model.set_mode(InputSuggestionsMode::Closed, ctx);
@@ -589,10 +610,6 @@ impl Input {
                 } else if FeatureFlag::AgentView.is_enabled() {
                     self.open_conversation_menu(ctx);
                 } else {
-                    ctx.dispatch_typed_action(&TerminalAction::OpenConversationsPalette);
-                }
-                #[cfg(feature = "warp_lite")]
-                {
                     ctx.dispatch_typed_action(&TerminalAction::OpenConversationsPalette);
                 }
             }
@@ -957,7 +974,6 @@ impl Input {
                         model.set_mode(InputSuggestionsMode::Closed, ctx);
                     });
                     self.clear_buffer_and_reset_undo_stack(ctx);
-                    #[cfg(not(feature = "warp_lite"))]
                     self.agent_input_footer.update(ctx, |footer, ctx| {
                         footer.open_v2_model_selector(ctx);
                     });
@@ -1045,9 +1061,7 @@ impl Input {
                     ctx.dispatch_typed_action(&TerminalAction::ToggleUsageFooter);
                 }
             }
-            #[cfg(feature = "warp_lite")]
-            SlashCommandKind::MoveToCloud => {}
-            #[cfg(all(feature = "local_fs", not(target_family = "wasm"), not(feature = "warp_lite")))]
+            #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
             SlashCommandKind::MoveToCloud => {
                 if !AISettings::as_ref(ctx).is_cloud_handoff_enabled(ctx) {
                     return false;
@@ -1116,7 +1130,6 @@ impl Input {
                 let initial_attachments =
                     self.maybe_take_attachments_for_initial_prompt(argument, ctx);
 
-                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ForkAIConversation {
                     conversation_id,
                     fork_from_exchange: None,
@@ -1169,7 +1182,6 @@ impl Input {
                 let initial_attachments =
                     self.maybe_take_attachments_for_initial_prompt(argument, ctx);
 
-                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ForkAIConversation {
                     conversation_id,
                     fork_from_exchange: None,
@@ -1196,7 +1208,6 @@ impl Input {
                 let destination =
                     ForkedConversationDestination::for_fork_trigger(trigger.is_cmd_or_ctrl_enter());
 
-                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ForkAIConversation {
                     conversation_id,
                     fork_from_exchange: None,
@@ -1241,14 +1252,11 @@ impl Input {
                         ctx,
                     );
                 } else {
-                    #[cfg(not(feature = "warp_lite"))]
-                    {
-                        let summarize = WorkspaceAction::SummarizeAIConversation {
-                            prompt: None,
-                            initial_prompt: argument.cloned(),
-                        };
-                        ctx.dispatch_typed_action(&summarize);
-                    }
+                    let summarize = WorkspaceAction::SummarizeAIConversation {
+                        prompt: None,
+                        initial_prompt: argument.cloned(),
+                    };
+                    ctx.dispatch_typed_action(&summarize);
                 }
             }
             SlashCommandKind::Queue => {
@@ -1350,9 +1358,8 @@ impl Input {
         // enter the agent view.
         if FeatureFlag::AgentView.is_enabled()
             && command.auto_enter_ai_mode
-            && !self.is_agent_view_active(ctx)
+            && !self.agent_view_controller.as_ref(ctx).is_active()
         {
-            #[cfg(not(feature = "warp_lite"))]
             self.agent_view_controller.update(ctx, |controller, ctx| {
                 let _ = controller.try_enter_agent_view(
                     None,
@@ -1365,7 +1372,7 @@ impl Input {
         }
 
         let is_in_agent_view = FeatureFlag::AgentView.is_enabled()
-            && self.is_agent_view_active(ctx);
+            && self.agent_view_controller.as_ref(ctx).is_active();
         record_static_slash_command_accepted(command.name, is_in_agent_view, ctx);
         true
     }
@@ -1382,7 +1389,6 @@ impl Input {
             self.suggestions_mode_model.as_ref(ctx).mode(),
             InputSuggestionsMode::SlashCommands
         ) {
-            #[cfg(not(feature = "warp_lite"))]
             if self.is_cloud_mode_input_v2_composing(ctx) {
                 if let Some(view) = self.cloud_mode_v2_slash_commands_view.clone() {
                     view.update(ctx, |view, ctx| {
@@ -1394,10 +1400,6 @@ impl Input {
                     view.accept_selected_item(true, ctx);
                 });
             }
-            #[cfg(feature = "warp_lite")]
-            self.inline_slash_commands_view.update(ctx, |view, ctx| {
-                view.accept_selected_item(true, ctx);
-            });
             return true;
         }
 
@@ -1438,47 +1440,34 @@ impl Input {
         section: CloudModeV2Section,
         ctx: &mut ViewContext<Self>,
     ) {
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            self.editor.update(ctx, |editor, ctx| {
-                editor.set_buffer_text("/", ctx);
+        self.editor.update(ctx, |editor, ctx| {
+            editor.set_buffer_text("/", ctx);
+        });
+        if let Some(view) = self.cloud_mode_v2_slash_commands_view.clone() {
+            view.update(ctx, |v, ctx| {
+                v.set_section_filter(Some(section), ctx);
             });
-            if let Some(view) = self.cloud_mode_v2_slash_commands_view.clone() {
-                view.update(ctx, |v, ctx| {
-                    v.set_section_filter(Some(section), ctx);
-                });
-            }
         }
-        #[cfg(feature = "warp_lite")]
-        let _ = (section, ctx);
     }
 
     pub(super) fn maybe_clear_v2_slash_section_filter(
         &mut self,
         ctx: &mut ViewContext<Self>,
     ) -> bool {
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            if !self.is_cloud_mode_input_v2_composing(ctx) {
-                return false;
-            }
-            let Some(view) = self.cloud_mode_v2_slash_commands_view.clone() else {
-                return false;
-            };
-            let has_filter = view.as_ref(ctx).has_section_filter();
-            if !has_filter {
-                return false;
-            }
-            view.update(ctx, |v, ctx| {
-                v.set_section_filter(None, ctx);
-            });
-            true
+        if !self.is_cloud_mode_input_v2_composing(ctx) {
+            return false;
         }
-        #[cfg(feature = "warp_lite")]
-        {
-            let _ = ctx;
-            false
+        let Some(view) = self.cloud_mode_v2_slash_commands_view.clone() else {
+            return false;
+        };
+        let has_filter = view.as_ref(ctx).has_section_filter();
+        if !has_filter {
+            return false;
         }
+        view.update(ctx, |v, ctx| {
+            v.set_section_filter(None, ctx);
+        });
+        true
     }
 
     /// Executes a slash command on `enter` keypress.
@@ -1500,7 +1489,6 @@ impl Input {
             self.suggestions_mode_model.as_ref(ctx).mode(),
             InputSuggestionsMode::SlashCommands
         ) {
-            #[cfg(not(feature = "warp_lite"))]
             if self.is_cloud_mode_input_v2_composing(ctx) {
                 if let Some(view) = self.cloud_mode_v2_slash_commands_view.clone() {
                     view.update(ctx, |view, ctx| {
@@ -1512,10 +1500,6 @@ impl Input {
                     view.accept_selected_item(false, ctx);
                 });
             }
-            #[cfg(feature = "warp_lite")]
-            self.inline_slash_commands_view.update(ctx, |view, ctx| {
-                view.accept_selected_item(false, ctx);
-            });
             return true;
         }
 

@@ -5,7 +5,6 @@ mod conversations;
 mod diffset;
 mod files;
 pub mod mixer;
-#[cfg(not(feature = "warp_lite"))]
 mod notebooks;
 mod rules;
 pub mod search;

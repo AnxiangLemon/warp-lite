@@ -535,3 +535,34 @@ fn test_migration_preserves_custom_long_running_threshold() {
         });
     });
 }
+
+#[test]
+#[cfg(all(feature = "warp_lite", not(feature = "agent_runtime")))]
+fn lite_settings_keep_terminal_preferences_without_agent_cloud_or_voice_models() {
+    warpui::App::test((), |mut app| async move {
+        app.update(super::init_and_register_user_preferences);
+        app.add_singleton_model(|_| SettingsManager::default());
+        app.update(super::register_all_settings);
+
+        crate::terminal::general_settings::GeneralSettings::handle(&app).update(
+            &mut app,
+            |settings, ctx| {
+                settings.restore_session.set_value(true, ctx).unwrap();
+            },
+        );
+        app.read(|ctx| {
+            assert!(*crate::terminal::general_settings::GeneralSettings::as_ref(ctx).restore_session);
+            assert!(ctx.has_singleton_model::<crate::settings::ThemeSettings>());
+            assert!(ctx.has_singleton_model::<crate::terminal::session_settings::SessionSettings>());
+            assert!(ctx.has_singleton_model::<crate::workspace::tab_settings::TabSettings>());
+            assert!(ctx.has_singleton_model::<crate::settings::AISettings>());
+            assert!(!ctx.has_singleton_model::<crate::ai::cloud_agent_settings::CloudAgentSettings>());
+            assert!(!ctx.has_singleton_model::<crate::settings::TuiVoiceSettings>());
+            assert!(!ctx.has_singleton_model::<crate::settings::TuiAutoupdateSettings>());
+            assert!(!ctx.has_singleton_model::<crate::settings::TuiThemeSettings>());
+            assert!(!ctx.has_singleton_model::<crate::settings::TuiZeroStateSettings>());
+            assert!(!ctx.has_singleton_model::<crate::terminal::shared_session::settings::SharedSessionSettings>());
+            assert!(!ctx.has_singleton_model::<crate::settings::SharedObjectLimitBannerSettings>());
+        });
+    });
+}

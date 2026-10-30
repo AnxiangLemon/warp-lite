@@ -16,10 +16,11 @@ pub mod spawn;
 pub mod task;
 pub mod telemetry;
 
+#[cfg(feature = "agent_runtime")]
+pub use task::cancel_task_silently;
 pub use task::{
     AgentConfigSnapshot, AgentSource, AmbientAgentLiveSessionState, AmbientAgentTask,
-    AmbientAgentTaskState, ExecutionLocation, TaskStatusMessage, cancel_task_silently,
-    cancel_task_with_toast,
+    AmbientAgentTaskState, ExecutionLocation, TaskStatusMessage, cancel_task_with_toast,
 };
 pub const OUT_OF_CREDITS_TASK_FAILURE_MESSAGE: &str =
     "Out of credits. Upgrade your Warp plan to continue running cloud agents.";

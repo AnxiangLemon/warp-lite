@@ -1,17 +1,28 @@
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use warpui::{SingletonEntity, ViewContext};
 
+#[cfg(feature = "agent_runtime")]
 use super::rich_content::RichContentMetadata;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::CancellationReason;
-use crate::ai::agent::conversation::AIConversationId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::QueuedQueryModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::block::{
     FinishReason, PendingUserQueryBlock, PendingUserQueryBlockEvent,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::auth::AuthStateProvider;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::TerminalView;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::AIConversationId;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::PendingUserQueryKind;
 
+#[cfg(feature = "agent_runtime")]
 impl TerminalView {
     pub(super) fn pending_user_query_conversation_id(&self) -> Option<AIConversationId> {
         let view_id = self.pending_user_query_view_id?;

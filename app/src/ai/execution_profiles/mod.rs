@@ -274,7 +274,6 @@ impl StringModel for AIExecutionProfile {
             })
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool {
         false
     }

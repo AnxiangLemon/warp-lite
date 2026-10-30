@@ -9,29 +9,41 @@
 /// loop — that proactively re-mints the OIDC token and re-calls STS every 50 minutes,
 /// well ahead of the 1-hour STS expiry. The loop is raced against the run execution
 /// future via `futures::select!` and dropped automatically when the run completes.
+#[cfg(feature = "cloud_services")]
 use std::time::{Duration, SystemTime};
 
+#[cfg(feature = "cloud_services")]
 use ai::api_keys::{ApiKeyManager, AwsCredentials, AwsCredentialsState};
+#[cfg(feature = "cloud_services")]
 use anyhow::{Context as _, Result};
+#[cfg(feature = "cloud_services")]
 use vec1::vec1;
+#[cfg(feature = "cloud_services")]
 use warp_errors::report_error;
+#[cfg(feature = "cloud_services")]
 use warp_managed_secrets::ManagedSecretManager;
+#[cfg(feature = "cloud_services")]
 use warp_managed_secrets::client::IdentityTokenOptions;
-use warpui::{ModelSpawner, SingletonEntity};
+use warpui::ModelSpawner;
+#[cfg(feature = "cloud_services")]
+use warpui::SingletonEntity;
 
 use super::agent_sdk::driver::AgentDriver;
+#[cfg(feature = "cloud_services")]
 use super::aws_credentials::{
     AWS_BEDROCK_STS_AUDIENCE, BEDROCK_IDENTITY_TOKEN_DURATION, aws_role_session_name, sts_client,
 };
 
 /// How long to wait between Bedrock credential refresh attempts — well ahead of the
 /// 1-hour STS temporary credential expiry, matching the approach used for git credentials.
+#[cfg(feature = "cloud_services")]
 pub(crate) const BEDROCK_CREDENTIALS_REFRESH_INTERVAL: Duration = Duration::from_secs(50 * 60);
 
 /// Perform one Bedrock OIDC credential refresh attempt.
 ///
 /// Returns `Ok(())` on success. Returns `Err` when token minting or the STS call
 /// fails — these are transient failures worth retrying.
+#[cfg(feature = "cloud_services")]
 #[tracing::instrument(
     name = "bedrock_credentials::try_refresh",
     skip_all,
@@ -129,6 +141,7 @@ async fn try_refresh(
 ///
 /// This future never resolves — it is designed to be raced with the run execution
 /// future via `futures::select!` and dropped automatically when the run completes.
+#[cfg(feature = "cloud_services")]
 pub(crate) async fn refresh_loop(
     task_id: String,
     role_arn: String,
@@ -171,4 +184,16 @@ pub(crate) async fn refresh_loop(
             }
         }
     }
+}
+
+#[cfg(not(feature = "cloud_services"))]
+pub(crate) async fn refresh_loop(
+    task_id: String,
+    role_arn: String,
+    region: String,
+    foreground: &ModelSpawner<AgentDriver>,
+) {
+    let _ = (task_id, role_arn, region, foreground);
+    log::debug!("Bedrock credential refresh is unavailable because cloud services are disabled");
+    futures::future::pending::<()>().await;
 }

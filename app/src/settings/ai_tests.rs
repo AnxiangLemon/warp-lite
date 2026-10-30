@@ -1,13 +1,18 @@
 use chrono::Utc;
+use settings::Setting;
+#[cfg(feature = "agent_runtime")]
 use settings::schema::SettingSchemaEntry;
-use settings::{Setting, SettingSurfaces, SettingsMode};
+#[cfg(feature = "agent_runtime")]
+use settings::{SettingSurfaces, SettingsMode};
 use warp_graphql::scalars::time::ServerTimestamp;
 use warpui::{App, SingletonEntity};
 
 use super::*;
 use crate::ai::request_usage_model::{RequestLimitInfo, RequestLimitRefreshDuration};
+#[cfg(feature = "agent_runtime")]
 use crate::auth::AuthStateProvider;
 use crate::test_util::settings::initialize_settings_for_tests;
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::user_workspaces::UserWorkspaces;
 
 fn create_test_request_limit_info(
@@ -34,6 +39,7 @@ fn create_test_request_limit_info(
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn auto_approve_denylist_bypass_defaults_on_and_is_available_in_gui_and_tui_settings() {
     let setting = AutoApproveBypassesCommandDenylist::new(None);
     assert!(*setting.value());
@@ -54,6 +60,7 @@ fn auto_approve_denylist_bypass_defaults_on_and_is_available_in_gui_and_tui_sett
     assert!(surfaces.includes(SettingsMode::Tui));
 }
 
+#[cfg(feature = "agent_runtime")]
 fn add_ai_enablement_dependencies_for_test(app: &mut App) {
     app.add_singleton_model(|_| AuthStateProvider::new_for_test());
     app.add_singleton_model(UserWorkspaces::default_mock);
@@ -453,6 +460,7 @@ fn test_toolbar_command_map_roundtrip() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_toolbar_command_map_matched_agent() {
     App::test((), |mut app| async move {
         initialize_settings_for_tests(&mut app);
@@ -489,6 +497,7 @@ fn test_toolbar_command_map_matched_agent() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn orchestration_is_enabled_when_ai_is_enabled() {
     App::test((), |mut app| async move {
         initialize_settings_for_tests(&mut app);
@@ -935,6 +944,7 @@ fn test_voice_input_languages_includes_common_languages() {
     }
 }
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ai_autodetection_defaults_to_opt_in() {
     App::test((), |mut app| async move {
         initialize_settings_for_tests(&mut app);
@@ -953,6 +963,7 @@ fn ai_autodetection_defaults_to_opt_in() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ai_autodetection_setting_can_be_toggled_on_and_off() {
     App::test((), |mut app| async move {
         initialize_settings_for_tests(&mut app);
@@ -982,4 +993,73 @@ fn ai_autodetection_setting_can_be_toggled_on_and_off() {
             assert!(!settings.is_ai_autodetection_enabled(ctx));
         });
     });
+}
+
+#[test]
+#[cfg(all(feature = "warp_lite", not(feature = "agent_runtime")))]
+fn lite_ai_parameters_do_not_require_auth_or_remote_policy_models() {
+    App::test((), |mut app| async move {
+        app.update(crate::settings::init_and_register_user_preferences);
+        app.add_singleton_model(|_| settings::SettingsManager::default());
+        app.update(AISettings::register_and_subscribe_to_events);
+
+        AISettings::handle(&app).update(&mut app, |settings, ctx| {
+            settings.is_any_ai_enabled.set_value(true, ctx).unwrap();
+            settings
+                .default_session_mode_internal
+                .set_value(DefaultSessionMode::CloudAgent, ctx)
+                .unwrap();
+            settings
+                .should_force_disable_cloud_handoff
+                .set_value(false, ctx)
+                .unwrap();
+        });
+
+        app.read(|ctx| {
+            let settings = AISettings::as_ref(ctx);
+            assert!(!settings.is_any_ai_enabled(ctx));
+            assert!(!settings.is_cloud_handoff_enabled(ctx));
+            assert!(!settings.is_command_allowlist_editable(ctx));
+            assert!(!settings.is_directory_allowlist_editable(ctx));
+            assert!(!settings.is_execute_commands_permissions_editable(ctx));
+            assert!(!settings.is_write_to_pty_permissions_editable(ctx));
+            assert!(!settings.is_computer_use_permissions_editable(ctx));
+            assert!(!settings.is_read_files_permissions_editable(ctx));
+            assert!(!settings.is_code_diffs_permissions_editable(ctx));
+            assert_eq!(
+                settings.default_session_mode(ctx),
+                DefaultSessionMode::Terminal
+            );
+            assert_eq!(
+                CompiledCommandsForCodingAgentToolbar::matched_agent(ctx, "claude chat"),
+                None
+            );
+            assert!(!ctx.has_singleton_model::<FocusedTerminalInfo>());
+            assert!(!ctx.has_singleton_model::<CompiledCommandsForCodingAgentToolbar>());
+            assert!(!ctx.has_singleton_model::<crate::auth::AuthStateProvider>());
+            assert!(
+                !ctx.has_singleton_model::<crate::workspaces::user_workspaces::UserWorkspaces>()
+            );
+        });
+    });
+}
+
+#[test]
+#[cfg(all(feature = "warp_lite", not(feature = "agent_runtime")))]
+fn lite_settings_schema_omits_ai_profiles_and_voice_input() {
+    let entries: Vec<_> = inventory::iter::<settings::schema::SettingSchemaEntry>
+        .into_iter()
+        .collect();
+    assert!(!entries.iter().any(
+        |entry| entry.hierarchy == Some("agents") && entry.storage_key == "execution_profiles"
+    ));
+    assert!(
+        !entries
+            .iter()
+            .any(|entry| entry.hierarchy == Some("agents.voice")
+                && entry.storage_key == "voice_input_hold_key")
+    );
+    assert!(entries.iter().any(|entry| entry.hierarchy
+        == crate::terminal::general_settings::RestoreSession::hierarchy()
+        && entry.storage_key == crate::terminal::general_settings::RestoreSession::toml_key()));
 }

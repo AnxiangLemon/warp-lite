@@ -39,7 +39,7 @@ define_settings_group!(GeneralSettings, settings: [
     },
     add_app_as_login_item: LoginItem {
         type: bool,
-        default: true,
+        default: !cfg!(feature = "warp_lite"),
         supported_platforms: SupportedPlatforms::OR(
             Box::new(SupportedPlatforms::MAC),
             Box::new(SupportedPlatforms::WINDOWS),

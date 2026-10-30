@@ -3,6 +3,8 @@ use std::collections::HashSet;
 use warp_core::channel::ChannelState;
 pub use warp_core::features::*;
 
+pub const IS_LITE_BUILD: bool = cfg!(feature = "warp_lite");
+
 /// Mark all features which should be enabled on the current channel as enabled.
 /// This sets global feature flag state and should never be called in a unit test.
 pub fn init_feature_flags() {
@@ -14,6 +16,27 @@ pub fn init_feature_flags() {
 
 /// Returns all feature flags which should be enabled in the current channel.
 fn enabled_features() -> HashSet<FeatureFlag> {
+    if cfg!(feature = "warp_lite") {
+        return HashSet::from([
+            FeatureFlag::ShellSelector,
+            FeatureFlag::GroupedTabs,
+            FeatureFlag::VerticalTabs,
+            FeatureFlag::PinnedTabs,
+            FeatureFlag::TabConfigs,
+            FeatureFlag::DragTabsToWindows,
+            FeatureFlag::ImeMarkedText,
+            FeatureFlag::MSYS2Shells,
+            FeatureFlag::SettingsFile,
+            FeatureFlag::MinimalistUI,
+            FeatureFlag::TabCloseButtonOnLeft,
+            FeatureFlag::OscHyperlinks,
+            FeatureFlag::ResizeFix,
+            FeatureFlag::Ligatures,
+            FeatureFlag::RectSelection,
+            FeatureFlag::SkipFirebaseAnonymousUser,
+        ]);
+    }
+
     // Enable features overridden for the given channel.
     let mut flags = ChannelState::additional_features();
 

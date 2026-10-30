@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
+use ::ai::pty::PtyWriteMode as AIAgentPtyWriteMode;
 use async_channel::{Receiver, Sender};
 use parking_lot::FairMutex;
 use thiserror::Error;
@@ -13,7 +14,6 @@ use warpui::{Entity, ModelContext, ModelHandle, SingletonEntity};
 
 use super::Message;
 use crate::SessionSettings;
-use crate::ai::agent::AIAgentPtyWriteMode;
 use crate::terminal::input::CommandExecutionSource;
 use crate::terminal::line_editor_status::{LineEditorStatus, LineEditorStatusEvent};
 use crate::terminal::model::ansi::Handler;

@@ -240,6 +240,6 @@ impl AttachedReviewComment {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "comment_tests.rs"]
 mod tests;

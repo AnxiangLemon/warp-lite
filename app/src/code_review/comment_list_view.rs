@@ -48,7 +48,6 @@ use crate::code_review::comments::{
 };
 use crate::code_review::telemetry_event::CodeReviewTelemetryEvent;
 use crate::menu::{Event, Menu, MenuItem, MenuItemFields};
-#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::editor::view::{EditorViewEvent, RichTextEditorView};
 use crate::send_telemetry_from_ctx;
 use crate::settings::AISettings;

@@ -878,6 +878,6 @@ impl DiffStateModel {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "mod_tests.rs"]
 mod wrapper_tests;

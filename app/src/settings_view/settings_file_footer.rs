@@ -113,13 +113,17 @@ pub fn render_open_settings_file_button(
             .with_height(FOOTER_ICON_SIZE)
             .finish();
 
-        let label = Text::new_inline("Open settings file", ui_font_family, FOOTER_FONT_SIZE)
-            .with_color(text_color)
-            .with_style(Properties {
-                weight: Weight::Semibold,
-                ..Default::default()
-            })
-            .finish();
+        let label = Text::new_inline(
+            super::lite_i18n::text("Open settings file"),
+            ui_font_family,
+            FOOTER_FONT_SIZE,
+        )
+        .with_color(text_color)
+        .with_style(Properties {
+            weight: Weight::Semibold,
+            ..Default::default()
+        })
+        .finish();
 
         // Use `MainAxisSize::Max` so the row (and its surrounding bordered
         // container) expands to fill the full sidebar width. The icon + text
@@ -172,6 +176,12 @@ pub fn render_settings_error_alert(
     // `SettingsFileError::heading_and_description` so the two UIs can't
     // drift out of sync.
     let (heading, description) = error.heading_and_description();
+    let heading = super::lite_i18n::label(heading);
+    let description = if cfg!(feature = "warp_lite") {
+        "请打开设置文件，修正格式或配置值。当前使用默认设置。".to_owned()
+    } else {
+        description
+    };
     let heading_char_count = heading.chars().count();
     let combined_text = format!("{heading} {description}");
     // Soft-wrap (the `Text::new` default) is appropriate here since the
@@ -228,7 +238,7 @@ pub fn render_settings_error_alert(
         ui_font_family,
         text_color,
         mouse_states.alert_open_file_button.clone(),
-        "Open file",
+        super::lite_i18n::text("Open file"),
         /*icon=*/ None,
         /*bordered=*/ true,
         WorkspaceAction::OpenSettingsFile,
@@ -246,19 +256,16 @@ pub fn render_settings_error_alert(
 
     if ai_enabled {
         let error_description = error.to_string();
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            let fix_with_oz_button = render_alert_action_button(
-                ui_font_family,
-                text_color,
-                mouse_states.alert_fix_with_oz_button.clone(),
-                "Fix with Oz",
-                Some(Icon::Agent),
-                /*bordered=*/ false,
-                WorkspaceAction::FixSettingsWithOz { error_description },
-            );
-            buttons_row.add_child(fix_with_oz_button);
-        }
+        let fix_with_oz_button = render_alert_action_button(
+            ui_font_family,
+            text_color,
+            mouse_states.alert_fix_with_oz_button.clone(),
+            "Fix with Oz",
+            Some(Icon::Agent),
+            /*bordered=*/ false,
+            WorkspaceAction::FixSettingsWithOz { error_description },
+        );
+        buttons_row.add_child(fix_with_oz_button);
     }
 
     // ── Assemble ─────────────────────────────────────────────────────────

@@ -4,6 +4,8 @@ use std::path::Path;
 use settings::macros::define_settings_group;
 use settings::{RespectUserSyncSetting, SupportedPlatforms, SyncToCloud};
 use warp_core::ui::theme::AnsiColorIdentifier;
+#[cfg(feature = "warp_lite")]
+use warpui::{AppContext, SingletonEntity};
 
 #[derive(
     Default,
@@ -499,7 +501,7 @@ define_settings_group!(TabSettings, settings: [
     },
     use_vertical_tabs: UseVerticalTabs {
         type: bool,
-        default: cfg!(feature = "warp_lite"),
+        default: false,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         surface: settings::SettingSurfaces::GUI,
@@ -509,7 +511,7 @@ define_settings_group!(TabSettings, settings: [
     },
     show_vertical_tab_panel_in_restored_windows: ShowVerticalTabPanelInRestoredWindows {
         type: bool,
-        default: cfg!(feature = "warp_lite"),
+        default: false,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         surface: settings::SettingSurfaces::GUI,
@@ -519,7 +521,7 @@ define_settings_group!(TabSettings, settings: [
     },
     hide_title_bar_search_bar_in_vertical_tabs: HideTitleBarSearchBarInVerticalTabs {
         type: bool,
-        default: cfg!(feature = "warp_lite"),
+        default: false,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         surface: settings::SettingSurfaces::GUI,
@@ -578,6 +580,51 @@ define_settings_group!(TabSettings, settings: [
     close_button_position: TabCloseButtonPosition,
     directory_tab_colors: DirectoryTabColors,
 ]);
+
+#[cfg(feature = "warp_lite")]
+pub const LITE_SIDEBAR_MIGRATION_KEY: &str = "LiteDirectorySidebarV1";
+
+#[cfg(feature = "warp_lite")]
+pub fn migrate_lite_sidebar_settings(ctx: &mut AppContext) {
+    use settings::Setting;
+    use warp_core::user_preferences::GetUserPreferences;
+
+    if ctx
+        .private_user_preferences()
+        .read_value(LITE_SIDEBAR_MIGRATION_KEY)
+        .unwrap_or_default()
+        .as_deref()
+        == Some("true")
+    {
+        return;
+    }
+
+    let migrated = TabSettings::handle(ctx).update(ctx, |settings, ctx| -> anyhow::Result<()> {
+        settings.use_vertical_tabs.set_value(true, ctx)?;
+        settings
+            .show_vertical_tab_panel_in_restored_windows
+            .set_value(true, ctx)?;
+        settings
+            .vertical_tabs_primary_info
+            .set_value(VerticalTabsPrimaryInfo::WorkingDirectory, ctx)?;
+        settings
+            .vertical_tabs_compact_subtitle
+            .set_value(VerticalTabsCompactSubtitle::Command, ctx)?;
+        settings.header_toolbar_chip_selection.set_value(
+            HeaderToolbarChipSelection::Custom {
+                left: vec![super::header_toolbar_item::HeaderToolbarItemKind::TabsPanel],
+                right: vec![],
+            },
+            ctx,
+        )?;
+        Ok(())
+    });
+    if migrated.is_ok() {
+        let _ = ctx
+            .private_user_preferences()
+            .write_value(LITE_SIDEBAR_MIGRATION_KEY, "true".to_string());
+    }
+}
 
 #[cfg(test)]
 #[path = "tab_settings_tests.rs"]

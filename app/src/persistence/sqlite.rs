@@ -1,24 +1,36 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+#[cfg(feature = "agent_runtime")]
+use std::collections::HashSet;
+use std::collections::{HashMap, VecDeque};
 use std::convert::TryInto;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc::SyncSender;
-use std::sync::{Arc, Once};
+use std::sync::{Arc, Once, OnceLock};
 use std::{fs, thread};
 
+#[cfg(feature = "agent_runtime")]
 use ai::project_context::model::ProjectRulePath;
 use anyhow::{Context, Result, anyhow, bail};
+#[cfg(feature = "agent_runtime")]
 use chrono::Utc;
+#[cfg(feature = "agent_runtime")]
 use cloud_object_models::folder::persistence as folder_persistence;
+#[cfg(feature = "agent_runtime")]
 use cloud_object_models::folder::persistence::upsert_folders;
+#[cfg(feature = "agent_runtime")]
 use cloud_object_models::json_model::persistence::{
     self as generic_string_persistence, PersistedGenericStringObject,
 };
+#[cfg(feature = "agent_runtime")]
 use cloud_object_models::notebook::persistence as notebook_persistence;
+#[cfg(feature = "agent_runtime")]
 use cloud_object_models::notebook::persistence::upsert_notebooks;
+#[cfg(feature = "agent_runtime")]
 use cloud_object_models::workflow::persistence as workflow_persistence;
+#[cfg(feature = "agent_runtime")]
 use cloud_object_models::workflow::persistence::upsert_workflows;
+#[cfg(feature = "agent_runtime")]
 use cloud_object_persistence::{
     GenericStringObjectPersistenceData, delete_cloud_object, delete_generic_string_object,
     increment_retry_count, load_cloud_object_read_context, mark_object_as_synced,
@@ -36,33 +48,42 @@ use diesel::{
 use diesel_migrations::MigrationHarness;
 use itertools::Itertools;
 use libsqlite3_sys as sqlite3;
+#[cfg(feature = "agent_runtime")]
 use lsp::supported_servers::LSPServerType;
 use num_traits::FromPrimitive;
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::Vector2F;
 use persistence::model::AMBIENT_AGENT_PANE_KIND;
+#[cfg(feature = "agent_runtime")]
 use uuid::Uuid;
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
 use warp_errors::{report_error, report_if_error};
 use warpui::platform::FullscreenState;
 use warpui::windowing::{MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH};
 use warpui::{AppContext, SingletonEntity};
 
+#[cfg(feature = "agent_runtime")]
 use super::agent::{
     backfill_conversation_summaries, delete_agent_conversations, read_agent_conversation_metadata,
     upsert_agent_conversation,
 };
+#[cfg(feature = "agent_runtime")]
 use super::block_list::{
-    delete_ai_conversation, delete_blocks, save_block, update_block_agent_view_visibility,
-    upsert_ai_query,
+    delete_ai_conversation, update_block_agent_view_visibility, upsert_ai_query,
 };
+use super::block_list::{delete_blocks, save_block};
 use super::model::{
-    self, AI_DOCUMENT_PANE_KIND, AI_FACT_PANE_KIND, ActiveMCPServer, CODE_PANE_KIND,
-    CurrentUserInformation, ENV_VAR_COLLECTION_PANE_KIND, EXECUTION_PROFILE_EDITOR_PANE_KIND,
-    MCP_SERVER_PANE_KIND, MCPEnvironmentVariables, NOTEBOOK_PANE_KIND, NewActiveMCPServer, NewApp,
-    NewCommand, NewServerExperiment, NewTab, NewTabGroup, NewTeam, NewWindow, NewWorkspace,
-    NewWorkspaceMetadata, NewWorkspaceTeam, Project, SETTINGS_PANE_KIND, TERMINAL_PANE_KIND, Tab,
-    TabGroup, WORKFLOW_PANE_KIND, Window, WorkspaceMetadata as WorkspaceMetadataModel,
+    self, AI_DOCUMENT_PANE_KIND, AI_FACT_PANE_KIND, CODE_PANE_KIND, ENV_VAR_COLLECTION_PANE_KIND,
+    EXECUTION_PROFILE_EDITOR_PANE_KIND, MCP_SERVER_PANE_KIND, NOTEBOOK_PANE_KIND,
+    NewActiveMCPServer, NewApp, NewCommand, NewTab, NewTabGroup, NewWindow, Project,
+    SETTINGS_PANE_KIND, TERMINAL_PANE_KIND, Tab, TabGroup, WORKFLOW_PANE_KIND, Window,
+};
+#[cfg(feature = "agent_runtime")]
+use super::model::{
+    ActiveMCPServer, CurrentUserInformation, MCPEnvironmentVariables, NewServerExperiment, NewTeam,
+    NewWorkspace, NewWorkspaceMetadata, NewWorkspaceTeam,
+    WorkspaceMetadata as WorkspaceMetadataModel,
 };
 use super::{
     BlockCompleted, FinishedCommandMetadata, ModelEvent, PersistedData, PersistedDataScope,
@@ -70,41 +91,48 @@ use super::{
 };
 use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::templatable_installation::VariableValue;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::{TemplatableMCPServer, TemplatableMCPServerInstallation};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::persisted_workspace::EnablementState;
 use crate::app_state::{
-    AmbientAgentPaneSnapshot, AppState, BranchSnapshot, CodePaneSnapShot,
-    CodePaneTabSnapshot, CodeReviewPaneSnapshot, LeafContents,
-    LeafSnapshot, LeftPanelSnapshot, PaneFlex, PaneNodeSnapshot,
+    AIFactPaneSnapshot, AmbientAgentPaneSnapshot, AppState, BranchSnapshot, CodePaneSnapShot,
+    CodePaneTabSnapshot, CodeReviewPaneSnapshot, EnvVarCollectionPaneSnapshot, LeafContents,
+    LeafSnapshot, LeftPanelSnapshot, NotebookPaneSnapshot, PaneFlex, PaneNodeSnapshot,
     RightPanelSnapshot, SettingsPaneSnapshot, SplitDirection, TabGroupSnapshot, TabSnapshot,
-    TerminalPaneSnapshot, WindowSnapshot,
-};
-#[cfg(not(feature = "warp_lite"))]
-use crate::app_state::{
-    AIFactPaneSnapshot, EnvVarCollectionPaneSnapshot, NotebookPaneSnapshot, WorkflowPaneSnapshot,
+    TerminalPaneSnapshot, WindowSnapshot, WorkflowPaneSnapshot,
 };
 use crate::auth::UserUid;
+#[cfg(feature = "agent_runtime")]
 use crate::auth::auth_manager::PersistedCurrentUserInformation;
 use crate::auth::auth_state::AuthStateProvider;
+#[cfg(feature = "agent_runtime")]
+use crate::cloud_object::CloudObject;
+use crate::cloud_object::ObjectIdType;
+#[cfg(feature = "agent_runtime")]
 use crate::cloud_object::model::actions::{
     ObjectAction, ObjectActionSubtype, object_action_from_persisted,
 };
-use crate::cloud_object::model::generic_string_model::{CloudStringObject, GenericStringObjectId};
-use crate::cloud_object::{CloudObject, ObjectIdType};
+#[cfg(feature = "agent_runtime")]
+use crate::cloud_object::model::generic_string_model::CloudStringObject;
+use crate::cloud_object::model::generic_string_model::GenericStringObjectId;
 use crate::code::editor_management::CodeSource;
-#[cfg(not(feature = "warp_lite"))]
-use crate::cloud_object::OpenWarpDriveObjectSettings;
-#[cfg(not(feature = "warp_lite"))]
-use crate::cloud_object::NotebookId;
+use crate::drive::OpenWarpDriveObjectSettings;
+use crate::notebooks::NotebookId;
+use crate::persistence::block_list::get_all_restored_blocks;
+#[cfg(feature = "agent_runtime")]
 use crate::persistence::block_list::{
-    get_all_restored_blocks, process_ai_queries_for_nld_history_match,
-    process_ai_queries_for_uparrow_prompt, read_recent_ai_queries,
+    process_ai_queries_for_nld_history_match, process_ai_queries_for_uparrow_prompt,
+    read_recent_ai_queries,
 };
+use crate::persistence::model::{CODE_REVIEW_PANE_KIND, GET_STARTED_PANE_KIND};
+#[cfg(feature = "agent_runtime")]
 use crate::persistence::model::{
-    CODE_REVIEW_PANE_KIND, GET_STARTED_PANE_KIND, NewPersistedObjectAction, NewTeamSettings,
-    ProjectRules, UserProfile,
+    NewPersistedObjectAction, NewTeamSettings, ProjectRules, UserProfile,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::server::experiments::ServerExperiment;
 use crate::server::ids::{ClientId, HashableId, ServerId, SyncId};
 use crate::server::telemetry::TelemetryEvent;
@@ -116,11 +144,15 @@ use crate::terminal::history::PersistedCommand;
 use crate::themes::theme::AnsiColorIdentifier;
 use crate::workflows::WorkflowId;
 use crate::workspace::tab_group::TabGroupId;
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::team::Team as TeamMetadata;
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::user_profiles::{UserProfileWithUID, user_profile_from_persistence};
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::workspace::{Workspace as WorkspaceMetadata, WorkspaceUid};
 use crate::{safe_info, send_telemetry_from_app_ctx};
 
+#[cfg(feature = "agent_runtime")]
 diesel::define_sql_function! {
     fn json_extract(target: diesel::sql_types::Text, path: diesel::sql_types::Text) -> diesel::sql_types::Text;
 }
@@ -131,6 +163,8 @@ const CHANNEL_SIZE: usize = 1024;
 const COMMANDS_COUNT_LIMIT: i64 = 10000;
 
 const WARP_SQLITE_FILE_NAME: &str = "warp.sqlite";
+
+static INITIALIZED_DATABASE_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 /// Runs any migrations and creates the Sqlite database if it doesn't exist.
 /// Reads from the sqlite database to get the app state for session restoration.
@@ -145,9 +179,13 @@ pub fn initialize(
         init_logging();
     }
     let database_path = database_file_path_for_scope(&scope);
-    match init_db(&scope) {
+    match init_db_at_path(&scope, &database_path) {
         Ok(mut conn) => {
+            let _ = INITIALIZED_DATABASE_PATH.set(database_path.clone());
+            #[cfg(feature = "agent_runtime")]
             let mut persisted_data = read_persisted_data(&mut conn, ctx, data_scope);
+            #[cfg(not(feature = "agent_runtime"))]
+            let persisted_data = read_persisted_data(&mut conn, ctx, data_scope);
 
             let writer_handles = match start_writer(conn, database_path.clone()) {
                 Ok(writer_handles) => Some(writer_handles),
@@ -163,6 +201,7 @@ pub fn initialize(
 
             // Persist any read-time-derived conversation summaries so the
             // derivation only happens once per pre-`summary`-column row.
+            #[cfg(feature = "agent_runtime")]
             if let (Some(persisted_data), Some(writer_handles)) =
                 (persisted_data.as_mut(), writer_handles.as_ref())
             {
@@ -356,10 +395,19 @@ unsafe fn init_logging() {
 }
 
 /// Determines the db path, establishes a connection and runs any migrations.
+#[cfg(feature = "integration_tests")]
 pub(super) fn init_db(scope: &PersistenceScope) -> Result<SqliteConnection> {
+    init_db_at_path(scope, &database_file_path_for_scope(scope))
+}
+
+fn init_db_at_path(scope: &PersistenceScope, db_path: &Path) -> Result<SqliteConnection> {
+    anyhow::ensure!(
+        db_path.is_absolute(),
+        "SQLite database path must be absolute: {}",
+        db_path.display()
+    );
     // First, make sure the parent directory of the file exists, otherwise
     // we'll get an error if the file doesn't already exist.
-    let db_path = database_file_path_for_scope(scope);
     // If we fail to create the necessary directories, log a warning and
     // continue; we'll return a sqlite error if it actually fails to initialize
     // a database connection.
@@ -376,12 +424,12 @@ pub(super) fn init_db(scope: &PersistenceScope) -> Result<SqliteConnection> {
     }
 
     if matches!(scope, PersistenceScope::App) {
-        migrate_old_sqlite_into_secure_container_if_needed(&db_path);
+        migrate_old_sqlite_into_secure_container_if_needed(db_path);
     }
 
-    let conn = setup_database(&db_path)?;
+    let conn = setup_database(db_path)?;
     if matches!(scope, PersistenceScope::RemoteServerDaemon { .. }) {
-        ensure_owner_only_file(&db_path)?;
+        ensure_owner_only_file(db_path)?;
     }
     Ok(conn)
 }
@@ -472,9 +520,13 @@ pub fn database_file_path_for_scope(scope: &PersistenceScope) -> PathBuf {
 ///
 /// Ad-hoc read-only connections should use this instead of hardcoding
 /// [`PersistenceScope::App`], so that a TUI process never reads the GUI's
-/// database.
+/// database. After initialization, the resolved writer path is reused even if platform directory
+/// discovery or the process environment subsequently changes.
 pub fn database_file_path_for_current_scope() -> PathBuf {
-    database_file_path_for_scope(&super::current_scope())
+    INITIALIZED_DATABASE_PATH
+        .get()
+        .cloned()
+        .unwrap_or_else(|| database_file_path_for_scope(&super::current_scope()))
 }
 
 fn app_database_file_path() -> PathBuf {
@@ -653,32 +705,41 @@ fn handle_model_event(event: ModelEvent, connection: &mut SqliteConnection) -> a
         ModelEvent::Snapshot(app_state) => {
             save_app_state(connection, &app_state).context("error saving app state")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertWorkflows(workflows) => {
             upsert_workflows(connection, workflows).context("error saving workflows")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertNotebooks(notebooks) => {
             upsert_notebooks(connection, notebooks).context("error saving notebooks")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertFolders(folders) => {
             upsert_folders(connection, folders).context("error saving folders")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertGenericStringObject { object } => {
             upsert_generic_string_objects(connection, vec![object])
                 .context("error upserting generic object")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertGenericStringObjects(objects) => {
             upsert_generic_string_objects(connection, objects)
                 .context("error upserting generic objects")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertNotebook { notebook } => {
             upsert_notebooks(connection, vec![notebook]).context("error upserting notebook")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertWorkflow { workflow } => {
             upsert_workflows(connection, vec![workflow]).context("error upserting workflow")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertFolder { folder } => {
             upsert_folders(connection, vec![folder]).context("error upserting folder")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::MarkObjectAsSynced {
             revision_and_editor,
             metadata_ts,
@@ -690,21 +751,26 @@ fn handle_model_event(event: ModelEvent, connection: &mut SqliteConnection) -> a
             metadata_ts,
         )
         .context("error marking object as synced"),
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::IncrementRetryCount(id) => {
             increment_retry_count(connection, id).context("error incrementing retry count")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::DeleteObjects { ids } => {
             delete_objects(connection, ids).context("error deleting objects")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpdateObjectAfterServerCreation {
             client_id,
             server_creation_info,
         } => update_object_after_server_creation(connection, client_id, server_creation_info)
             .context("error executing object creation succeeded callback"),
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertCodebaseIndexMetadata { index_metadata } => {
             save_codebase_index_metadata(connection, *index_metadata)
                 .context("error upserting codebase index metadata")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::DeleteCodebaseIndexMetadata { repo_path } => {
             delete_codebase_index_metadata(connection, &repo_path)
                 .context("error deleting codebase index metadata")
@@ -715,16 +781,20 @@ fn handle_model_event(event: ModelEvent, connection: &mut SqliteConnection) -> a
         ModelEvent::DeleteProject { path } => {
             delete_project(connection, &path).context("error deleting project")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertWorkspace { workspace } => {
             save_workspace(connection, *workspace).context("error upserting workspace")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertWorkspaces { workspaces } => {
             save_workspaces(connection, workspaces).context("error upserting workspaces")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::SetCurrentWorkspace { workspace_uid } => {
             set_current_workspace(connection, workspace_uid)
                 .context("error setting current workspace")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpdateObjectMetadata { id, metadata } => {
             update_object_metadata(connection, id, metadata).context("error updating metadata")
         }
@@ -734,34 +804,43 @@ fn handle_model_event(event: ModelEvent, connection: &mut SqliteConnection) -> a
         ModelEvent::UpdateFinishedCommand { metadata } => {
             update_finished_command(connection, metadata).context("error updating finished command")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertUserProfiles { profiles } => {
             upsert_user_profiles(connection, profiles).context("error updating user profiles")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::ClearUserProfiles => {
             clear_user_profiles(connection).context("error clearing user profiles")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::RecordTimeOfNextRefresh { timestamp } => {
             record_time_of_next_refresh(connection, timestamp)
                 .context("error marking object refresh as completed")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::InsertObjectAction { object_action } => {
             insert_object_action(connection, object_action).context("error inserting object action")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::SyncObjectActions {
             actions_to_sync: objects_to_sync,
         } => {
             sync_object_actions(connection, objects_to_sync).context("error syncing object actions")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::SaveExperiments { experiments } => {
             save_experiments(connection, experiments).context("error saving experiments")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertAIQuery { query } => {
             upsert_ai_query(connection, query).context("error upserting AI query")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::DeleteAIConversation { conversation_id } => {
             delete_ai_conversation(connection, &conversation_id)
                 .context("error deleting AI conversation")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpdateMultiAgentConversation {
             conversation_id,
             updated_tasks,
@@ -773,20 +852,24 @@ fn handle_model_event(event: ModelEvent, connection: &mut SqliteConnection) -> a
             conversation_data,
         )
         .map_err(anyhow::Error::from),
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::BackfillConversationSummaries { backfills } => {
             backfill_conversation_summaries(connection, backfills)
                 .map_err(anyhow::Error::from)
                 .context("error backfilling conversation summaries")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::DeleteMultiAgentConversations { conversation_ids } => {
             delete_agent_conversations(connection, conversation_ids)
                 .map_err(anyhow::Error::from)
                 .context("error deleting multi-agent conversation")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertCurrentUserInformation { user_information } => {
             upsert_current_user_information(connection, user_information)
                 .context("error upserting user information")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertMCPServerEnvironmentVariables {
             mcp_server_uuid,
             environment_variables,
@@ -796,10 +879,12 @@ fn handle_model_event(event: ModelEvent, connection: &mut SqliteConnection) -> a
             environment_variables,
         )
         .context("error upserting mcp server mcp_environment variables"),
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertProjectRules { project_rule_paths } => {
             upsert_project_rules(connection, project_rule_paths)
                 .context("error upserting project rules")
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::DeleteProjectRules { path } => {
             delete_project_rules(connection, path).context("error deleting project rules")
         }
@@ -813,31 +898,38 @@ fn handle_model_event(event: ModelEvent, connection: &mut SqliteConnection) -> a
             suggestion_type,
         } => remove_ignored_suggestion(connection, suggestion, suggestion_type)
             .context("error removing ignored suggestion"),
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertMCPServerInstallation {
             mcp_server_installation,
         } => upsert_mcp_server_installation(connection, mcp_server_installation),
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::DeleteMCPServerInstallations { installation_uuids } => {
             delete_mcp_server_installations(connection, installation_uuids)
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::DeleteMCPServerInstallationsByTemplateUuid { template_uuid } => {
             delete_mcp_server_installations_by_template_uuid(connection, template_uuid)
         }
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpdateMCPInstallationRunning {
             installation_uuid,
             running,
         } => update_mcp_server_running(connection, installation_uuid, running)
             .context("Error updating running field for MCP installation"),
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpsertWorkspaceLanguageServer {
             workspace_path,
             lsp_type,
             enabled,
         } => upsert_workspace_language_server(connection, &workspace_path, lsp_type, enabled)
             .context("error upserting workspace language server"),
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::UpdateBlockAgentViewVisibility {
             block_id,
             agent_view_visibility,
         } => update_block_agent_view_visibility(connection, &block_id, &agent_view_visibility)
             .context("error updating block agent view visibility"),
+        #[cfg(feature = "agent_runtime")]
         ModelEvent::SaveAIDocumentContent {
             document_id,
             content,
@@ -845,6 +937,50 @@ fn handle_model_event(event: ModelEvent, connection: &mut SqliteConnection) -> a
             title,
         } => save_ai_document_content(connection, &document_id, &content, version, &title)
             .context("error saving AI document content"),
+
+        #[cfg(not(feature = "agent_runtime"))]
+        ModelEvent::UpsertWorkflows(..)
+        | ModelEvent::UpsertNotebooks(..)
+        | ModelEvent::UpsertFolders(..)
+        | ModelEvent::MarkObjectAsSynced { .. }
+        | ModelEvent::IncrementRetryCount(..)
+        | ModelEvent::UpsertGenericStringObject { .. }
+        | ModelEvent::UpsertGenericStringObjects(..)
+        | ModelEvent::UpsertNotebook { .. }
+        | ModelEvent::UpsertWorkflow { .. }
+        | ModelEvent::UpsertFolder { .. }
+        | ModelEvent::UpdateObjectAfterServerCreation { .. }
+        | ModelEvent::DeleteObjects { .. }
+        | ModelEvent::UpsertWorkspace { .. }
+        | ModelEvent::UpsertWorkspaces { .. }
+        | ModelEvent::SetCurrentWorkspace { .. }
+        | ModelEvent::UpdateObjectMetadata { .. }
+        | ModelEvent::UpsertUserProfiles { .. }
+        | ModelEvent::ClearUserProfiles
+        | ModelEvent::RecordTimeOfNextRefresh { .. }
+        | ModelEvent::SaveExperiments { .. }
+        | ModelEvent::InsertObjectAction { .. }
+        | ModelEvent::SyncObjectActions { .. }
+        | ModelEvent::UpsertAIQuery { .. }
+        | ModelEvent::DeleteAIConversation { .. }
+        | ModelEvent::UpdateMultiAgentConversation { .. }
+        | ModelEvent::BackfillConversationSummaries { .. }
+        | ModelEvent::DeleteMultiAgentConversations { .. }
+        | ModelEvent::UpsertCurrentUserInformation { .. }
+        | ModelEvent::UpsertCodebaseIndexMetadata { .. }
+        | ModelEvent::DeleteCodebaseIndexMetadata { .. }
+        | ModelEvent::UpsertMCPServerEnvironmentVariables { .. }
+        | ModelEvent::UpsertProjectRules { .. }
+        | ModelEvent::DeleteProjectRules { .. }
+        | ModelEvent::UpsertMCPServerInstallation { .. }
+        | ModelEvent::DeleteMCPServerInstallations { .. }
+        | ModelEvent::DeleteMCPServerInstallationsByTemplateUuid { .. }
+        | ModelEvent::UpdateMCPInstallationRunning { .. }
+        | ModelEvent::UpsertWorkspaceLanguageServer { .. }
+        | ModelEvent::UpdateBlockAgentViewVisibility { .. }
+        | ModelEvent::SaveAIDocumentContent { .. } => {
+            Err(crate::server::CloudServicesUnavailable.into())
+        }
     }
 }
 
@@ -1204,15 +1340,11 @@ fn save_pane_state(
     // kind-specific tables.
     let kind = match &snapshot.contents {
         LeafContents::Terminal(_) => TERMINAL_PANE_KIND,
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::Notebook(_) => NOTEBOOK_PANE_KIND,
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::EnvVarCollection(_) => ENV_VAR_COLLECTION_PANE_KIND,
         LeafContents::Code(_) => CODE_PANE_KIND,
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::Workflow(_) => WORKFLOW_PANE_KIND,
         LeafContents::Settings(_) => SETTINGS_PANE_KIND,
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::AIFact(_) => AI_FACT_PANE_KIND,
         LeafContents::CodeReview(_) => CODE_REVIEW_PANE_KIND,
         LeafContents::AmbientAgent(_) => AMBIENT_AGENT_PANE_KIND,
@@ -1220,23 +1352,13 @@ fn save_pane_state(
             EXECUTION_PROFILE_EDITOR_PANE_KIND
         }
         LeafContents::GetStarted => GET_STARTED_PANE_KIND,
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::AIDocument(_) => AI_DOCUMENT_PANE_KIND,
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::EnvironmentManagement(_) | LeafContents::NetworkLog => {
             // These pane types are filtered out before this function is
             // called; see `LeafContents::is_persisted` and the skip in
             // `save_app_state`. Reaching this arm would mean a `pane_nodes`
             // row had already been inserted with no corresponding
             // `pane_leaves` row, which would break restoration.
-            debug_assert!(
-                false,
-                "save_pane_state called for non-persisted LeafContents variant"
-            );
-            return Ok(());
-        }
-        #[cfg(feature = "warp_lite")]
-        LeafContents::NetworkLog => {
             debug_assert!(
                 false,
                 "save_pane_state called for non-persisted LeafContents variant"
@@ -1297,7 +1419,6 @@ fn save_pane_state(
                 .values(terminal)
                 .execute(conn)?;
         }
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::Notebook(notebook_snapshot) => {
             let (notebook_id, local_path) = match notebook_snapshot {
                 NotebookPaneSnapshot::CloudNotebook {
@@ -1353,7 +1474,6 @@ fn save_pane_state(
                     .execute(conn)?;
             }
         }
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::EnvVarCollection(env_var_collection_snapshot) => {
             let env_var_collection_id = match env_var_collection_snapshot {
                 EnvVarCollectionPaneSnapshot::CloudEnvVarCollection {
@@ -1371,7 +1491,6 @@ fn save_pane_state(
                 .values(env_var_collection)
                 .execute(conn)?;
         }
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::Workflow(workflow_pane_snapshot) => {
             let workflow_id = match workflow_pane_snapshot {
                 WorkflowPaneSnapshot::CloudWorkflow {
@@ -1386,7 +1505,6 @@ fn save_pane_state(
                 .values(workflow)
                 .execute(conn)?;
         }
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::EnvironmentManagement(_) => {
             // Unreachable: filtered by `is_persisted` in `save_app_state`.
         }
@@ -1404,7 +1522,6 @@ fn save_pane_state(
                 .values(settings_pane)
                 .execute(conn)?;
         }
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::AIFact(_ai_fact_pane_snapshot) => {
             let ai_fact = model::NewAIFactPane { id };
 
@@ -1433,7 +1550,6 @@ fn save_pane_state(
         LeafContents::GetStarted => {
             // Stateless
         }
-        #[cfg(not(feature = "warp_lite"))]
         LeafContents::AIDocument(ai_document_snapshot) => match ai_document_snapshot {
             crate::app_state::AIDocumentPaneSnapshot::Local {
                 document_id,
@@ -1474,6 +1590,7 @@ fn save_pane_state(
 }
 
 /// Update the content, version, and title of an AI document pane in SQLite.
+#[cfg(feature = "agent_runtime")]
 fn save_ai_document_content(
     conn: &mut SqliteConnection,
     doc_id: &str,
@@ -1537,6 +1654,7 @@ fn decode_path(bytes: Vec<u8>) -> PathBuf {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn save_codebase_index_metadata(
     conn: &mut SqliteConnection,
     index_metadata: ai::workspace::WorkspaceMetadata,
@@ -1555,6 +1673,7 @@ fn save_codebase_index_metadata(
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn get_all_codebase_index_metadata(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<ai::workspace::WorkspaceMetadata>, diesel::result::Error> {
@@ -1566,6 +1685,7 @@ fn get_all_codebase_index_metadata(
         .collect_vec())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn get_all_workspace_language_servers_by_workspace(
     conn: &mut SqliteConnection,
 ) -> Result<HashMap<PathBuf, HashMap<LSPServerType, EnablementState>>, diesel::result::Error> {
@@ -1597,6 +1717,7 @@ fn get_all_workspace_language_servers_by_workspace(
     Ok(grouped)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn upsert_workspace_language_server(
     conn: &mut SqliteConnection,
     workspace_path: &Path,
@@ -1648,6 +1769,7 @@ fn upsert_workspace_language_server(
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn delete_codebase_index_metadata(conn: &mut SqliteConnection, index_path: &Path) -> Result<()> {
     use schema::workspace_metadata::dsl::*;
 
@@ -1687,6 +1809,7 @@ fn delete_project(conn: &mut SqliteConnection, project_path: &str) -> Result<()>
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn get_all_project_rules(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<ProjectRulePath>, diesel::result::Error> {
@@ -1704,6 +1827,7 @@ fn get_all_project_rules(
         .collect_vec())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn upsert_project_rules(
     conn: &mut SqliteConnection,
     new_project_rules: Vec<ProjectRulePath>,
@@ -1728,6 +1852,7 @@ fn upsert_project_rules(
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn delete_project_rules(conn: &mut SqliteConnection, rules_paths: Vec<PathBuf>) -> Result<()> {
     use schema::project_rules::dsl::*;
 
@@ -1758,6 +1883,7 @@ fn get_all_ignored_suggestions(
         .collect())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn get_all_mcp_server_installations(
     conn: &mut SqliteConnection,
 ) -> Result<HashMap<Uuid, TemplatableMCPServerInstallation>, diesel::result::Error> {
@@ -1802,6 +1928,7 @@ fn get_all_mcp_server_installations(
     Ok(result)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn upsert_mcp_server_installation(
     conn: &mut SqliteConnection,
     mcp_server_installation: TemplatableMCPServerInstallation,
@@ -1834,6 +1961,7 @@ fn upsert_mcp_server_installation(
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn delete_mcp_server_installations(conn: &mut SqliteConnection, uuids: Vec<Uuid>) -> Result<()> {
     use schema::mcp_server_installations::dsl::*;
 
@@ -1843,6 +1971,7 @@ fn delete_mcp_server_installations(conn: &mut SqliteConnection, uuids: Vec<Uuid>
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn delete_mcp_server_installations_by_template_uuid(
     conn: &mut SqliteConnection,
     target_template_uuid: Uuid,
@@ -1857,6 +1986,7 @@ fn delete_mcp_server_installations_by_template_uuid(
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn get_mcp_servers_to_restore(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<Uuid>, diesel::result::Error> {
@@ -1875,6 +2005,7 @@ fn get_mcp_servers_to_restore(
     Ok(installation_uuid)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn update_mcp_server_running(
     conn: &mut SqliteConnection,
     installation_uuid: Uuid,
@@ -1932,6 +2063,7 @@ fn remove_ignored_suggestion(
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn save_workspace(conn: &mut SqliteConnection, workspace: WorkspaceMetadata) -> Result<()> {
     // Set all existing workspaces as not selected
     diesel::update(workspaces)
@@ -2009,6 +2141,7 @@ fn save_workspace(conn: &mut SqliteConnection, workspace: WorkspaceMetadata) -> 
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn save_workspaces(
     conn: &mut SqliteConnection,
     workspaces_to_insert: Vec<WorkspaceMetadata>,
@@ -2162,6 +2295,7 @@ fn save_workspaces(
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn set_current_workspace(conn: &mut SqliteConnection, workspace_uid: WorkspaceUid) -> Result<()> {
     use schema::workspaces::dsl::*;
 
@@ -2179,6 +2313,7 @@ fn set_current_workspace(conn: &mut SqliteConnection, workspace_uid: WorkspaceUi
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn upsert_generic_string_objects(
     conn: &mut SqliteConnection,
     cloud_generic_string_objects: Vec<Box<dyn CloudStringObject>>,
@@ -2273,7 +2408,6 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                         active_conversation_id,
                     })
                 }
-                #[cfg(not(feature = "warp_lite"))]
                 NOTEBOOK_PANE_KIND => {
                     let notebook_pane = schema::notebook_panes::dsl::notebook_panes
                         .find(node.id)
@@ -2301,7 +2435,6 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                         },
                     })
                 }
-                #[cfg(not(feature = "warp_lite"))]
                 WORKFLOW_PANE_KIND => {
                     let workflow_pane = schema::workflow_panes::dsl::workflow_panes
                         .find(node.id)
@@ -2352,7 +2485,6 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                         source,
                     })
                 }
-                #[cfg(not(feature = "warp_lite"))]
                 ENV_VAR_COLLECTION_PANE_KIND => {
                     let env_var_collection_pane =
                         schema::env_var_collection_panes::dsl::env_var_collection_panes
@@ -2389,7 +2521,6 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                         search_query: None,
                     })
                 }
-                #[cfg(not(feature = "warp_lite"))]
                 AI_FACT_PANE_KIND => LeafContents::AIFact(AIFactPaneSnapshot::Personal),
                 MCP_SERVER_PANE_KIND => {
                     // Legacy MCP server panes are no longer supported.
@@ -2417,7 +2548,6 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
                     }
                 }
                 GET_STARTED_PANE_KIND => LeafContents::GetStarted,
-                #[cfg(not(feature = "warp_lite"))]
                 AI_DOCUMENT_PANE_KIND => {
                     let ai_document_pane = schema::ai_document_panes::dsl::ai_document_panes
                         .find(node.id)
@@ -2485,6 +2615,7 @@ fn read_node(conn: &mut SqliteConnection, node: model::PaneNode) -> Result<PaneN
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn box_persisted_generic_string_object(
     object: PersistedGenericStringObject,
 ) -> Box<dyn CloudObject> {
@@ -2515,6 +2646,21 @@ fn read_sqlite_data(
     current_user_id: Option<UserUid>,
     data_scope: PersistedDataScope,
 ) -> Result<PersistedData, Error> {
+    #[cfg(not(feature = "agent_runtime"))]
+    match (data_scope, current_user_id) {
+        (PersistedDataScope::TerminalOnly, _) => {}
+        (
+            PersistedDataScope::Full
+            | PersistedDataScope::TuiFrontend
+            | PersistedDataScope::CodebaseIndicesOnly,
+            _,
+        ) => {
+            return Err(Error::QueryBuilderError(Box::new(
+                crate::server::CloudServicesUnavailable,
+            )));
+        }
+    }
+    #[cfg(feature = "agent_runtime")]
     if matches!(data_scope, PersistedDataScope::CodebaseIndicesOnly) {
         return Ok(PersistedData {
             app_state: None,
@@ -2739,7 +2885,15 @@ fn read_sqlite_data(
         let restored_blocks = get_all_restored_blocks(conn)?;
 
         // Load active MCP servers from database
-        let running_mcp_servers = load_active_mcp_servers(conn)?;
+        #[cfg(feature = "agent_runtime")]
+        let running_mcp_servers = if matches!(data_scope, PersistedDataScope::TerminalOnly) {
+            Vec::new()
+        } else {
+            load_active_mcp_servers(conn)?
+        };
+
+        #[cfg(not(feature = "agent_runtime"))]
+        let running_mcp_servers = Vec::new();
 
         Some(AppState {
             windows: saved_windows,
@@ -2751,207 +2905,233 @@ fn read_sqlite_data(
         None
     };
 
-    let read_context = load_cloud_object_read_context(conn, current_user_id)?;
-    let mut cloud_objects: Vec<Box<dyn CloudObject>> = Vec::new();
-    cloud_objects.extend(
-        workflow_persistence::read_workflows(conn, &read_context)?
-            .into_iter()
-            .map(|workflow| Box::new(workflow) as Box<dyn CloudObject>),
-    );
-    cloud_objects.extend(
-        notebook_persistence::read_notebooks(conn, &read_context)?
-            .into_iter()
-            .map(|notebook| Box::new(notebook) as Box<dyn CloudObject>),
-    );
-    cloud_objects.extend(
-        folder_persistence::read_folders(conn, &read_context)?
-            .into_iter()
-            .map(|folder| Box::new(folder) as Box<dyn CloudObject>),
-    );
-    cloud_objects.extend(
-        generic_string_persistence::read_generic_string_objects(conn, &read_context)?
-            .into_iter()
-            .map(box_persisted_generic_string_object),
-    );
-
-    let db_teams: Vec<model::Team> = schema::teams::dsl::teams.load(conn)?;
-
-    let team_member_rows: Vec<model::TeamMemberRow> =
-        schema::team_members::dsl::team_members.load(conn)?;
-    let members_by_team_id: HashMap<i32, Vec<crate::workspaces::team::TeamMember>> =
-        team_member_rows
-            .into_iter()
-            .fold(HashMap::new(), |mut acc, row| {
-                let member = crate::workspaces::team::TeamMember {
-                    uid: UserUid::new(&row.user_uid),
-                    email: row.email,
-                    role: serde_json::from_str(&row.role)
-                        .unwrap_or(crate::workspaces::team::MembershipRole::User),
-                };
-                acc.entry(row.team_id).or_default().push(member);
-                acc
-            });
-
-    let team_settings_rows: Vec<model::TeamSetting> =
-        schema::team_settings::dsl::team_settings.load(conn)?;
-    let settings_by_team_id: HashMap<i32, String> = team_settings_rows
-        .into_iter()
-        .map(|ts| (ts.team_id, ts.settings_json))
-        .collect();
-
-    let teams: Vec<TeamMetadata> = db_teams
-        .into_iter()
-        .map(|team| {
-            let team_settings = settings_by_team_id
-                .get(&team.id)
-                .and_then(|json| serde_json::from_str(json).ok());
-
-            let billing_metadata = team
-                .billing_metadata_json
-                .as_ref()
-                .and_then(|json| serde_json::from_str(json).ok());
-
-            let members = members_by_team_id.get(&team.id).cloned();
-
-            TeamMetadata::from_local_cache(
-                ServerId::from_string_lossy(team.server_uid),
-                team.name,
-                team_settings,
-                billing_metadata,
-                members,
-            )
-        })
-        .collect();
-
-    let workspace_teams: Vec<model::WorkspaceTeam> = schema::workspace_teams::dsl::workspace_teams
-        .load_iter::<model::WorkspaceTeam, DefaultLoadingMode>(conn)?
-        .filter_map(|workspace_team| workspace_team.ok())
-        .collect();
-
-    let workspaces: Vec<WorkspaceMetadata> = schema::workspaces::dsl::workspaces
-        .load_iter::<model::Workspace, DefaultLoadingMode>(conn)?
-        .filter_map(|workspace| {
-            workspace.ok().map(|workspace| {
-                let teams_for_workspace = workspace_teams
-                    .iter()
-                    .filter_map(|workspace_team| {
-                        if workspace_team.workspace_server_uid == workspace.server_uid {
-                            teams.iter().find(|team| {
-                                team.uid
-                                    == ServerId::from_string_lossy(&workspace_team.team_server_uid)
-                            })
-                        } else {
-                            None
-                        }
-                    })
-                    .cloned()
-                    .collect();
-                WorkspaceMetadata::from_local_cache(
-                    workspace.server_uid.into(),
-                    workspace.name,
-                    Some(teams_for_workspace),
-                )
-            })
-        })
-        .collect();
-
-    let current_workspace_uid: Option<WorkspaceUid> = schema::workspaces::dsl::workspaces
-        .filter(schema::workspaces::dsl::is_selected.eq(true))
-        .select(schema::workspaces::dsl::server_uid)
-        .first::<String>(conn)
-        .optional()?
-        .map(|uid| uid.into());
-
-    // The GUI and TUI both consume command history. Other headless launch
-    // modes skip it.
-    let commands = if data_scope.command_history() {
-        schema::commands::dsl::commands
-            // The newest row for a duplicate command supplies its summary metadata.
+    if matches!(data_scope, PersistedDataScope::TerminalOnly) {
+        let command_history = schema::commands::dsl::commands
             .order(schema::commands::columns::id.desc())
             .load_iter::<model::Command, DefaultLoadingMode>(conn)?
-            .filter_map(|command| command.ok())
+            .filter_map(Result::ok)
             .map(PersistedCommand::from)
-            .collect()
-    } else {
-        Vec::new()
-    };
+            .collect();
+        return Ok(PersistedData {
+            app_state,
+            command_history,
+            projects: get_all_projects(conn)?,
+            ignored_suggestions: get_all_ignored_suggestions(conn)?,
+            ..Default::default()
+        });
+    }
 
-    let user_profiles = if data_scope.user_profiles() {
-        schema::user_profiles::dsl::user_profiles
-            .load_iter::<model::UserProfile, DefaultLoadingMode>(conn)?
-            .filter_map(|user_profile| user_profile.ok())
-            .map(user_profile_from_persistence)
-            .collect()
-    } else {
-        Vec::new()
-    };
+    #[cfg(feature = "agent_runtime")]
+    {
+        let read_context = load_cloud_object_read_context(conn, current_user_id)?;
+        let mut cloud_objects: Vec<Box<dyn CloudObject>> = Vec::new();
+        cloud_objects.extend(
+            workflow_persistence::read_workflows(conn, &read_context)?
+                .into_iter()
+                .map(|workflow| Box::new(workflow) as Box<dyn CloudObject>),
+        );
+        cloud_objects.extend(
+            notebook_persistence::read_notebooks(conn, &read_context)?
+                .into_iter()
+                .map(|notebook| Box::new(notebook) as Box<dyn CloudObject>),
+        );
+        cloud_objects.extend(
+            folder_persistence::read_folders(conn, &read_context)?
+                .into_iter()
+                .map(|folder| Box::new(folder) as Box<dyn CloudObject>),
+        );
+        cloud_objects.extend(
+            generic_string_persistence::read_generic_string_objects(conn, &read_context)?
+                .into_iter()
+                .map(box_persisted_generic_string_object),
+        );
 
-    let object_actions: Vec<ObjectAction> = if data_scope.gui_only_data() {
-        schema::object_actions::dsl::object_actions
-            .load_iter::<model::PersistedObjectAction, DefaultLoadingMode>(conn)?
-            .filter_map(|object_action| object_action.ok()) // parse into PersistedObjectAction
-            .filter_map(|action| object_action_from_persisted(action).ok())
-            .collect()
-    } else {
-        Vec::new()
-    };
+        let db_teams: Vec<model::Team> = schema::teams::dsl::teams.load(conn)?;
 
-    let server_experiments = schema::server_experiments::dsl::server_experiments
-        .load_iter::<model::ServerExperiment, DefaultLoadingMode>(conn)?
-        .filter_map(|server_experiment| server_experiment.ok())
-        .filter_map(|server_experiment| {
-            ServerExperiment::from_string(server_experiment.experiment).ok()
+        let team_member_rows: Vec<model::TeamMemberRow> =
+            schema::team_members::dsl::team_members.load(conn)?;
+        let members_by_team_id: HashMap<i32, Vec<crate::workspaces::team::TeamMember>> =
+            team_member_rows
+                .into_iter()
+                .fold(HashMap::new(), |mut acc, row| {
+                    let member = crate::workspaces::team::TeamMember {
+                        uid: UserUid::new(&row.user_uid),
+                        email: row.email,
+                        role: serde_json::from_str(&row.role)
+                            .unwrap_or(crate::workspaces::team::MembershipRole::User),
+                    };
+                    acc.entry(row.team_id).or_default().push(member);
+                    acc
+                });
+
+        let team_settings_rows: Vec<model::TeamSetting> =
+            schema::team_settings::dsl::team_settings.load(conn)?;
+        let settings_by_team_id: HashMap<i32, String> = team_settings_rows
+            .into_iter()
+            .map(|ts| (ts.team_id, ts.settings_json))
+            .collect();
+
+        let teams: Vec<TeamMetadata> = db_teams
+            .into_iter()
+            .map(|team| {
+                let team_settings = settings_by_team_id
+                    .get(&team.id)
+                    .and_then(|json| serde_json::from_str(json).ok());
+
+                let billing_metadata = team
+                    .billing_metadata_json
+                    .as_ref()
+                    .and_then(|json| serde_json::from_str(json).ok());
+
+                let members = members_by_team_id.get(&team.id).cloned();
+
+                TeamMetadata::from_local_cache(
+                    ServerId::from_string_lossy(team.server_uid),
+                    team.name,
+                    team_settings,
+                    billing_metadata,
+                    members,
+                )
+            })
+            .collect();
+
+        let workspace_teams: Vec<model::WorkspaceTeam> =
+            schema::workspace_teams::dsl::workspace_teams
+                .load_iter::<model::WorkspaceTeam, DefaultLoadingMode>(conn)?
+                .filter_map(|workspace_team| workspace_team.ok())
+                .collect();
+
+        let workspaces: Vec<WorkspaceMetadata> = schema::workspaces::dsl::workspaces
+            .load_iter::<model::Workspace, DefaultLoadingMode>(conn)?
+            .filter_map(|workspace| {
+                workspace.ok().map(|workspace| {
+                    let teams_for_workspace = workspace_teams
+                        .iter()
+                        .filter_map(|workspace_team| {
+                            if workspace_team.workspace_server_uid == workspace.server_uid {
+                                teams.iter().find(|team| {
+                                    team.uid
+                                        == ServerId::from_string_lossy(
+                                            &workspace_team.team_server_uid,
+                                        )
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .cloned()
+                        .collect();
+                    WorkspaceMetadata::from_local_cache(
+                        workspace.server_uid.into(),
+                        workspace.name,
+                        Some(teams_for_workspace),
+                    )
+                })
+            })
+            .collect();
+
+        let current_workspace_uid: Option<WorkspaceUid> = schema::workspaces::dsl::workspaces
+            .filter(schema::workspaces::dsl::is_selected.eq(true))
+            .select(schema::workspaces::dsl::server_uid)
+            .first::<String>(conn)
+            .optional()?
+            .map(|uid| uid.into());
+
+        // The GUI and TUI both consume command history. Other headless launch
+        // modes skip it.
+        let commands = if data_scope.command_history() {
+            schema::commands::dsl::commands
+                // The newest row for a duplicate command supplies its summary metadata.
+                .order(schema::commands::columns::id.desc())
+                .load_iter::<model::Command, DefaultLoadingMode>(conn)?
+                .filter_map(|command| command.ok())
+                .map(PersistedCommand::from)
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        let user_profiles = if data_scope.user_profiles() {
+            schema::user_profiles::dsl::user_profiles
+                .load_iter::<model::UserProfile, DefaultLoadingMode>(conn)?
+                .filter_map(|user_profile| user_profile.ok())
+                .map(user_profile_from_persistence)
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        let object_actions: Vec<ObjectAction> = if data_scope.gui_only_data() {
+            schema::object_actions::dsl::object_actions
+                .load_iter::<model::PersistedObjectAction, DefaultLoadingMode>(conn)?
+                .filter_map(|object_action| object_action.ok()) // parse into PersistedObjectAction
+                .filter_map(|action| object_action_from_persisted(action).ok())
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        let server_experiments = schema::server_experiments::dsl::server_experiments
+            .load_iter::<model::ServerExperiment, DefaultLoadingMode>(conn)?
+            .filter_map(|server_experiment| server_experiment.ok())
+            .filter_map(|server_experiment| {
+                ServerExperiment::from_string(server_experiment.experiment).ok()
+            })
+            .collect();
+
+        let time_of_next_force_object_refresh = read_time_of_next_force_object_refresh(conn)?;
+
+        // Seed up-arrow prompt history and (optionally) NLD prompt-history matching from a single
+        // SQLite read, deriving both from the same in-memory query vector instead of reading twice.
+        // TODO: Once up-arrow prompt history supports pagination, drop the 100-row up-arrow cap and
+        // serve both up-arrow and NLD matching from one consolidated query list.
+        let recent_ai_queries = read_recent_ai_queries(conn)?;
+        let nld_prompts = if FeatureFlag::NldPromptHistoryMatch.is_enabled() {
+            process_ai_queries_for_nld_history_match(&recent_ai_queries)
+        } else {
+            Vec::new()
+        };
+        let ai_queries = process_ai_queries_for_uparrow_prompt(recent_ai_queries);
+
+        let codebase_indices = get_all_codebase_index_metadata(conn)?;
+        let workspace_language_servers = get_all_workspace_language_servers_by_workspace(conn)?;
+        // Load conversation metadata only; task payloads are hydrated lazily
+        // per-conversation via `read_agent_conversation_by_id`.
+        let (multi_agent_conversations, conversation_summary_backfills) =
+            read_agent_conversation_metadata(conn)?;
+        let projects = get_all_projects(conn)?;
+        let project_rules = get_all_project_rules(conn)?;
+        let ignored_suggestions = get_all_ignored_suggestions(conn)?;
+        let mcp_server_installations = get_all_mcp_server_installations(conn)?;
+        let mcp_servers_to_restore = get_mcp_servers_to_restore(conn)?;
+
+        Ok(PersistedData {
+            app_state,
+            cloud_objects,
+            workspaces,
+            current_workspace_uid,
+            command_history: commands,
+            user_profiles,
+            time_of_next_force_object_refresh,
+            object_actions,
+            experiments: server_experiments,
+            ai_queries,
+            nld_prompts,
+            codebase_indices,
+            workspace_language_servers,
+            multi_agent_conversations,
+            projects,
+            project_rules,
+            ignored_suggestions,
+            mcp_server_installations,
+            mcp_servers_to_restore,
+            conversation_summary_backfills,
         })
-        .collect();
-
-    let time_of_next_force_object_refresh = read_time_of_next_force_object_refresh(conn)?;
-
-    // Seed up-arrow prompt history and (optionally) NLD prompt-history matching from a single
-    // SQLite read, deriving both from the same in-memory query vector instead of reading twice.
-    // TODO: Once up-arrow prompt history supports pagination, drop the 100-row up-arrow cap and
-    // serve both up-arrow and NLD matching from one consolidated query list.
-    let recent_ai_queries = read_recent_ai_queries(conn)?;
-    let nld_prompts = if FeatureFlag::NldPromptHistoryMatch.is_enabled() {
-        process_ai_queries_for_nld_history_match(&recent_ai_queries)
-    } else {
-        Vec::new()
-    };
-    let ai_queries = process_ai_queries_for_uparrow_prompt(recent_ai_queries);
-
-    let codebase_indices = get_all_codebase_index_metadata(conn)?;
-    let workspace_language_servers = get_all_workspace_language_servers_by_workspace(conn)?;
-    // Load conversation metadata only; task payloads are hydrated lazily
-    // per-conversation via `read_agent_conversation_by_id`.
-    let (multi_agent_conversations, conversation_summary_backfills) =
-        read_agent_conversation_metadata(conn)?;
-    let projects = get_all_projects(conn)?;
-    let project_rules = get_all_project_rules(conn)?;
-    let ignored_suggestions = get_all_ignored_suggestions(conn)?;
-    let mcp_server_installations = get_all_mcp_server_installations(conn)?;
-    let mcp_servers_to_restore = get_mcp_servers_to_restore(conn)?;
-
-    Ok(PersistedData {
-        app_state,
-        cloud_objects,
-        workspaces,
-        current_workspace_uid,
-        command_history: commands,
-        user_profiles,
-        time_of_next_force_object_refresh,
-        object_actions,
-        experiments: server_experiments,
-        ai_queries,
-        nld_prompts,
-        codebase_indices,
-        workspace_language_servers,
-        multi_agent_conversations,
-        projects,
-        project_rules,
-        ignored_suggestions,
-        mcp_server_installations,
-        mcp_servers_to_restore,
-        conversation_summary_backfills,
-    })
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    Err(Error::QueryBuilderError(Box::new(
+        crate::server::CloudServicesUnavailable,
+    )))
 }
 
 impl From<StartedCommandMetadata> for model::NewCommand {
@@ -3030,6 +3210,7 @@ fn update_finished_command(
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn upsert_user_profiles(
     conn: &mut SqliteConnection,
     profiles: Vec<UserProfileWithUID>,
@@ -3060,6 +3241,7 @@ fn upsert_user_profiles(
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn save_experiments(
     conn: &mut SqliteConnection,
     experiments: Vec<ServerExperiment>,
@@ -3081,6 +3263,7 @@ fn save_experiments(
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn clear_user_profiles(conn: &mut SqliteConnection) -> Result<(), Error> {
     conn.transaction::<(), Error, _>(|conn| {
         diesel::delete(schema::user_profiles::dsl::user_profiles).execute(conn)?;
@@ -3089,6 +3272,7 @@ fn clear_user_profiles(conn: &mut SqliteConnection) -> Result<(), Error> {
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn upsert_current_user_information(
     conn: &mut SqliteConnection,
     user_information: PersistedCurrentUserInformation,
@@ -3106,6 +3290,7 @@ fn upsert_current_user_information(
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn upsert_mcp_server_environment_variables(
     conn: &mut SqliteConnection,
     mcp_server_uuid: Vec<u8>,
@@ -3126,6 +3311,7 @@ fn upsert_mcp_server_environment_variables(
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn load_active_mcp_servers(conn: &mut SqliteConnection) -> Result<Vec<uuid::Uuid>, Error> {
     use schema::active_mcp_servers::dsl::*;
 
@@ -3138,6 +3324,7 @@ fn load_active_mcp_servers(conn: &mut SqliteConnection) -> Result<Vec<uuid::Uuid
 
 /// Converts the ObjectAction type into a uniform type that can be inserted into
 /// the sqlite table.
+#[cfg(feature = "agent_runtime")]
 fn new_persisted_object_action_from_object_action(
     action: ObjectAction,
 ) -> model::NewPersistedObjectAction {
@@ -3177,6 +3364,7 @@ fn new_persisted_object_action_from_object_action(
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn insert_object_action(
     conn: &mut SqliteConnection,
     object_action: ObjectAction,
@@ -3190,6 +3378,7 @@ fn insert_object_action(
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn sync_object_actions(
     conn: &mut SqliteConnection,
     actions_to_sync: Vec<ObjectAction>,
@@ -3218,6 +3407,7 @@ fn sync_object_actions(
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn delete_objects(
     conn: &mut SqliteConnection,
     ids: Vec<(SyncId, ObjectIdType)>,

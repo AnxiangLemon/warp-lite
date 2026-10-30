@@ -9,22 +9,18 @@ use warp_graphql::managed_secrets::ManagedSecret;
 use warp_graphql::queries::task_secrets::ManagedSecretValue as GqlManagedSecretValue;
 use warpui_core::{Entity, SingletonEntity};
 
-use crate::ManagedSecretValue;
 use crate::client::{
     IdentityTokenOptions, ManagedSecretConfigs, ManagedSecretsClient, SecretOwner,
     TaskIdentityToken,
 };
 use crate::envelope::UploadKey;
 use crate::gcp::{self, GcpWorkloadIdentityFederationError, GcpWorkloadIdentityFederationToken};
+use crate::{ActorProvider, ManagedSecretValue};
 
 /// Singleton model for working with Warp-managed secrets.
 pub struct ManagedSecretManager {
     client: Arc<dyn ManagedSecretsClient>,
     actor_provider: Arc<dyn ActorProvider>,
-}
-
-pub trait ActorProvider: Send + Sync + 'static {
-    fn actor_uid(&self) -> Option<String>;
 }
 
 impl ManagedSecretManager {

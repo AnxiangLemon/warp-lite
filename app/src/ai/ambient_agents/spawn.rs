@@ -333,6 +333,6 @@ fn poll_run_until_joinable_session(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "spawn_tests.rs"]
 mod tests;

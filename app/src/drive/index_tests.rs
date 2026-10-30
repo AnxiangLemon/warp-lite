@@ -14,11 +14,11 @@ use crate::cloud_object::model::view::CloudViewModel;
 use crate::cloud_object::{
     CloudObjectSyncStatus, ObjectIdType, ObjectType, Owner, ServerCreationInfo, Space,
 };
-use crate::cloud_object::CloudObjectTypeAndId;
+use crate::drive::CloudObjectTypeAndId;
 use crate::drive::items::WarpDriveItemId;
 use crate::menu::MenuItem;
 use crate::network::NetworkStatus;
-use crate::cloud_object::{CloudNotebook, CloudNotebookModel};
+use crate::notebooks::{CloudNotebook, CloudNotebookModel};
 use crate::server::cloud_objects::update_manager::UpdateManager;
 use crate::server::ids::{ClientId, ServerIdAndType, SyncId};
 use crate::server::server_api::ServerApiProvider;

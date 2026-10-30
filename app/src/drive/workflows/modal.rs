@@ -1938,6 +1938,6 @@ impl TypedActionView for WorkflowModal {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "modal_tests.rs"]
 mod tests;

@@ -2809,6 +2809,6 @@ fn build_crumb_inner(
     container.finish()
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "orchestration_pill_bar_tests.rs"]
 mod tests;

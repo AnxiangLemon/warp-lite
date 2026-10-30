@@ -11,7 +11,7 @@ use warpui::{
 };
 
 use crate::appearance::Appearance;
-use crate::settings::WarpDriveSettings;
+use crate::drive::settings::WarpDriveSettings;
 use crate::search::QueryFilter;
 use crate::search::command_palette::FilterChipRenderer;
 use crate::settings::AISettings;
@@ -81,7 +81,8 @@ impl ZeroState {
         app: &AppContext,
         window_id: WindowId,
     ) -> impl Iterator<Item = QueryFilter> + use<> {
-        let show_warp_drive = WarpDriveSettings::is_warp_drive_enabled(app);
+        let show_warp_drive =
+            !cfg!(feature = "warp_lite") && WarpDriveSettings::is_warp_drive_enabled(app);
 
         let mut valid_filters = vec![];
         if show_warp_drive {
@@ -118,7 +119,7 @@ impl ZeroState {
             valid_filters.push(QueryFilter::LaunchConfigurations);
         }
 
-        if AISettings::as_ref(app).is_any_ai_enabled(app) {
+        if !cfg!(feature = "warp_lite") && AISettings::as_ref(app).is_any_ai_enabled(app) {
             valid_filters.push(QueryFilter::Conversations);
         }
 

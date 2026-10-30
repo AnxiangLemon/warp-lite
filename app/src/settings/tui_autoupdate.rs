@@ -1,7 +1,7 @@
 use settings::macros::define_settings_group;
 use settings::{SupportedPlatforms, SyncToCloud};
 
-define_settings_group!(TuiAutoupdateSettings, settings: [
+define_settings_group!(TuiAutoupdateSettings, schema_cfg: feature = "agent_runtime", settings: [
     // Whether the `warp-tui` background auto-updater is enabled.
     //
     // TUI-only (`surface: Tui`): the GUI has its own autoupdater and update

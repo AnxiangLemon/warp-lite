@@ -4,6 +4,7 @@ use warpui::keymap::EditableBinding;
 use warpui::{AppContext, Entity, EntityId, SingletonEntity, WindowId};
 
 use super::WorkspaceAction;
+use crate::lite_i18n::choose;
 use crate::util::bindings::{BindingGroup, CustomAction};
 
 pub fn init(app: &mut AppContext) {
@@ -12,7 +13,7 @@ pub fn init(app: &mut AppContext) {
     app.register_editable_bindings(vec![
         EditableBinding::new(
             "workspace:disable_terminal_input_syncing",
-            "Stop Synchronizing Any Panes",
+            choose("Stop Synchronizing Any Panes", "停止同步面板输入"),
             WorkspaceAction::DisableTerminalInputSync,
         )
         .with_context_predicate(id!("Workspace"))
@@ -21,7 +22,10 @@ pub fn init(app: &mut AppContext) {
         .with_custom_action(CustomAction::DisableSyncTerminalInputs),
         EditableBinding::new(
             "workspace:toggle_sync_terminal_inputs_in_tab",
-            "Toggle Synchronizing All Panes in Current Tab",
+            choose(
+                "Toggle Synchronizing All Panes in Current Tab",
+                "切换当前标签页的面板输入同步",
+            ),
             WorkspaceAction::ToggleSyncTerminalInputsInTab,
         )
         .with_context_predicate(id!("Workspace"))
@@ -29,7 +33,10 @@ pub fn init(app: &mut AppContext) {
         .with_custom_action(CustomAction::ToggleSyncTerminalInputsInCurrentTab),
         EditableBinding::new(
             "workspace:toggle_sync_all_terminal_inputs_in_all_tabs",
-            "Toggle Synchronizing All Panes in All Tabs",
+            choose(
+                "Toggle Synchronizing All Panes in All Tabs",
+                "切换所有标签页的面板输入同步",
+            ),
             WorkspaceAction::ToggleSyncAllTerminalInputsInAllTabs,
         )
         .with_context_predicate(id!("Workspace"))

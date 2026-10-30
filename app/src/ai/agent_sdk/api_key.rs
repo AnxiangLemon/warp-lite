@@ -480,6 +480,6 @@ fn finish_command(result: Result<()>, ctx: &mut ModelContext<ApiKeyCommandRunner
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "api_key_tests.rs"]
 mod tests;

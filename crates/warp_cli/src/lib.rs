@@ -727,11 +727,7 @@ impl fmt::Display for RecoveryMechanism {
 
 /// Returns the subcommand name to use for starting the terminal server.
 pub fn terminal_server_subcommand() -> String {
-    <Args as CommandFactory>::command()
-        .find_subcommand("terminal-server")
-        .expect("terminal-server subcommand not found")
-        .get_name()
-        .to_string()
+    "terminal-server".to_owned()
 }
 
 /// Returns the subcommand name to use for starting the installation detection server.
@@ -746,46 +742,22 @@ pub fn installation_detection_server_subcommand() -> String {
 /// Returns the subcommand name to use for starting the ripgrep search worker.
 #[cfg(not(target_family = "wasm"))]
 pub fn ripgrep_search_subcommand() -> String {
-    <Args as CommandFactory>::command()
-        .find_subcommand("ripgrep-search")
-        .expect("ripgrep-search subcommand not found")
-        .get_name()
-        .to_string()
+    "ripgrep-search".to_owned()
 }
 
 /// Returns the flag to use when finishing the auto-update process.
 pub fn finish_update_flag() -> String {
-    let command = <Args as CommandFactory>::command();
-    let flag = command
-        .get_arguments()
-        .find(|arg| arg.get_long() == Some("finish-update"))
-        .expect("finish-update flag not found")
-        .get_long()
-        .unwrap();
-    format!("--{flag}")
+    "--finish-update".to_owned()
 }
 
 /// Returns the flag to use for the dump-debug-info subcommand.
 pub fn dump_debug_info_flag() -> String {
-    let command = <Args as CommandFactory>::command();
-    let flag = command
-        .find_subcommand("dump-debug-info")
-        .expect("dump-debug-info subcommand not found")
-        .get_long_flag()
-        .expect("dump-debug-info flag not found");
-    format!("--{flag}")
+    "--dump-debug-info".to_owned()
 }
 
 /// Returns a flag that sets the current process as the parent of a Warp subcommand to spawn.
 pub fn parent_flag() -> String {
-    let command = <Args as CommandFactory>::command();
-    let flag = command
-        .get_arguments()
-        .find(|arg| arg.get_long() == Some("parent-pid"))
-        .expect("parent-pid flag not found")
-        .get_long()
-        .unwrap();
-    format!("--{flag}={}", std::process::id())
+    format!("--parent-pid={}", std::process::id())
 }
 
 /// The name that this binary was invoked as.

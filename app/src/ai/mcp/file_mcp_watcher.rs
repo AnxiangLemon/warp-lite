@@ -140,6 +140,16 @@ pub struct FileMCPWatcher {
 impl FileMCPWatcher {
     pub fn new(ctx: &mut ModelContext<Self>) -> Self {
         let (file_mcp_tx, file_mcp_rx) = async_channel::unbounded::<FileMCPDetectionMessage>();
+        if cfg!(feature = "warp_lite") {
+            return Self {
+                file_mcp_tx,
+                parse_abort_handles: HashMap::new(),
+                home_provider_watchers: HashMap::new(),
+                project_repo_watchers: HashSet::new(),
+                cloud_env_pending: HashMap::new(),
+            };
+        }
+
         let settings_mode = settings::settings_mode();
 
         ctx.spawn_stream_local(
@@ -853,6 +863,6 @@ impl Entity for FileMCPWatcher {
 
 impl SingletonEntity for FileMCPWatcher {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "file_mcp_watcher_tests.rs"]
 mod tests;

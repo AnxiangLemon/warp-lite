@@ -127,6 +127,7 @@ impl From<GeneratedCommand> for AIGeneratedCommand {
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum GenerateCommandsFromNaturalLanguageError {
+    Unavailable,
     BadPrompt,
     AiProviderError,
     RateLimited,

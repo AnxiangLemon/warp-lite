@@ -6,6 +6,10 @@ authors.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+default = ["full_text_search"]
+full_text_search = ["dep:tantivy"]
+
 [dependencies]
 anyhow.workspace = true
 async-channel.workspace = true
@@ -32,7 +36,7 @@ warp_errors.workspace = true
 warpui_core.workspace = true
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-tantivy = "0.26.0"
+tantivy = { version = "0.26.0", optional = true }
 
 [dev-dependencies]
 warp_core = { workspace = true, features = ["test-util"] }

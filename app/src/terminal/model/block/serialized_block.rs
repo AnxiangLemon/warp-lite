@@ -6,10 +6,6 @@ use serde_bytes_repr::{ByteFmtDeserializer, ByteFmtSerializer};
 use warp_core::command::ExitCode;
 
 use super::AgentInteractionMetadata;
-use crate::ai::agent::AIAgentActionId;
-use crate::ai::agent::conversation::AIConversationId;
-use crate::ai::agent::task::TaskId;
-use crate::ai::blocklist::block::cli_controller::LongRunningCommandControlState;
 use crate::terminal::ShellHost;
 use crate::terminal::model::BlockId;
 use crate::terminal::model::block::{
@@ -17,6 +13,9 @@ use crate::terminal::model::block::{
     has_block_failed,
 };
 use crate::terminal::model::session::SessionId;
+use crate::terminal::session_types::{
+    AIAgentActionId, AIConversationId, LongRunningCommandControlState, TaskId,
+};
 use crate::util::extensions::TrimStringExt;
 
 /// Serialization-stable representation of [`AgentViewVisibility`].

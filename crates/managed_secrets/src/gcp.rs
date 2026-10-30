@@ -1,18 +1,25 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
+#[cfg(feature = "runtime")]
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "runtime")]
 use serde_json::{Value, json};
+#[cfg(feature = "runtime")]
 use tempfile::NamedTempFile;
+#[cfg(feature = "runtime")]
 use warp_core::safe_debug;
 
+#[cfg(feature = "runtime")]
 use crate::client::TaskIdentityToken;
 
 const GCP_WORKLOAD_IDENTITY_FEDERATION_VERSION: u8 = 1;
+#[cfg(feature = "runtime")]
 pub(crate) const TOKEN_TYPE_ID_TOKEN: &str = "urn:ietf:params:oauth:token-type:id_token";
+#[cfg(feature = "runtime")]
 pub(crate) const TOKEN_TYPE_JWT: &str = "urn:ietf:params:oauth:token-type:jwt";
 
 /// Configuration for GCP Workload Identity Federation.
@@ -41,6 +48,7 @@ pub struct GcpFederationConfig {
 /// Identity Federation to authenticate to GCP as a particular Oz agent run.
 ///
 /// When the handle is dropped, the backing temporary files are deleted.
+#[cfg(feature = "runtime")]
 pub struct GcpCredentials {
     /// Temporary file holding the GCP credentials configuration file.
     config_file: NamedTempFile,
@@ -48,6 +56,7 @@ pub struct GcpCredentials {
     output_file: NamedTempFile,
 }
 
+#[cfg(feature = "runtime")]
 impl GcpCredentials {
     /// Create executable-sourced GCP federation credentials for the given task.
     ///
@@ -136,8 +145,36 @@ impl GcpCredentials {
     }
 }
 
+#[cfg(not(feature = "runtime"))]
+pub struct GcpCredentials(std::convert::Infallible);
+
+#[cfg(not(feature = "runtime"))]
+impl GcpCredentials {
+    pub fn federated(
+        task_id: &str,
+        config: &GcpFederationConfig,
+    ) -> Result<Self, PrepareGcpCredentialsError> {
+        let _ = (task_id, config);
+        Err(PrepareGcpCredentialsError::Unavailable)
+    }
+
+    pub fn config_file_path(&self) -> &Path {
+        match self.0 {}
+    }
+
+    pub fn env_vars(&self) -> HashMap<OsString, OsString> {
+        match self.0 {}
+    }
+
+    pub fn cleanup(self) -> std::io::Result<()> {
+        match self.0 {}
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum PrepareGcpCredentialsError {
+    #[error("GCP federation credentials are unavailable in this build")]
+    Unavailable,
     #[error("Could not determine the current executable path")]
     NoBinaryPath,
     #[error("Cannot use executable {} for GCP executable-sourced credentials", path.display())]
@@ -170,6 +207,7 @@ pub struct GcpWorkloadIdentityFederationToken {
 }
 
 impl GcpWorkloadIdentityFederationToken {
+    #[cfg(feature = "runtime")]
     pub(crate) fn new(token: TaskIdentityToken, token_type: String) -> Self {
         Self {
             version: GCP_WORKLOAD_IDENTITY_FEDERATION_VERSION,
@@ -201,6 +239,7 @@ impl GcpWorkloadIdentityFederationError {
     }
 }
 
+#[cfg(feature = "runtime")]
 pub(crate) fn gcp_workload_identity_federation_audience(
     project_number: &str,
     pool_id: &str,
@@ -219,6 +258,7 @@ pub(crate) fn gcp_workload_identity_federation_audience(
 /// SDK picks it up automatically.
 ///
 /// `oz_binary_path` should be the absolute path to the current `oz` executable.
+#[cfg(feature = "runtime")]
 fn generate_gcp_credential_config(
     task_id: &str,
     config: &GcpFederationConfig,
@@ -285,6 +325,6 @@ fn generate_gcp_credential_config(
     Ok(cred_config)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "runtime"))]
 #[path = "gcp_tests.rs"]
 mod tests;

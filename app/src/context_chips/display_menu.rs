@@ -316,7 +316,10 @@ impl DisplayChipMenu {
                     };
                     let mut editor = EditorView::new(options, ctx);
                     let placeholder_text = match chip_menu_type {
-                        ChipMenuType::Directories => "Search directories...",
+                        ChipMenuType::Directories => crate::lite_i18n::choose(
+                            "Search directories...",
+                            "筛选当前目录下的文件夹…",
+                        ),
                         ChipMenuType::Branches => "Search branches...",
                         ChipMenuType::Environments => "Search environments...",
                         ChipMenuType::CodeReview => {

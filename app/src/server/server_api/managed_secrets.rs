@@ -1,44 +1,62 @@
+#[cfg(feature = "cloud_services")]
 use std::collections::HashMap;
 
+#[cfg(feature = "cloud_services")]
 use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use cynic::{MutationBuilder, QueryBuilder};
+#[cfg(feature = "cloud_services")]
 use warp_graphql::managed_secrets::{ManagedSecret, ManagedSecretType};
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_managed_secret::{
     CreateManagedSecret, CreateManagedSecretInput, CreateManagedSecretResult,
     CreateManagedSecretVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::delete_managed_secret::{
     DeleteManagedSecret, DeleteManagedSecretInput, DeleteManagedSecretResult,
     DeleteManagedSecretVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::issue_task_identity_token::{
     IssueTaskIdentityToken, IssueTaskIdentityTokenInput, IssueTaskIdentityTokenResult,
     IssueTaskIdentityTokenVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::update_managed_secret::{
     UpdateManagedSecret, UpdateManagedSecretInput, UpdateManagedSecretResult,
     UpdateManagedSecretVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::object_permissions::{Owner, OwnerType};
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::list_harness_auth_secrets::{
     ListHarnessAuthSecrets, ListHarnessAuthSecretsInput, ListHarnessAuthSecretsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::list_managed_secrets::{
     ListManagedSecrets, ListManagedSecretsVariables, ManagedSecretsInput, ManagedSecretsResult,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::managed_secret_config::{
     GetManagedSecretConfig, GetManagedSecretConfigVariables, UserResult,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::task_secrets::{
     ManagedSecretValue, TaskSecrets, TaskSecretsInput, TaskSecretsResult, TaskSecretsVariables,
 };
-pub use warp_managed_secrets::client::{ManagedSecretConfigs, ManagedSecretsClient};
+#[cfg(feature = "cloud_services")]
+pub use warp_managed_secrets::client::ManagedSecretConfigs;
+pub use warp_managed_secrets::client::ManagedSecretsClient;
+#[cfg(feature = "cloud_services")]
 use warp_managed_secrets::client::{SecretOwner, TaskIdentityToken};
 
 use super::ServerApi;
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl ManagedSecretsClient for ServerApi {
@@ -317,3 +335,8 @@ impl ManagedSecretsClient for ServerApi {
         }
     }
 }
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl ManagedSecretsClient for ServerApi {}

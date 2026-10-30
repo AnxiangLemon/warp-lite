@@ -263,6 +263,6 @@ impl OrchestrationEditState {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "edit_state_tests.rs"]
 mod tests;

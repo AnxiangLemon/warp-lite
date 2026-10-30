@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
-use warpui::{Entity, EntityId, ModelContext, SingletonEntity, ViewHandle, WindowId};
+#[cfg(feature = "agent_runtime")]
+use warpui::EntityId;
+use warpui::{Entity, ModelContext, SingletonEntity, ViewHandle, WindowId};
 
 use crate::PaneViewLocator;
 use crate::ai::facts::AIFactView;
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::{AIFactPane, PaneContent};
 
 /// Singleton model to manage state of AI fact panes across multiple windows
@@ -51,6 +54,7 @@ impl AIFactManager {
         self.panes.get(&window_id).and_then(|data| data.locator)
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn register_pane(
         &mut self,
         pane: &AIFactPane,

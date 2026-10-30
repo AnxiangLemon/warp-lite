@@ -1,21 +1,35 @@
 use std::collections::HashMap;
+#[cfg(feature = "agent_runtime")]
 use std::collections::hash_map::Entry;
 
-use warpui::{Entity, EntityId, ModelContext, ModelHandle, SingletonEntity};
+#[cfg(feature = "agent_runtime")]
+use warpui::EntityId;
+use warpui::{Entity, ModelContext, ModelHandle, SingletonEntity};
 
+#[cfg(feature = "agent_runtime")]
 use super::CloudWorkflowModel;
 use super::workflow::Workflow;
+#[cfg(feature = "agent_runtime")]
+use crate::cloud_object::GenericCloudObject;
+use crate::cloud_object::Owner;
 use crate::cloud_object::model::persistence::CloudModel;
-use crate::cloud_object::{GenericCloudObject, Owner};
-use crate::cloud_object::OpenWarpDriveObjectSettings;
+#[cfg(feature = "agent_runtime")]
+use crate::drive::OpenWarpDriveObjectSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::{PaneContent, WorkflowPane};
+#[cfg(feature = "agent_runtime")]
+use crate::safe_warn;
 use crate::server::cloud_objects::update_manager::{
     ObjectOperation, OperationSuccessType, UpdateManager, UpdateManagerEvent,
 };
-use crate::server::ids::{ClientId, SyncId};
+#[cfg(feature = "agent_runtime")]
+use crate::server::ids::ClientId;
+use crate::server::ids::SyncId;
+#[cfg(feature = "agent_runtime")]
 use crate::workflows::WorkflowViewMode;
+#[cfg(feature = "agent_runtime")]
 use crate::workflows::workflow_view::WorkflowView;
-use crate::{PaneViewLocator, WindowId, safe_warn};
+use crate::{PaneViewLocator, WindowId};
 
 pub struct WorkflowManager {
     panes_by_hashed_id: HashMap<String, WorkflowPaneData>,
@@ -65,6 +79,7 @@ impl WorkflowManager {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn create_pane(
         &mut self,
         source: &WorkflowOpenSource,
@@ -134,6 +149,7 @@ impl WorkflowManager {
         WorkflowPane::new(view, ctx)
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn register_pane(
         &mut self,
         pane: &WorkflowPane,
@@ -160,6 +176,7 @@ impl WorkflowManager {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn deregister_pane(&mut self, pane: &WorkflowPane, ctx: &mut ModelContext<Self>) {
         let workflow_id = pane.get_view(ctx).as_ref(ctx).workflow_id();
 

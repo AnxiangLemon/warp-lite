@@ -124,7 +124,6 @@ struct AutoCloudHandoffCandidate {
 
 impl AutoCloudHandoffRequest {
     fn dispatch(&self, ctx: &mut AppContext) {
-        #[cfg(not(feature = "warp_lite"))]
         self.workspace.update(ctx, |workspace, ctx| {
             workspace.handle_action(
                 &WorkspaceAction::AutoHandoffActiveAgentToCloud {
@@ -135,8 +134,6 @@ impl AutoCloudHandoffRequest {
                 ctx,
             );
         });
-        #[cfg(feature = "warp_lite")]
-        let _ = (self, ctx);
     }
 }
 pub(crate) struct AutoCloudHandoffController {

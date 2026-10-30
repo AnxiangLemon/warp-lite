@@ -4,26 +4,31 @@
 
 use ai::agent::action::RunAgentsExecutionMode;
 use ai::agent::orchestration_config::OrchestrationConfigStatus;
+#[cfg(feature = "agent_runtime")]
 use pathfinder_geometry::vector::vec2f;
 use warp_cli::agent::Harness;
 use warp_core::send_telemetry_from_ctx;
 use warp_graphql::queries::get_runners::RunnerSortBy;
+#[cfg(feature = "agent_runtime")]
+use warpui::ViewHandle;
+#[cfg(feature = "agent_runtime")]
 use warpui::elements::{
-    ChildAnchor, ChildView, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Empty,
-    Flex, Hoverable, MouseStateHandle, OffsetPositioning, ParentAnchor, ParentElement,
-    ParentOffsetBounds, Radius, Stack, Text,
+    ChildAnchor, ChildView, OffsetPositioning, ParentAnchor, ParentOffsetBounds,
+};
+use warpui::elements::{
+    ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Empty, Flex, Hoverable,
+    MouseStateHandle, ParentElement, Radius, Stack, Text,
 };
 use warpui::fonts::{Properties, Weight};
 use warpui::platform::Cursor;
 use warpui::ui_components::components::UiComponent;
 use warpui::ui_components::switch::SwitchStateHandle;
-use warpui::{
-    AppContext, Element, Entity, SingletonEntity, TypedActionView, View, ViewContext, ViewHandle,
-};
+use warpui::{AppContext, Element, Entity, SingletonEntity, TypedActionView, View, ViewContext};
 
 use crate::BlocklistAIHistoryModel;
 use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::blocklist::BlocklistAIHistoryEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::inline_action::create_environment_modal::{
     CreateEnvironmentModal, CreateEnvironmentModalEvent,
 };
@@ -138,6 +143,7 @@ pub struct OrchestrationConfigBlockView {
     /// Run-wide config being edited plus per-harness model memory.
     orchestration_edit_state: OrchestrationEditState,
     pickers: OrchestrationPickerHandles<OrchestrationConfigBlockAction>,
+    #[cfg(feature = "agent_runtime")]
     create_environment_modal: ViewHandle<CreateEnvironmentModal>,
     is_approved: bool,
     details_expanded: bool,
@@ -293,7 +299,9 @@ impl OrchestrationConfigBlockView {
             },
         );
 
+        #[cfg(feature = "agent_runtime")]
         let create_environment_modal = ctx.add_typed_action_view(CreateEnvironmentModal::new);
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_view(&create_environment_modal, |me, _, event, ctx| match event {
             CreateEnvironmentModalEvent::Created { environment_id } => {
                 me.select_created_environment(environment_id.clone(), ctx);
@@ -323,6 +331,7 @@ impl OrchestrationConfigBlockView {
             plan_id,
             orchestration_edit_state: OrchestrationEditState::new(config_state),
             pickers: OrchestrationPickerHandles::default(),
+            #[cfg(feature = "agent_runtime")]
             create_environment_modal,
             is_approved,
             details_expanded: false,
@@ -625,6 +634,7 @@ impl OrchestrationConfigBlockView {
         );
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn open_create_environment_modal(&mut self, ctx: &mut ViewContext<Self>) {
         if let Some(environment_picker) = &self.pickers.environment_picker {
             environment_picker.update(ctx, |dropdown, ctx| dropdown.close(ctx));
@@ -945,7 +955,10 @@ impl View for OrchestrationConfigBlockView {
             .with_border(warpui::elements::Border::all(1.).with_border_fill(theme.accent()))
             .finish();
 
-        let mut stack = Stack::new().with_child(card);
+        let stack = Stack::new().with_child(card);
+        #[cfg(feature = "agent_runtime")]
+        let mut stack = stack;
+        #[cfg(feature = "agent_runtime")]
         if self.create_environment_modal.as_ref(app).is_visible() {
             stack.add_positioned_overlay_child(
                 ChildView::new(&self.create_environment_modal).finish(),
@@ -1050,6 +1063,7 @@ impl TypedActionView for OrchestrationConfigBlockView {
                 ctx.notify();
             }
             OrchestrationConfigBlockAction::CreateEnvironmentRequested => {
+                #[cfg(feature = "agent_runtime")]
                 self.open_create_environment_modal(ctx);
             }
             OrchestrationConfigBlockAction::RunnerChanged { runner_id } => {

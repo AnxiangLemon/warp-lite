@@ -4,6 +4,7 @@ mod imp;
 
 pub use imp::*;
 
+#[cfg(feature = "cli_signatures")]
 pub mod clap;
 
 #[cfg(feature = "test-util")]

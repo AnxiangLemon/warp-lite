@@ -1,41 +1,66 @@
+#[cfg(feature = "agent_runtime")]
 use ai::index::full_source_code_embedding::manager::CodebaseIndexManager;
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", feature = "agent_runtime"))]
 use ai::skills::SKILL_PROVIDER_DEFINITIONS;
 #[cfg(feature = "local_fs")]
 use repo_metadata::RepoMetadataModel;
 use repo_metadata::repositories::DetectedRepositories;
 use repo_metadata::watcher::DirectoryWatcher;
 use warp_core::ui::appearance::Appearance;
+#[cfg(feature = "agent_runtime")]
 use warp_server_client::iap::IapManager;
 use warpui::platform::WindowStyle;
 use warpui::{App, SingletonEntity, ViewHandle, WindowId};
 use watcher::HomeDirectoryWatcher;
 
 use super::settings::initialize_history_persistence_for_tests;
+#[cfg(feature = "agent_runtime")]
+use crate::AgentNotificationsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::AIRequestUsageModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_conversations_model::AgentConversationsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_tips::AITipModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ambient_agents::github_auth_notifier::GitHubAuthNotifier;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::orchestration_pill_bar_model::OrchestrationPillBarModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::local_agent_task_sync_model::LocalAgentTaskSyncModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::orchestration_event_streamer::OrchestrationEventStreamer;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::orchestration_events::OrchestrationEventService;
-use crate::ai::blocklist::{
-    BlocklistAIHistoryModel, BlocklistAIPermissions, QueuedQueryModel, SerializedBlockListItem,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::ai::blocklist::{BlocklistAIHistoryModel, BlocklistAIPermissions, QueuedQueryModel};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::cloud_environments::CloudEnvironmentCatalog;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::connected_self_hosted_workers::ConnectedSelfHostedWorkersModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::document::ai_document_model::AIDocumentModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::harness_availability::HarnessAvailabilityModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::llms::LLMPreferences;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::gallery::MCPGalleryManager;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::templatable_manager::TemplatableMCPServerManager;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::outline::RepoOutlines;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::persisted_workspace::PersistedWorkspace;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::pricing_promotion::PricingPromotionState;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::restored_conversations::RestoredAgentConversations;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::skills::SkillManager;
 use crate::auth::AuthStateProvider;
 use crate::auth::auth_manager::AuthManager;
@@ -43,8 +68,11 @@ use crate::changelog_model::ChangelogModel;
 use crate::cloud_object::model::persistence::CloudModel;
 use crate::code_review::git_repo_model::GitRepoModels;
 use crate::context_chips::prompt::Prompt;
+use crate::experiments;
 use crate::network::NetworkStatus;
+#[cfg(feature = "agent_runtime")]
 use crate::pricing::PricingInfoModel;
+#[cfg(feature = "agent_runtime")]
 use crate::search::files::model::FileSearchModel;
 use crate::server::cloud_objects::listener::Listener;
 use crate::server::cloud_objects::update_manager::UpdateManager;
@@ -56,21 +84,26 @@ use crate::settings_view::keybindings::KeybindingChangedNotifier;
 use crate::suggestions::ignored_suggestions_model::IgnoredSuggestionsModel;
 use crate::system::{SystemInfo, SystemStats};
 use crate::terminal::alt_screen_reporting::AltScreenReporting;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
 use crate::terminal::keys::TerminalKeybindings;
+use crate::terminal::model::block::SerializedBlockListItem;
 use crate::terminal::resizable_data::ResizableData;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::permissions_manager::SessionPermissionsManager;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::inline_banner::ByoLlmAuthBannerSessionState;
 use crate::terminal::{History, TerminalView};
 use crate::undo_close::UndoCloseStack;
 use crate::warp_managed_paths_watcher::WarpManagedPathsWatcher;
 use crate::workflows::local_workflows::LocalWorkflows;
+#[cfg(feature = "agent_runtime")]
+use crate::workspace::OneTimeModalModel;
 use crate::workspace::sync_inputs::SyncedInputState;
-use crate::workspace::{ActiveSession, OneTimeModalModel, WorkspaceRegistry};
+use crate::workspace::{ActiveSession, WorkspaceRegistry};
 use crate::workspaces::team_tester::TeamTesterStatus;
 use crate::workspaces::update_manager::TeamUpdateManager;
 use crate::workspaces::user_workspaces::UserWorkspaces;
-use crate::{AgentNotificationsModel, experiments};
 
 /// Initializes all of the necessary models to use a terminal view.
 pub fn initialize_app_for_terminal_view(app: &mut App) {
@@ -80,6 +113,7 @@ pub fn initialize_app_for_terminal_view(app: &mut App) {
     // Register a disabled `IapManager` (no IAP state) so code paths that read
     // the singleton (e.g. the shared-session viewer network) don't panic in
     // tests. With `None` state it is an inert no-op.
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         IapManager::new(
             None,
@@ -94,11 +128,13 @@ pub fn initialize_app_for_terminal_view(app: &mut App) {
     app.add_singleton_model(|_| Prompt::mock());
     app.add_singleton_model(SyncQueue::mock);
     app.add_singleton_model(CloudModel::mock);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(CloudEnvironmentCatalog::new);
     app.add_singleton_model(UserWorkspaces::default_mock);
     app.add_singleton_model(TeamTesterStatus::mock);
     app.add_singleton_model(TeamUpdateManager::mock);
     app.add_singleton_model(UpdateManager::mock);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(MCPGalleryManager::new);
     app.add_singleton_model(Listener::mock);
     app.add_singleton_model(|_| Appearance::mock());
@@ -107,22 +143,33 @@ pub fn initialize_app_for_terminal_view(app: &mut App) {
     app.add_singleton_model(|_| ResizableData::default());
     app.add_singleton_model(LocalWorkflows::new);
     app.add_singleton_model(|_| History::default());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| BlocklistAIHistoryModel::new_for_test());
     // QueuedQueryModel subscribes to history events; register after the
     // history model is in place.
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(QueuedQueryModel::new);
     // Pill bar model subscribes to history events; register after the
     // history model is in place.
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| OrchestrationPillBarModel::new(Default::default(), ctx));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| CLIAgentSessionsModel::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(OrchestrationEventService::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(LocalAgentTaskSyncModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(OrchestrationEventStreamer::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| ActiveAgentViewsModel::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(BlocklistAIPermissions::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(AgentNotificationsModel::new);
     app.add_singleton_model(UndoCloseStack::new);
 
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         AIRequestUsageModel::new_for_test(ServerApiProvider::as_ref(ctx).get_ai_client(), ctx)
     });
@@ -132,40 +179,54 @@ pub fn initialize_app_for_terminal_view(app: &mut App) {
     app.add_singleton_model(|_| AuthStateProvider::new_for_test());
     app.add_singleton_model(AppTelemetryContextProvider::new_context_provider);
     app.add_singleton_model(AuthManager::new_for_test);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(LLMPreferences::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(HarnessAvailabilityModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| AITipModel::new_for_agent_tips(ctx));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(ConnectedSelfHostedWorkersModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(SessionPermissionsManager::new);
     app.add_singleton_model(DirectoryWatcher::new);
     app.add_singleton_model(|_| DetectedRepositories::default());
     #[cfg(feature = "local_fs")]
     app.add_singleton_model(|ctx| {
         let model = RepoMetadataModel::new(ctx);
-        model.register_force_included_paths(
-            SKILL_PROVIDER_DEFINITIONS
-                .iter()
-                .map(|provider| provider.skills_path.clone()),
-            ctx,
-        );
-        model.set_project_skill_provider_paths(
-            SKILL_PROVIDER_DEFINITIONS
-                .iter()
-                .map(|provider| provider.skills_path.clone()),
-            ctx,
-        );
+        #[cfg(feature = "agent_runtime")]
+        {
+            model.register_force_included_paths(
+                SKILL_PROVIDER_DEFINITIONS
+                    .iter()
+                    .map(|provider| provider.skills_path.clone()),
+                ctx,
+            );
+            model.set_project_skill_provider_paths(
+                SKILL_PROVIDER_DEFINITIONS
+                    .iter()
+                    .map(|provider| provider.skills_path.clone()),
+                ctx,
+            );
+        }
         model
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(FileSearchModel::new);
     app.add_singleton_model(|_| GitRepoModels::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(RepoOutlines::new_for_test);
     app.add_singleton_model(HomeDirectoryWatcher::new_for_test);
     app.add_singleton_model(WarpManagedPathsWatcher::new_for_testing);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(SkillManager::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         CodebaseIndexManager::new_for_test(ServerApiProvider::as_ref(ctx).get(), ctx)
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| TemplatableMCPServerManager::default());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         AIExecutionProfilesModel::new(&crate::LaunchMode::new_for_unit_test(), ctx)
     });
@@ -175,16 +236,25 @@ pub fn initialize_app_for_terminal_view(app: &mut App) {
     #[cfg(not(target_family = "wasm"))]
     app.add_singleton_model(SystemInfo::new);
 
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| RestoredAgentConversations::new_seeded(vec![]));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(OneTimeModalModel::new);
     app.add_singleton_model(|_| WorkspaceRegistry::new());
     app.add_singleton_model(|_| IgnoredSuggestionsModel::new(vec![]));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| PricingInfoModel::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(PricingPromotionState::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(AIDocumentModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(ByoLlmAuthBannerSessionState::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| GitHubAuthNotifier::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(AgentConversationsModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(PersistedWorkspace::new_for_test);
 
     app.update(experiments::init);

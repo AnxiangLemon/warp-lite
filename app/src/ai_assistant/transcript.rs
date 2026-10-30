@@ -967,6 +967,6 @@ impl View for Transcript {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "transcript_tests.rs"]
 mod transcript_tests;

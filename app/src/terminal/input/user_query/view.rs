@@ -3,8 +3,6 @@
 use warpui::elements::ChildView;
 use warpui::{Element, Entity, ModelHandle, View, ViewContext, ViewHandle};
 
-use crate::ai::agent::AIAgentExchangeId;
-use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::blocklist::agent_view::AgentViewController;
 use crate::search::data_source::Query;
 use crate::search::mixer::SearchMixer;
@@ -14,6 +12,7 @@ use crate::terminal::input::suggestions_mode_model::{
     InputSuggestionsModeEvent, InputSuggestionsModeModel,
 };
 use crate::terminal::input::user_query::data_source::{SelectUserQuery, UserQueryDataSource};
+use crate::terminal::session_types::{AIAgentExchangeId, AIConversationId};
 
 /// Events emitted by UserQueryMenuView.
 #[derive(Debug, Clone)]
@@ -59,6 +58,7 @@ impl UserQueryMenuView {
                 mixer.clone(),
                 positioner.clone(),
                 &input_suggestions_model,
+                #[cfg(feature = "agent_runtime")]
                 agent_view_controller,
                 ctx,
             )

@@ -774,7 +774,10 @@ impl<T: Action + Clone> SearchBar<T> {
                 // Set the appropriate placeholder text if the editor buffer is empty.
                 match self.state.as_ref(ctx).query_filter {
                     Some(filter) => {
-                        editor.set_placeholder_text(filter.placeholder_text(), ctx);
+                        editor.set_placeholder_text(
+                            crate::lite_i18n::text(filter.placeholder_text()),
+                            ctx,
+                        );
                     }
                     None => {
                         editor.set_placeholder_text(self.placeholder_text, ctx);

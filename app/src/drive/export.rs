@@ -545,6 +545,6 @@ pub fn safe_filename(filename: &str) -> String {
     result
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "export_tests.rs"]
 mod tests;

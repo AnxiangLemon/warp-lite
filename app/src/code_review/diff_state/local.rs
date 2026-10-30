@@ -2993,6 +2993,6 @@ impl LocalDiffStateModel {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "local_tests.rs"]
 mod tests;

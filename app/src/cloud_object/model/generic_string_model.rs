@@ -8,15 +8,13 @@ use cloud_objects::cloud_object::CloudObjectUpsertParams;
 pub use cloud_objects::cloud_object::{GenericStringModel, Serializer};
 pub use warp_server_client::ids::GenericStringObjectId;
 
-#[cfg(not(feature = "warp_lite"))]
 use crate::appearance::Appearance;
 use crate::cloud_object::{
-    CloudModelType, CloudObject, CloudObjectEventEntrypoint, CloudObjectTypeAndId,
-    CreateCloudObjectResult, CreateObjectRequest, GenericCloudObject, GenericServerObject,
-    GenericStringObjectFormat, GenericStringObjectUniqueKey, ObjectType, Revision,
-    UpdateCloudObjectResult,
+    CloudModelType, CloudObject, CloudObjectEventEntrypoint, CreateCloudObjectResult,
+    CreateObjectRequest, GenericCloudObject, GenericServerObject, GenericStringObjectFormat,
+    GenericStringObjectUniqueKey, ObjectType, Revision, UpdateCloudObjectResult,
 };
-#[cfg(not(feature = "warp_lite"))]
+use crate::drive::CloudObjectTypeAndId;
 use crate::drive::items::WarpDriveItem;
 use crate::persistence::ModelEvent;
 use crate::server::cloud_objects::update_manager::InitiatedBy;
@@ -74,7 +72,6 @@ pub trait StringModel: Clone + Debug + PartialEq + Send + Sync + 'static {
     fn display_name(&self) -> String;
 
     /// Returns whether to render this model as a WarpDriveItem.
-    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool {
         false
     }
@@ -94,7 +91,6 @@ pub trait StringModel: Clone + Debug + PartialEq + Send + Sync + 'static {
 
     /// Creates a new warp drive item for this model type. Returns None
     /// if this object does not render in Warp Drive.
-    #[cfg(not(feature = "warp_lite"))]
     fn to_warp_drive_item(
         &self,
         _id: SyncId,
@@ -317,12 +313,10 @@ where
         })
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool {
         self.string_model.renders_in_warp_drive()
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn to_warp_drive_item(
         &self,
         id: SyncId,

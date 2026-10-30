@@ -9,6 +9,7 @@ use string_offset::{ByteOffset, CharOffset};
 pub use warp_completer::completer::SuggestionTypeName;
 pub use warp_completer::util::parse_current_commands_and_tokens;
 pub use warp_completer::{ParsedTokenData, ParsedTokensSnapshot};
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
 use warpui::{AppContext, SingletonEntity, ViewContext};
 
@@ -101,6 +102,7 @@ impl Input {
         *InputSettings::as_ref(ctx).error_underlining.value()
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn run_input_mode_detection(
         &self,
         completion_context: SessionContext,
@@ -121,6 +123,7 @@ impl Input {
 
     /// Applies background highlighting to slash command and skill command prefixes that should be
     /// syntax highlighted.
+    #[cfg(feature = "agent_runtime")]
     fn apply_slash_command_prefix_highlighting(
         &mut self,
         buffer_text: &str,
@@ -161,10 +164,13 @@ impl Input {
             return;
         }
 
+        #[cfg(feature = "agent_runtime")]
         let mut mode = mode;
 
         // We don't show input command decorations in AI mode, but we keep slash command prefix highlighting.
+        #[cfg(feature = "agent_runtime")]
         let buffer_text = self.editor.as_ref(ctx).buffer_text(ctx);
+        #[cfg(feature = "agent_runtime")]
         if self.ai_input_model.as_ref(ctx).is_ai_input_enabled()
             || (FeatureFlag::AgentView.is_enabled()
                 && self
@@ -190,6 +196,7 @@ impl Input {
 
                 if matches!(&self.last_parsed_tokens, Some(last_parsed_tokens) if buffer_text == last_parsed_tokens.buffer_text)
                 {
+                    #[cfg(feature = "agent_runtime")]
                     if mode.ai_input_detection {
                         self.run_input_mode_detection(completion_context, ctx);
                     }
@@ -215,9 +222,14 @@ impl Input {
                             completion_context,
                         )
                     },
-                    move |input, (parsed_tokens, completion_context), ctx| {
+                    move |input, result, ctx| {
+                        #[cfg(feature = "agent_runtime")]
+                        let (parsed_tokens, completion_context) = result;
+                        #[cfg(not(feature = "agent_runtime"))]
+                        let (parsed_tokens, _) = result;
                         input.last_parsed_tokens = Some(parsed_tokens);
 
+                        #[cfg(feature = "agent_runtime")]
                         if mode.ai_input_detection {
                             input.run_input_mode_detection(completion_context, ctx);
                         }
@@ -231,6 +243,7 @@ impl Input {
                     },
                 ));
             }
+            #[cfg(feature = "agent_runtime")]
             CompletionSessionContext::Empty(detection_ctx) => {
                 if mode.ai_input_detection {
                     // No session context available (e.g., shared session viewer).
@@ -254,6 +267,8 @@ impl Input {
                     );
                 }
             }
+            #[cfg(not(feature = "agent_runtime"))]
+            CompletionSessionContext::Empty(..) => {}
         }
     }
 

@@ -50,6 +50,10 @@ async fn fetch_latest_release_from_github(
     repo_owner: &str,
     repo_name: &str,
 ) -> Result<GithubRelease> {
+    anyhow::ensure!(
+        cfg!(feature = "managed_downloads"),
+        "Managed language-server downloads are disabled in this build"
+    );
     let url = format!(
         "{}/repos/{}/{}/releases/latest",
         GITHUB_API_URL, repo_owner, repo_name
@@ -191,6 +195,10 @@ pub async fn install_from_github(
     asset_kind: AssetKind,
     binary_finder: Option<fn(&std::path::Path) -> Option<PathBuf>>,
 ) -> Result<PathBuf> {
+    anyhow::ensure!(
+        cfg!(feature = "managed_downloads"),
+        "Managed language-server installation is disabled in this build"
+    );
     let url = metadata
         .url
         .as_ref()

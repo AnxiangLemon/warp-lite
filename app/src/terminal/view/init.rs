@@ -6,10 +6,9 @@ use warpui::keymap::{
 use warpui::platform::OperatingSystem;
 use warpui::units::IntoLines;
 
-use super::{
-    AgentOnboardingVersion, AskAISource, ContextMenuAction, OnboardingIntention, OnboardingVersion,
-    TerminalAction,
-};
+use super::{AgentOnboardingVersion, OnboardingIntention, OnboardingVersion, TerminalAction};
+#[cfg(feature = "agent_runtime")]
+use super::{AskAISource, ContextMenuAction};
 use crate::ai::blocklist::agent_view::{
     AgentViewEntryOrigin, ENTER_AGENT_VIEW_NEW_CONVERSATION_KEYSTROKE,
 };
@@ -19,17 +18,18 @@ use crate::features::FeatureFlag;
 use crate::server::telemetry::{InteractionSource, ToggleBlockFilterSource};
 use crate::settings_view::flags;
 use crate::terminal::TerminalView;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::{
     SET_INPUT_MODE_AGENT_ACTION_NAME, SET_INPUT_MODE_TERMINAL_ACTION_NAME,
 };
 use crate::terminal::model::escape_sequences::{self, EscCodes};
 use crate::terminal::model::selection::SelectionDirection;
 use crate::terminal::shared_session::{SharedSessionActionSource, SharedSessionStatus};
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::view::LONG_RUNNING_AGENT_REQUESTED_COMMAND_CONTEXT_KEY;
+use crate::terminal::view::LONG_RUNNING_AGENT_REQUESTED_COMMAND_USER_TOOK_OVER_CONTEXT_KEY;
 use crate::terminal::view::passive_suggestions::PromptSuggestionResolution;
-use crate::terminal::view::{
-    LONG_RUNNING_AGENT_REQUESTED_COMMAND_CONTEXT_KEY,
-    LONG_RUNNING_AGENT_REQUESTED_COMMAND_USER_TOOK_OVER_CONTEXT_KEY,
-};
+#[cfg(feature = "agent_runtime")]
 use crate::util::bindings;
 use crate::util::bindings::{CustomAction, cmd_or_ctrl_shift, is_binding_pty_compliant};
 
@@ -161,6 +161,7 @@ pub fn init(app: &mut AppContext) {
             id!("Terminal") & !id!("IMEOpen") & id!(CAN_FORK_FROM_LAST_KNOWN_GOOD_STATE_KEY),
         ),
         // Toggle AI document pane
+        #[cfg(feature = "agent_runtime")]
         FixedBinding::new(
             "cmdorctrl-alt-p",
             TerminalAction::ToggleAIDocumentPane,
@@ -186,6 +187,7 @@ pub fn init(app: &mut AppContext) {
 
     // Register binding to toggle plans in agent conversations.
     {
+        #[cfg(feature = "agent_runtime")]
         app.register_fixed_bindings([FixedBinding::new(
             "cmdorctrl-alt-p",
             TerminalAction::ToggleAIDocumentPane,
@@ -197,6 +199,7 @@ pub fn init(app: &mut AppContext) {
             //
             // TODO(zachbai): Consider if, for the purposes of fixed bindings, alt/meta should work
             // fungibly regardless of underlying setting.
+            #[cfg(feature = "agent_runtime")]
             app.register_fixed_bindings([FixedBinding::new(
                 "cmd-meta-p",
                 TerminalAction::ToggleAIDocumentPane,
@@ -746,6 +749,7 @@ pub fn init(app: &mut AppContext) {
     ]);
 
     app.register_editable_bindings([
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             "terminal:ask_ai_assistant",
             BindingDescription::new("Attach Selected Block as Agent Context")
@@ -767,6 +771,7 @@ pub fn init(app: &mut AppContext) {
                 & !id!("ActiveAltScreenSelection")
                 & id!(flags::IS_ANY_AI_ENABLED),
         ),
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             "terminal:ask_ai_assistant",
             BindingDescription::new("Attach Selected Text as Agent Context")
@@ -790,6 +795,7 @@ pub fn init(app: &mut AppContext) {
         // to avoid cluttering the keybindings UI. At the end of the day, these
         // map to the same logic, and we should be able to distinguish whether
         // this is a block selection or text selection later on.
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             "terminal:ask_ai_assistant",
             "Ask Warp AI about Selection",
@@ -808,6 +814,7 @@ pub fn init(app: &mut AppContext) {
     ]);
 
     app.register_editable_bindings([
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             "terminal:ask_ai_assistant_last_block",
             "Ask Warp AI about last block",
@@ -819,6 +826,7 @@ pub fn init(app: &mut AppContext) {
         .with_context_predicate(
             id!("Terminal") & id!("TerminalView_NonEmptyBlockList") & id!(flags::IS_ANY_AI_ENABLED),
         ),
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             "terminal:ask_ai_assistant",
             "Ask Warp AI",
@@ -941,6 +949,7 @@ pub fn init(app: &mut AppContext) {
             FeatureFlag::CreatingSharedSessions.is_enabled()
                 && ContextFlag::CreateSharedSession.is_enabled()
         }),
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             "terminal:stop_sharing_current_session",
             "Stop sharing current session",
@@ -969,6 +978,7 @@ pub fn init(app: &mut AppContext) {
     .with_context_predicate(id!("Terminal"))]);
 
     app.register_editable_bindings([
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             TOGGLE_AUTOEXECUTE_MODE_KEYBINDING,
             "Toggle Auto-execute Mode",
@@ -978,6 +988,7 @@ pub fn init(app: &mut AppContext) {
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_context_predicate(id!(flags::IS_ANY_AI_ENABLED) & id!("Terminal"))
         .with_enabled(|| FeatureFlag::FastForwardAutoexecuteButton.is_enabled()),
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             TOGGLE_QUEUE_NEXT_PROMPT_KEYBINDING,
             "Toggle Queue Next Prompt",
@@ -987,6 +998,7 @@ pub fn init(app: &mut AppContext) {
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_context_predicate(id!(flags::IS_ANY_AI_ENABLED) & id!("Terminal"))
         .with_enabled(|| FeatureFlag::QueueSlashCommand.is_enabled()),
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             "terminal:generate_codebase_index",
             "[Debug] Generate codebase index",
@@ -1024,6 +1036,7 @@ pub fn init(app: &mut AppContext) {
     .with_enabled(|| cfg!(feature = "local_fs") && ChannelState::enable_debug_features())
     .with_context_predicate(id!("Terminal"))]);
 
+    #[cfg(feature = "agent_runtime")]
     app.register_editable_bindings([EditableBinding::new(
         "workspace:init_project_rules",
         BindingDescription::new("Initiate project for warp"),
@@ -1031,6 +1044,7 @@ pub fn init(app: &mut AppContext) {
     )
     .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))]);
 
+    #[cfg(feature = "agent_runtime")]
     app.register_editable_bindings([EditableBinding::new(
         "workspace:add_current_dir_as_project",
         BindingDescription::new("Add current folder as project"),
@@ -1040,6 +1054,7 @@ pub fn init(app: &mut AppContext) {
     .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))]);
 
     #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(feature = "agent_runtime")]
     app.register_editable_bindings([EditableBinding::new(
         "terminal:toggle_conversation_details_panel",
         "Toggle Conversation Details Panel",
@@ -1049,6 +1064,7 @@ pub fn init(app: &mut AppContext) {
     .with_context_predicate(id!("Terminal") & id!(CAN_SHOW_CONVERSATION_DETAILS_KEY))]);
 
     app.register_editable_bindings([
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             CYCLE_NEXT_ORCHESTRATION_CHILD_AGENT_KEYBINDING,
             "Cycle to next orchestration session",
@@ -1060,6 +1076,7 @@ pub fn init(app: &mut AppContext) {
         )
         .with_mac_key_binding("ctrl-alt-]")
         .with_linux_or_windows_key_binding("ctrl-alt-]"),
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             CYCLE_PREVIOUS_ORCHESTRATION_CHILD_AGENT_KEYBINDING,
             "Cycle to previous orchestration session",
@@ -1075,6 +1092,7 @@ pub fn init(app: &mut AppContext) {
 
     // Register bindings for starting a new cloud agent conversation.
     {
+        #[cfg(feature = "agent_runtime")]
         app.register_fixed_bindings([FixedBinding::new_per_platform(
             PerPlatformKeystroke {
                 mac: "cmd-alt-enter",
@@ -1095,6 +1113,7 @@ pub fn init(app: &mut AppContext) {
             //
             // TODO(zachbai): Consider if, for the purposes of fixed bindings, alt/meta should work
             // fungibly regardless of underlying setting.
+            #[cfg(feature = "agent_runtime")]
             app.register_fixed_bindings([FixedBinding::new(
                 "cmd-meta-enter",
                 TerminalAction::EnterCloudAgentView,
@@ -1138,6 +1157,7 @@ fn register_input_mode_bindings(app: &mut AppContext) {
     // - AgentView feature is disabled, OR
     // - In an active agent view, OR
     // - Input is unlocked (autodetected) (implying the input is autodetected as AI in terminal mode)
+    #[cfg(feature = "agent_runtime")]
     let terminal_mode_predicate = base_context.clone()
         & id!(flags::AGENT_MODE_INPUT)
         & (!id!(flags::AGENT_VIEW_ENABLED)
@@ -1178,6 +1198,7 @@ fn register_input_mode_bindings(app: &mut AppContext) {
     ]);
 
     app.register_editable_bindings([
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             SET_INPUT_MODE_AGENT_ACTION_NAME,
             "Set Input Mode to Agent Mode",
@@ -1187,6 +1208,7 @@ fn register_input_mode_bindings(app: &mut AppContext) {
         .with_context_predicate(agent_mode_predicate)
         .with_mac_key_binding("cmd-i")
         .with_linux_or_windows_key_binding("ctrl-i"),
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             SET_INPUT_MODE_TERMINAL_ACTION_NAME,
             "Set Input Mode to Terminal Mode",
@@ -1196,6 +1218,7 @@ fn register_input_mode_bindings(app: &mut AppContext) {
         .with_context_predicate(terminal_mode_predicate)
         .with_mac_key_binding("cmd-i")
         .with_linux_or_windows_key_binding("ctrl-i"),
+        #[cfg(feature = "agent_runtime")]
         EditableBinding::new(
             TOGGLE_HIDE_CLI_RESPONSES_KEYBINDING,
             "Toggle Hide CLI Responses",

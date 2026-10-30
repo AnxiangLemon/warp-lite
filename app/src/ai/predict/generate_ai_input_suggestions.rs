@@ -208,6 +208,6 @@ pub fn create_generate_ai_input_suggestions_request(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "generate_ai_input_suggestions_tests.rs"]
 mod tests;

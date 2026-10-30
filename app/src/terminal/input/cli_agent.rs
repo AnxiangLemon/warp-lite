@@ -1,28 +1,43 @@
+#[cfg(feature = "agent_runtime")]
 use warp_core::ui::color::ContrastingColor;
+#[cfg(feature = "agent_runtime")]
 use warp_core::ui::color::contrast::MinimumAllowedContrast;
+#[cfg(feature = "agent_runtime")]
 use warp_core::ui::theme::color::internal_colors;
+#[cfg(feature = "agent_runtime")]
 use warpui::elements::{
     Border, Clipped, ConstrainedBox, Container, DispatchEventResult, DropTarget, Element,
     EventHandler, Flex, Hoverable, ParentElement, SavePosition, Stack,
 };
+#[cfg(feature = "agent_runtime")]
 use warpui::presenter::ChildView;
+#[cfg(feature = "agent_runtime")]
 use warpui::{AppContext, SingletonEntity as _, ViewContext};
 
+#[cfg(feature = "agent_runtime")]
 use super::common::{
     add_input_suggestions_overlays, wrap_input_with_terminal_padding_and_focus_handler,
 };
+#[cfg(feature = "agent_runtime")]
 use super::{
     CLI_AGENT_RICH_INPUT_EDITOR_BOTTOM_PADDING, CLI_AGENT_RICH_INPUT_EDITOR_MAX_HEIGHT,
     CLI_AGENT_RICH_INPUT_EDITOR_TOP_PADDING, Input, InputAction, InputDropTargetData,
     TERMINAL_VIEW_PADDING_LEFT,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::appearance::Appearance;
+#[cfg(feature = "agent_runtime")]
 use crate::context_chips::spacing;
+#[cfg(feature = "agent_runtime")]
 use crate::editor::{EnterAction, EnterSettings, TextColors};
+#[cfg(feature = "agent_runtime")]
 use crate::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::TerminalAction;
 
+#[cfg(feature = "agent_runtime")]
 impl Input {
     /// Renders the CLI rich input (editor + CLI agent footer).
     pub(super) fn render_cli_agent_input(&self, app: &AppContext) -> Box<dyn Element> {
@@ -74,7 +89,6 @@ impl Input {
         }
 
         column.add_child(editor_element);
-        #[cfg(not(feature = "warp_lite"))]
         column.add_child(
             SavePosition::new(
                 Container::new(ChildView::new(&self.agent_input_footer).finish())
@@ -136,15 +150,10 @@ impl Input {
         let mut outer_column = Flex::column();
         if self.suggestions_mode_model.as_ref(app).is_slash_commands() {
             outer_column.add_child(ChildView::new(&self.inline_slash_commands_view).finish());
-        } else {
-            #[cfg(not(feature = "warp_lite"))]
-            {
-                if self.suggestions_mode_model.as_ref(app).is_prompts_menu() {
-                    outer_column.add_child(ChildView::new(&self.inline_prompts_menu_view).finish());
-                } else if self.suggestions_mode_model.as_ref(app).is_skill_menu() {
-                    outer_column.add_child(ChildView::new(&self.inline_skill_selector_view).finish());
-                }
-            }
+        } else if self.suggestions_mode_model.as_ref(app).is_prompts_menu() {
+            outer_column.add_child(ChildView::new(&self.inline_prompts_menu_view).finish());
+        } else if self.suggestions_mode_model.as_ref(app).is_skill_menu() {
+            outer_column.add_child(ChildView::new(&self.inline_skill_selector_view).finish());
         }
         outer_column.add_child(input);
 

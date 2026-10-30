@@ -25,6 +25,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use string_offset::{ByteOffset, CharOffset, impl_offset};
 use sum_tree::{Cursor, SeekBias, SumTree};
+#[cfg(feature = "mermaid")]
 use warp_core::features::FeatureFlag;
 use warpui_core::AppContext;
 use warpui_core::elements::ListIndentLevel;
@@ -724,11 +725,15 @@ impl From<&CodeBlockText> for CodeBlockType {
             .unwrap_or("")
             .to_lowercase();
 
+        #[cfg(feature = "mermaid")]
+        let is_mermaid = FeatureFlag::MarkdownMermaid.is_enabled()
+            && mermaid_to_svg::is_mermaid_diagram(code_block_text.lang.as_str());
+        #[cfg(not(feature = "mermaid"))]
+        let is_mermaid = false;
+
         if MARKDOWN_SHELL_LANGUAGES.contains(lang.as_str()) {
             CodeBlockType::Shell
-        } else if FeatureFlag::MarkdownMermaid.is_enabled()
-            && mermaid_to_svg::is_mermaid_diagram(code_block_text.lang.as_str())
-        {
+        } else if is_mermaid {
             CodeBlockType::Mermaid
         } else {
             // Parse all the recognized languages supported by the code block.

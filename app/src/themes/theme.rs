@@ -684,7 +684,9 @@ pub fn render_preview(
 
     let mut thumbnail = Stack::new();
     let mut background_opacity = 100;
-    if let Some(background_image) = theme.background_image() {
+    if !cfg!(feature = "warp_lite")
+        && let Some(background_image) = theme.background_image()
+    {
         thumbnail.add_child(
             Shrinkable::new(
                 1.,

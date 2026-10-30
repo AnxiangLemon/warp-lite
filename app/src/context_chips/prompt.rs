@@ -355,6 +355,7 @@ impl PromptConfiguration {
         Self {
             chips: chips
                 .into_iter()
+                .filter(ContextChipKind::is_available_in_terminal_build)
                 .map(|chip| PromptChip::new(chip, Default::default()))
                 .collect(),
             did_separate_git_diff_stats: true,
@@ -367,6 +368,7 @@ impl PromptConfiguration {
         self.chips
             .iter()
             .map(|chip| chip.chip.clone())
+            .filter(ContextChipKind::is_available_in_terminal_build)
             .collect_vec()
     }
 
@@ -378,7 +380,9 @@ impl PromptConfiguration {
     /// This is gated by `did_separate_git_diff_stats` so we do not re-insert `GitDiffStats` after a
     /// user intentionally removes it and saves their custom prompt.
     fn normalize_custom_prompt_config(mut self) -> Self {
-        if !self.did_separate_git_diff_stats {
+        self.chips
+            .retain(|chip| chip.chip.is_available_in_terminal_build());
+        if !cfg!(feature = "warp_lite") && !self.did_separate_git_diff_stats {
             let already_has_git_diff_stats = self
                 .chips
                 .iter()

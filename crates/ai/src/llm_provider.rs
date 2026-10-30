@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "runtime")]
 use warp_core::ui::icons::Icon;
+#[cfg(feature = "runtime")]
 use warp_errors::report_error;
 
+#[cfg(feature = "runtime")]
 use crate::api_keys::ApiKeys;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -18,6 +21,7 @@ impl LLMProvider {
         [Self::OpenAI, Self::Anthropic, Self::Google, Self::Xai];
     pub const API_KEY_PROVIDER_VALUE_NAME: &'static str = "openai|anthropic|google|grok";
 
+    #[cfg(feature = "runtime")]
     pub fn icon(self) -> Option<Icon> {
         match self {
             Self::OpenAI => Some(Icon::OpenAILogo),
@@ -70,6 +74,7 @@ impl LLMProvider {
         }
     }
 
+    #[cfg(feature = "runtime")]
     pub fn api_key(self, keys: &ApiKeys) -> Option<&str> {
         match self {
             Self::OpenAI => keys.openai.as_deref(),
@@ -79,6 +84,7 @@ impl LLMProvider {
         }
     }
 
+    #[cfg(feature = "runtime")]
     pub(crate) fn set_api_key(self, keys: &mut ApiKeys, key: Option<String>) -> bool {
         match self {
             Self::OpenAI => keys.openai = key,
@@ -90,6 +96,7 @@ impl LLMProvider {
     }
 }
 
+#[cfg(feature = "runtime")]
 impl From<warp_graphql::queries::get_feature_model_choices::LlmProvider> for LLMProvider {
     fn from(value: warp_graphql::queries::get_feature_model_choices::LlmProvider) -> Self {
         match value {
@@ -112,6 +119,7 @@ impl From<warp_graphql::queries::get_feature_model_choices::LlmProvider> for LLM
     }
 }
 
+#[cfg(feature = "runtime")]
 impl From<warp_graphql::workspace::LlmProvider> for LLMProvider {
     fn from(value: warp_graphql::workspace::LlmProvider) -> Self {
         match value {

@@ -876,7 +876,7 @@ impl Buffer {
     /// Construct a [`Buffer`] from the JSON contents of a `.ipynb` (Jupyter)
     /// notebook, converting it directly into formatted text.
     ///
-    /// Returns an [`ipynb_parser::IpynbError`] if the input is not a parseable
+    /// Returns an error if notebook rendering is unavailable or the input is not a parseable
     /// nbformat v4 notebook, so callers can decide how to present invalid
     /// notebooks (e.g. routing to a raw text editor) rather than rendering a
     /// blank or misleading view.
@@ -886,16 +886,27 @@ impl Buffer {
         tab_indentation: TabIndentation,
         selection_model: ModelHandle<BufferSelectionModel>,
         ctx: &mut ModelContext<Self>,
-    ) -> Result<Self, ipynb_parser::IpynbError> {
-        let gfm_tables = warp_core::features::FeatureFlag::MarkdownTables.is_enabled();
-        let formatted_text = ipynb_parser::ipynb_to_formatted_text(ipynb, gfm_tables)?;
-        Ok(Self::from_formatted_text(
-            formatted_text,
-            embedded_item_conversion,
-            tab_indentation,
-            selection_model,
-            ctx,
-        ))
+    ) -> anyhow::Result<Self> {
+        #[cfg(feature = "ipynb")]
+        {
+            let gfm_tables = warp_core::features::FeatureFlag::MarkdownTables.is_enabled();
+            let formatted_text = ipynb_parser::ipynb_to_formatted_text(ipynb, gfm_tables)?;
+            Ok(Self::from_formatted_text(
+                formatted_text,
+                embedded_item_conversion,
+                tab_indentation,
+                selection_model,
+                ctx,
+            ))
+        }
+        #[cfg(not(feature = "ipynb"))]
+        {
+            drop((embedded_item_conversion, tab_indentation, selection_model));
+            let _ = (ipynb, ctx);
+            Err(anyhow::anyhow!(
+                "Jupyter notebook rendering is disabled in this build"
+            ))
+        }
     }
 
     fn replace(
@@ -960,8 +971,18 @@ impl Buffer {
                         safe: ("Failed to render Jupyter notebook; showing raw contents"),
                         full: ("Failed to render Jupyter notebook: {e}")
                     }
+                    #[cfg(feature = "ipynb")]
+                    let raw_contents = ipynb_parser::raw_fallback_formatted_text(state.text);
+                    #[cfg(not(feature = "ipynb"))]
+                    let raw_contents =
+                        FormattedText::new_trimmed(vec![FormattedTextLine::CodeBlock(
+                            CodeBlockText {
+                                lang: "json".to_string(),
+                                code: state.text.trim_end_matches('\n').to_string(),
+                            },
+                        )]);
                     Buffer::from_formatted_text(
-                        ipynb_parser::raw_fallback_formatted_text(state.text),
+                        raw_contents,
                         callback,
                         Box::new(|_, _| IndentBehavior::Ignore),
                         selection_model.clone(),

@@ -8,36 +8,41 @@
 //! The [`PaneContent`] interface requires implementers to maintain a [`PaneId`] for their pane.
 //! The [`PaneId`] must be created via a [`PaneView<BackingView>`]. The [`PaneId`] is consequently
 //! used to render a [`PaneView`] which internally renders the pane, including the [`BackingView`].
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub(super) mod ai_document_pane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub(super) mod ai_fact_pane;
+#[cfg(feature = "agent_runtime")]
 pub(super) mod code_diff_pane;
+#[cfg(feature = "agent_runtime")]
 pub(super) mod code_diff_pane_model;
+#[cfg(feature = "agent_runtime")]
 pub(super) mod code_pane;
+#[cfg(feature = "agent_runtime")]
 pub(super) mod custom_router_editor_pane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub(super) mod env_var_collection_pane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub(crate) mod environment_management_pane;
+#[cfg(feature = "agent_runtime")]
 pub(super) mod execution_profile_editor_pane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub(super) mod file_pane;
+#[cfg(feature = "agent_runtime")]
 pub(super) mod get_started_pane;
+#[cfg(feature = "agent_runtime")]
 pub(super) mod get_started_view;
 #[cfg(not(target_family = "wasm"))]
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub(super) mod local_harness_launch;
-#[cfg(all(not(target_family = "wasm"), feature = "warp_lite"))]
-#[path = "local_harness_launch_lite.rs"]
-pub(super) mod local_harness_launch;
+#[cfg(feature = "agent_runtime")]
 pub(super) mod network_log_pane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub(super) mod notebook_pane;
 pub(super) mod settings_pane;
 pub(super) mod terminal_pane;
 pub mod view;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub mod workflow_pane;
 
 use std::any::Any;
@@ -55,39 +60,35 @@ use warpui::{
 
 pub use self::view::{PaneHeaderAction, PaneHeaderCustomAction, PaneView, PaneViewEvent};
 use super::{ActivationReason, LeafContents, PaneGroup, PaneGroupAction};
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::ai_document_view::AIDocumentView;
 use crate::ai::blocklist::inline_action::code_diff_view::CodeDiffView;
 use crate::ai::execution_profiles::editor::ExecutionProfileEditorView;
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::facts::AIFactView;
 #[cfg(feature = "local_fs")]
 use crate::code::buffer_location::LocalOrRemotePath;
 use crate::code::view::CodeView;
-use crate::cloud_object::ShareableObject;
-#[cfg(not(feature = "warp_lite"))]
+use crate::drive::sharing::ShareableObject;
 use crate::env_vars::view::env_var_collection::EnvVarCollectionView;
 use crate::menu::MenuItem;
-#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::file::FileNotebookView;
-#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::notebook::NotebookView;
 use crate::pane_group::focus_state::PaneFocusHandle;
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::pane::get_started_view::GetStartedView;
 use crate::server::network_log_view::NetworkLogView;
 use crate::server::telemetry::SharingDialogSource;
 use crate::settings::PaneSettings;
 use crate::settings_view::SettingsView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use crate::settings_view::environments_page::EnvironmentsPageView;
 use crate::terminal::TerminalView;
 use crate::terminal::available_shells::AvailableShell;
 use crate::view_components::action_button::ActionButton;
-#[cfg(not(feature = "warp_lite"))]
 use crate::workflows::workflow_view::WorkflowView;
 
 pub(super) fn init(app: &mut AppContext) {
     self::view::init(app);
+    #[cfg(feature = "agent_runtime")]
     get_started_view::init(app);
 }
 
@@ -150,22 +151,15 @@ impl Display for IPaneId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub(crate) enum IPaneType {
     Terminal,
-    #[cfg(not(feature = "warp_lite"))]
     Notebook,
-    #[cfg(not(feature = "warp_lite"))]
     File,
     Code,
     CodeDiff,
-    #[cfg(not(feature = "warp_lite"))]
     EnvVarCollection,
-    #[cfg(not(feature = "warp_lite"))]
     EnvironmentManagement,
-    #[cfg(not(feature = "warp_lite"))]
     Workflow,
     Settings,
-    #[cfg(not(feature = "warp_lite"))]
     AIFact,
-    #[cfg(not(feature = "warp_lite"))]
     AIDocument,
     CustomRouterEditor,
     ExecutionProfileEditor,
@@ -181,22 +175,15 @@ impl Display for IPaneType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             IPaneType::Terminal => write!(f, "Terminal"),
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::Notebook => write!(f, "Notebook"),
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::File => write!(f, "File"),
             IPaneType::Code => write!(f, "Code"),
             IPaneType::CodeDiff => write!(f, "Code Diff"),
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::EnvVarCollection => write!(f, "Environment Variable Collection"),
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::EnvironmentManagement => write!(f, "Environment Management"),
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::Workflow => write!(f, "Workflow"),
             IPaneType::Settings => write!(f, "Settings"),
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::AIFact => write!(f, "AI Fact"),
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::AIDocument => write!(f, "AI Document"),
             IPaneType::CustomRouterEditor => write!(f, "Custom Router Editor"),
             IPaneType::ExecutionProfileEditor => write!(f, "Execution Profile Editor"),
@@ -230,19 +217,16 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`ViewContext<PaneView<FileNotebookView>>`]
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_file_pane_ctx(ctx: &ViewContext<PaneView<FileNotebookView>>) -> Self {
         Self::new_from_ctx(IPaneType::File, ctx)
     }
 
     /// Creates a [`PaneId`] from a [`ViewContext<PaneView<NotebookView>>`]
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_notebook_pane_ctx(ctx: &ViewContext<PaneView<NotebookView>>) -> Self {
         Self::new_from_ctx(IPaneType::Notebook, ctx)
     }
 
     /// Creates a [`PaneId`] from a [`ViewContext<PaneView<EnvVarCollectionView>>`]
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_env_var_collection_pane_ctx(
         ctx: &ViewContext<PaneView<EnvVarCollectionView>>,
     ) -> Self {
@@ -250,7 +234,7 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`ViewContext<PaneView<EnvironmentsPageView>>`]
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn from_environment_management_pane_ctx(
         ctx: &ViewContext<PaneView<EnvironmentsPageView>>,
     ) -> Self {
@@ -258,7 +242,6 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`ViewContext<PaneView<WorkflowView>>`]
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_workflow_pane_ctx(ctx: &ViewContext<PaneView<WorkflowView>>) -> Self {
         Self::new_from_ctx(IPaneType::Workflow, ctx)
     }
@@ -279,13 +262,11 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`ViewContext<PaneView<AIFactView>>`]
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_ai_fact_pane_ctx(ctx: &ViewContext<PaneView<AIFactView>>) -> Self {
         Self::new_from_ctx(IPaneType::AIFact, ctx)
     }
 
     /// Creates a [`PaneId`] from a [`ViewContext<PaneView<AIDocumentView>>`]
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_ai_document_pane_ctx(ctx: &ViewContext<PaneView<AIDocumentView>>) -> Self {
         Self::new_from_ctx(IPaneType::AIDocument, ctx)
     }
@@ -304,6 +285,7 @@ impl PaneId {
         Self::new_from_ctx(IPaneType::ExecutionProfileEditor, ctx)
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn from_get_started_pane_ctx(ctx: &ViewContext<PaneView<GetStartedView>>) -> Self {
         Self::new_from_ctx(IPaneType::GetStarted, ctx)
     }
@@ -321,7 +303,6 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`PaneView<NotebookView>`] entity ID.
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_notebook_pane_view(
         notebook_pane_view: &ViewHandle<PaneView<NotebookView>>,
     ) -> Self {
@@ -329,7 +310,6 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`PaneView<FileNotebookView>`] entity ID.
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_file_pane_view(file_pane_view: &ViewHandle<PaneView<FileNotebookView>>) -> Self {
         Self::new(IPaneType::File, file_pane_view)
     }
@@ -347,7 +327,6 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`PaneView<EnvVarCollection>`] entity ID.
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_env_var_collection_view(
         env_var_collection_view: &ViewHandle<PaneView<EnvVarCollectionView>>,
     ) -> Self {
@@ -355,7 +334,7 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`PaneView<EnvironmentsPageView>`] entity ID.
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn from_environment_management_pane_view(
         environment_management_pane_view: &ViewHandle<PaneView<EnvironmentsPageView>>,
     ) -> Self {
@@ -366,7 +345,6 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`PaneView<WorkflowView>`] entity ID.
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_workflow_pane_view(
         workflow_pane_view: &ViewHandle<PaneView<WorkflowView>>,
     ) -> Self {
@@ -381,13 +359,11 @@ impl PaneId {
     }
 
     /// Creates a [`PaneId`] from a [`PaneView<AIFactView>`] entity ID.
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_ai_fact_pane_view(ai_fact_pane_view: &ViewHandle<PaneView<AIFactView>>) -> Self {
         Self::new(IPaneType::AIFact, ai_fact_pane_view)
     }
 
     /// Creates a [`PaneId`] from a [`PaneView<AIDocumentView>`] entity ID.
-    #[cfg(not(feature = "warp_lite"))]
     pub fn from_ai_document_pane_view(
         ai_document_pane_view: &ViewHandle<PaneView<AIDocumentView>>,
     ) -> Self {
@@ -411,6 +387,7 @@ impl PaneId {
         )
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn from_get_started_pane_view(
         get_started_pane_view: &ViewHandle<PaneView<GetStartedView>>,
     ) -> Self {
@@ -463,14 +440,7 @@ impl PaneId {
     }
 
     pub fn is_notebook_pane(&self) -> bool {
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            matches!(self.0.pane_type, IPaneType::Notebook)
-        }
-        #[cfg(feature = "warp_lite")]
-        {
-            false
-        }
+        matches!(self.0.pane_type, IPaneType::Notebook)
     }
 
     pub fn is_code_pane(&self) -> bool {
@@ -478,14 +448,7 @@ impl PaneId {
     }
 
     pub fn is_file_pane(&self) -> bool {
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            matches!(self.0.pane_type, IPaneType::File)
-        }
-        #[cfg(feature = "warp_lite")]
-        {
-            false
-        }
+        matches!(self.0.pane_type, IPaneType::File)
     }
 
     pub fn is_code_diff_pane(&self) -> bool {
@@ -493,32 +456,18 @@ impl PaneId {
     }
 
     pub fn is_environment_management_pane(&self) -> bool {
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            matches!(self.0.pane_type, IPaneType::EnvironmentManagement)
-        }
-        #[cfg(feature = "warp_lite")]
-        {
-            false
-        }
+        matches!(self.0.pane_type, IPaneType::EnvironmentManagement)
     }
 
     /// Returns true if this pane contains a Warp Drive object (notebook, workflow, etc.).
     pub fn is_warp_drive_object_pane(&self) -> bool {
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            matches!(
-                self.0.pane_type,
-                IPaneType::Notebook
-                    | IPaneType::Workflow
-                    | IPaneType::EnvVarCollection
-                    | IPaneType::AIFact
-            )
-        }
-        #[cfg(feature = "warp_lite")]
-        {
-            false
-        }
+        matches!(
+            self.0.pane_type,
+            IPaneType::Notebook
+                | IPaneType::Workflow
+                | IPaneType::EnvVarCollection
+                | IPaneType::AIFact
+        )
     }
 
     /// Renders the child view backing this pane.
@@ -527,57 +476,77 @@ impl PaneId {
             IPaneType::Terminal => {
                 ChildView::<PaneView<TerminalView>>::with_id(self.0.pane_view_id).finish()
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             IPaneType::Notebook => {
                 ChildView::<PaneView<NotebookView>>::with_id(self.0.pane_view_id).finish()
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             IPaneType::File => {
                 ChildView::<PaneView<FileNotebookView>>::with_id(self.0.pane_view_id).finish()
             }
+            #[cfg(feature = "agent_runtime")]
             IPaneType::Code => {
                 ChildView::<PaneView<CodeView>>::with_id(self.0.pane_view_id).finish()
             }
+            #[cfg(feature = "agent_runtime")]
             IPaneType::CodeDiff => {
                 ChildView::<PaneView<CodeDiffView>>::with_id(self.0.pane_view_id).finish()
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             IPaneType::EnvVarCollection => {
                 ChildView::<PaneView<EnvVarCollectionView>>::with_id(self.0.pane_view_id).finish()
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             IPaneType::EnvironmentManagement => {
                 ChildView::<PaneView<EnvironmentsPageView>>::with_id(self.0.pane_view_id).finish()
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             IPaneType::Workflow => {
                 ChildView::<PaneView<WorkflowView>>::with_id(self.0.pane_view_id).finish()
             }
             IPaneType::Settings => {
                 ChildView::<PaneView<SettingsView>>::with_id(self.0.pane_view_id).finish()
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             IPaneType::AIFact => {
                 ChildView::<PaneView<AIFactView>>::with_id(self.0.pane_view_id).finish()
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             IPaneType::AIDocument => {
                 ChildView::<PaneView<AIDocumentView>>::with_id(self.0.pane_view_id).finish()
             }
+            #[cfg(feature = "agent_runtime")]
             IPaneType::CustomRouterEditor => ChildView::<
                 PaneView<crate::ai::custom_model_router_editor::CustomRouterEditorView>,
             >::with_id(self.0.pane_view_id)
             .finish(),
+            #[cfg(feature = "agent_runtime")]
             IPaneType::ExecutionProfileEditor => {
                 ChildView::<PaneView<ExecutionProfileEditorView>>::with_id(self.0.pane_view_id)
                     .finish()
             }
+            #[cfg(feature = "agent_runtime")]
             IPaneType::GetStarted => {
                 ChildView::<PaneView<GetStartedView>>::with_id(self.0.pane_view_id).finish()
             }
+            #[cfg(feature = "agent_runtime")]
             IPaneType::NetworkLog => {
                 ChildView::<PaneView<NetworkLogView>>::with_id(self.0.pane_view_id).finish()
             }
+            #[cfg(not(feature = "agent_runtime"))]
+            IPaneType::Notebook
+            | IPaneType::File
+            | IPaneType::Code
+            | IPaneType::CodeDiff
+            | IPaneType::EnvVarCollection
+            | IPaneType::EnvironmentManagement
+            | IPaneType::Workflow
+            | IPaneType::AIFact
+            | IPaneType::AIDocument
+            | IPaneType::CustomRouterEditor
+            | IPaneType::ExecutionProfileEditor
+            | IPaneType::GetStarted
+            | IPaneType::NetworkLog => warpui::elements::Empty::new().finish(),
             IPaneType::DeferredPlaceholder => warpui::elements::Empty::new().finish(),
             #[cfg(test)]
             IPaneType::Dummy => warpui::elements::Empty::new().finish(),
@@ -907,7 +876,6 @@ impl PaneConfiguration {
     }
 
     /// Sets the shareable object in the current pane. If `None`, the share button is removed.
-    #[cfg(not(feature = "warp_lite"))]
     pub fn set_shareable_object(
         &mut self,
         shareable_object: Option<ShareableObject>,
@@ -916,14 +884,6 @@ impl PaneConfiguration {
         ctx.emit(PaneConfigurationEvent::ShareableObjectChanged(
             shareable_object,
         ));
-    }
-
-    #[cfg(feature = "warp_lite")]
-    pub fn set_shareable_object(
-        &mut self,
-        _shareable_object: Option<ShareableObject>,
-        _ctx: &mut ModelContext<Self>,
-    ) {
     }
 
     pub fn toggle_sharing_dialog(
@@ -965,7 +925,6 @@ pub enum PaneConfigurationEvent {
     ShowAccentBorderUpdated,
     OpenModalUpdated,
     RefreshPaneHeaderOverflowMenuItems,
-    #[cfg(not(feature = "warp_lite"))]
     ShareableObjectChanged(Option<ShareableObject>),
     ToggleSharingDialog(SharingDialogSource),
     OpenSharingQrCode(SharingDialogSource),

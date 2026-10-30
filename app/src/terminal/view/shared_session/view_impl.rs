@@ -36,7 +36,7 @@ use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ai::blocklist::BlocklistAIHistoryModel;
 use crate::auth::UserUid;
 use crate::context_chips::ContextChipKind;
-use crate::cloud_object::ShareableObject;
+use crate::drive::sharing::ShareableObject;
 use crate::editor::{InteractionState, ReplicaId};
 use crate::menu::{Event as MenuEvent, MenuItem, MenuItemFields};
 use crate::server::telemetry::SharingDialogSource;
@@ -70,6 +70,7 @@ use crate::terminal::view::{
 use crate::view_components::{DismissibleToast, ToastFlavor};
 use crate::{TelemetryEvent, send_telemetry_from_ctx};
 
+#[cfg(feature = "agent_runtime")]
 impl TerminalView {
     pub fn sharer_session_kind(&self) -> Option<&Kind> {
         self.shared_session.as_ref().map(|s| s.kind())

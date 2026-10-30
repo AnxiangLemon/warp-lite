@@ -1,8 +1,11 @@
 use std::future::Future;
+#[cfg(feature = "agent_runtime")]
 use std::path::Path;
 use std::time::Duration;
 
-use ai::agent::action_result::{RecordingStopped, StopRecordingResult};
+#[cfg(feature = "agent_runtime")]
+use ai::agent::action_result::RecordingStopped;
+use ai::agent::action_result::StopRecordingResult;
 use futures::channel::oneshot;
 use warpui::r#async::Timer;
 use warpui::{AppContext, Entity, ModelContext, SingletonEntity};
@@ -12,10 +15,14 @@ use super::recording_controller::{
     ActiveRecording, FinalizationClaim, FinalizedRecording, RecordingController,
     StopRecordingControllerError,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::api::ServerConversationToken;
 use crate::ai::agent::conversation::AIConversationId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_sdk::artifact_upload::{FileArtifactUploadRequest, FileArtifactUploader};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::BlocklistAIHistoryModel;
+#[cfg(feature = "agent_runtime")]
 use crate::server::server_api::ServerApiProvider;
 
 const EXIT_POLL_INTERVAL: Duration = Duration::from_millis(250);
@@ -51,6 +58,7 @@ impl RecordingFinalization {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn format_upload_error(err: &anyhow::Error) -> String {
     let error_chain = format!("{err:#}");
     if error_chain != err.to_string() {
@@ -71,6 +79,7 @@ fn format_upload_error(err: &anyhow::Error) -> String {
 ///
 /// Any error is returned to the caller, which logs and discards it so the video
 /// upload and PR creation are never blocked by a missing or failed thumbnail.
+#[cfg(feature = "agent_runtime")]
 async fn upload_recording_thumbnail(
     video_path: &Path,
     video_artifact_uid: &str,
@@ -99,6 +108,7 @@ async fn upload_recording_thumbnail(
 
 /// Stops capture, uploads the finalized file, and produces the result retained
 /// by the controller for all current and future callers.
+#[cfg(feature = "agent_runtime")]
 async fn finalize_recording(
     recording: ActiveRecording,
     reason: FinalizeReason,
@@ -233,6 +243,7 @@ async fn finalize_recording(
 
 /// Captures the upload association and clients while the app models are still
 /// available, before stop/upload work moves onto the controller-owned task.
+#[cfg(feature = "agent_runtime")]
 fn build_finalize_future(
     recording: ActiveRecording,
     reason: FinalizeReason,
@@ -260,6 +271,27 @@ fn build_finalize_future(
             uploader,
             server_conversation_token,
         ),
+    )
+}
+
+#[cfg(not(feature = "agent_runtime"))]
+fn build_finalize_future(
+    recording: ActiveRecording,
+    reason: FinalizeReason,
+    should_upload: bool,
+    ctx: &AppContext,
+) -> (
+    String,
+    impl Future<Output = StopRecordingResult> + Send + 'static + use<>,
+) {
+    let _ = (reason, should_upload, ctx);
+    let id = recording.id.clone();
+    drop(recording);
+    (
+        id,
+        std::future::ready(StopRecordingResult::Error(
+            "Agent recording uploads are unavailable in this build".to_owned(),
+        )),
     )
 }
 
@@ -383,6 +415,6 @@ pub(crate) fn spawn_recording_exit_watcher(
     );
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "recording_finalize_tests.rs"]
 mod tests;

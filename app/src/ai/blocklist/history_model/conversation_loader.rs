@@ -2,13 +2,18 @@
 //! from local database and server sources.
 
 use std::collections::{HashMap, HashSet};
+#[cfg(feature = "agent_runtime")]
 use std::future::Future;
+#[cfg(feature = "agent_runtime")]
 use std::sync::Arc;
 
+#[cfg(feature = "agent_runtime")]
 use futures::FutureExt;
 use itertools::Itertools as _;
 use persistence::model::AgentConversationRecord;
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use warpui::{AppContext, SingletonEntity};
 
 use super::{
@@ -16,18 +21,23 @@ use super::{
     agent_id_key_from_persisted_data,
 };
 use crate::ai::agent::api::ServerConversationToken;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::api::convert_conversation::{
     RestorationMode, convert_conversation_data_to_ai_conversation,
 };
+#[cfg(feature = "agent_runtime")]
+use crate::ai::agent::conversation::AIAgentHarness;
 use crate::ai::agent::conversation::{
-    AIAgentHarness, AIConversation, AIConversationId, ServerAIConversationMetadata,
+    AIConversation, AIConversationId, ServerAIConversationMetadata,
 };
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", feature = "agent_runtime"))]
 use crate::persistence::agent::read_agent_conversation_by_id;
 use crate::persistence::model::{
     AgentConversation, AgentConversationData, AgentConversationSummary,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::server::server_api::ServerApiProvider;
+#[cfg(feature = "agent_runtime")]
 use crate::server::server_api::ai::AIClient;
 use crate::terminal::model::block::SerializedBlock;
 
@@ -104,6 +114,7 @@ pub fn convert_persisted_conversation_to_ai_conversation_with_metadata(
 
 /// Loads a conversation from the server asynchronously.
 /// This is a free-floating function that can be called without a model reference.
+#[cfg(feature = "agent_runtime")]
 pub async fn load_conversation_from_server(
     conversation_id: AIConversationId,
     server_conversation_token: ServerConversationToken,
@@ -190,6 +201,7 @@ pub async fn load_conversation_from_server(
 
 /// Boxes a future with the right type for the platform.
 /// On WASM, futures must not implement Send.
+#[cfg(feature = "agent_runtime")]
 fn box_future<F>(f: F) -> warpui::r#async::BoxFuture<'static, Option<CloudConversationData>>
 where
     F: Future<Output = Option<CloudConversationData>> + warpui::r#async::Spawnable,
@@ -238,6 +250,7 @@ impl BlocklistAIHistoryModel {
     ///
     /// Note: This does NOT insert the conversation into memory. Callers are responsible
     /// for inserting the loaded conversation if needed.
+    #[cfg(feature = "agent_runtime")]
     pub fn load_conversation_data(
         &self,
         conversation_id: AIConversationId,
@@ -294,6 +307,7 @@ impl BlocklistAIHistoryModel {
     ///
     /// Note: This does NOT insert the conversation into memory. Callers are responsible
     /// for inserting the loaded conversation if needed.
+    #[cfg(feature = "agent_runtime")]
     pub fn load_conversation_by_server_token(
         &mut self,
         server_token: &ServerConversationToken,
@@ -330,6 +344,7 @@ impl BlocklistAIHistoryModel {
     ///
     /// Note: This does NOT insert the conversation into memory. Callers are responsible
     /// for inserting the loaded conversation if needed.
+    #[cfg(feature = "agent_runtime")]
     pub(super) fn load_conversation_from_db(
         &self,
         conversation_id: &AIConversationId,
@@ -590,6 +605,8 @@ impl BlocklistAIHistoryModel {
                     // Startup rows carry no tasks, so the child's task
                     // payload is loaded from the local DB; fully-hydrated
                     // inputs convert directly.
+                    #[cfg(feature = "agent_runtime")]
+                    {
                     let child_conversation = if agent_conversation.tasks.is_empty() {
                         self.load_conversation_from_db(&conversation_id)
                     } else {
@@ -605,6 +622,7 @@ impl BlocklistAIHistoryModel {
                             "Failed to eagerly hydrate orchestration child {conversation_id}; \
                              pill bar / name resolution will fall back to lazy materialization",
                         );
+                    }
                     }
                     return None;
                 }

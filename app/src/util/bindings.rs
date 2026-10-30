@@ -751,7 +751,7 @@ impl CommandBinding {
     /// Returns `None` when the source binding has no description.
     pub fn from_lens(lens: BindingLens<'_>, ctx: &AppContext) -> Option<Self> {
         lens.description.map(|desc| CommandBinding {
-            description: materialize_description(desc, ctx),
+            description: materialize_lite_description(desc, lens.name, ctx),
             trigger: trigger_to_keystroke(lens.trigger),
             action: Some(lens.action.clone()),
             name: lens.name.to_string(),
@@ -764,7 +764,7 @@ impl CommandBinding {
     /// See [`Self::from_lens`] for why this takes `&AppContext`.
     pub fn from_editable_lens(lens: EditableBindingLens<'_>, ctx: &AppContext) -> Self {
         Self {
-            description: materialize_description(lens.description, ctx),
+            description: materialize_lite_description(lens.description, lens.name, ctx),
             trigger: trigger_to_keystroke(lens.trigger),
             action: Some(lens.action.clone()),
             name: lens.name.into(),
@@ -783,6 +783,19 @@ impl CommandBinding {
             id: BindingId::new(),
         }
     }
+}
+
+fn materialize_lite_description(
+    desc: &BindingDescription,
+    name: &str,
+    ctx: &AppContext,
+) -> BindingDescription {
+    if cfg!(feature = "warp_lite")
+        && let Some(label) = crate::settings_view::lite_i18n::binding_label(name)
+    {
+        return BindingDescription::new(label.to_owned());
+    }
+    materialize_description(desc, ctx)
 }
 
 fn materialize_description(desc: &BindingDescription, ctx: &AppContext) -> BindingDescription {

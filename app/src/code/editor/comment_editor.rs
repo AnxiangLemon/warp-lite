@@ -561,6 +561,6 @@ where
     editor
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "comment_editor_tests.rs"]
 mod tests;

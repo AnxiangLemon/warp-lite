@@ -1,17 +1,12 @@
 pub(super) mod ask_user_question;
-#[cfg(feature = "mcp_client")]
 pub(super) mod call_mcp_tool;
-#[cfg(not(feature = "warp_lite"))]
-mod create_documents;
-#[cfg(not(feature = "warp_lite"))]
-mod edit_documents;
+pub(super) mod create_documents;
+pub(super) mod edit_documents;
 pub(super) mod fetch_conversation;
 pub(super) mod file_glob;
 pub(super) mod grep;
-#[cfg(not(feature = "warp_lite"))]
-mod read_documents;
+pub(super) mod read_documents;
 pub(super) mod read_files;
-#[cfg(feature = "mcp_client")]
 pub(super) mod read_mcp_resource;
 pub(super) mod read_skill;
 pub(super) mod request_computer_use;
@@ -25,6 +20,10 @@ pub(super) mod start_recording;
 pub(super) mod stop_recording;
 pub(super) mod suggest_new_conversation;
 pub(super) mod suggest_prompt;
+#[cfg_attr(
+    not(feature = "agent_runtime"),
+    path = "execute/upload_artifact_unavailable.rs"
+)]
 pub(super) mod upload_artifact;
 pub(super) mod use_computer;
 pub(super) mod wait_for_events;
@@ -36,19 +35,9 @@ use std::sync::Arc;
 
 use ai::agent::action_result::{InsertReviewCommentsResult, RequestCommandOutputResult};
 pub use ask_user_question::AskUserQuestionExecutor;
-#[cfg(feature = "mcp_client")]
 use call_mcp_tool::CallMCPToolExecutor;
-#[cfg(feature = "mcp_client")]
 pub(crate) use call_mcp_tool::coerce_integer_args;
-#[cfg(not(feature = "mcp_client"))]
-pub(crate) fn coerce_integer_args(
-    _args: &mut serde_json::Map<String, serde_json::Value>,
-    _input_schema: &serde_json::Map<String, serde_json::Value>,
-) {
-}
-#[cfg(not(feature = "warp_lite"))]
 use create_documents::CreateDocumentsExecutor;
-#[cfg(not(feature = "warp_lite"))]
 use edit_documents::EditDocumentsExecutor;
 use fetch_conversation::FetchConversationExecutor;
 use file_glob::FileGlobExecutor;
@@ -60,10 +49,8 @@ use grep::GrepExecutor;
 #[cfg(feature = "local_fs")]
 use mime_guess::from_path;
 use parking_lot::FairMutex;
-#[cfg(not(feature = "warp_lite"))]
 use read_documents::ReadDocumentsExecutor;
 pub(super) use read_files::ReadFilesExecutor;
-#[cfg(feature = "mcp_client")]
 use read_mcp_resource::ReadMCPResourceExecutor;
 use read_skill::ReadSkillExecutor;
 use request_computer_use::RequestComputerUseExecutor;
@@ -73,11 +60,13 @@ pub use request_file_edits::{
 };
 pub(crate) use request_file_edits::{FileReadResult, MalformedFinalLineProxyEvent, apply_edits};
 pub use run_agents::{RunAgentsExecutor, RunAgentsExecutorEvent, RunAgentsSpawningSnapshot};
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 pub use run_agents::{compose_run_agents_child_prompt, run_agents_to_start_agent_mode};
 pub use send_message::SendMessageToAgentExecutor;
 use serde::{Deserialize, Serialize};
-pub use shell_command::{ShellCommandExecutor, ShellCommandExecutorEvent};
+pub use shell_command::ShellCommandExecutor;
+#[cfg(feature = "agent_runtime")]
+pub use shell_command::ShellCommandExecutorEvent;
 pub use start_agent::{
     StartAgentExecutor, StartAgentExecutorEvent, StartAgentOutcome, StartAgentRequest,
     StartAgentRequestId,
@@ -102,92 +91,6 @@ use warpui::{AppContext, Entity, EntityId, ModelContext, ModelHandle, SingletonE
 
 use self::search_codebase::SearchCodebaseExecutor;
 use crate::BlocklistAIHistoryModel;
-
-#[cfg(not(feature = "mcp_client"))]
-mod mcp_executor_stubs {
-    use futures::FutureExt;
-    use futures::future::BoxFuture;
-    use warpui::{Entity, EntityId, ModelContext, ModelHandle};
-
-    use super::{
-        ActionExecution, AnyActionExecution, ExecuteActionInput, PreprocessActionInput,
-    };
-    use crate::terminal::model::session::active_session::ActiveSession;
-
-    pub struct CallMCPToolExecutor {}
-    pub struct ReadMCPResourceExecutor {}
-
-    impl CallMCPToolExecutor {
-        pub fn new(_active_session: ModelHandle<ActiveSession>, _terminal_view_id: EntityId) -> Self {
-            Self {}
-        }
-
-        pub(super) fn should_autoexecute(
-            &self,
-            _input: ExecuteActionInput,
-            _ctx: &mut ModelContext<Self>,
-        ) -> bool {
-            false
-        }
-
-        pub(super) fn execute(
-            &mut self,
-            _input: ExecuteActionInput,
-            _ctx: &mut ModelContext<Self>,
-        ) -> impl Into<AnyActionExecution> + use<> {
-            ActionExecution::<()>::InvalidAction
-        }
-
-        pub(super) fn preprocess_action(
-            &mut self,
-            _action: PreprocessActionInput,
-            _ctx: &mut ModelContext<Self>,
-        ) -> BoxFuture<'static, ()> {
-            futures::future::ready(()).boxed()
-        }
-    }
-
-    impl Entity for CallMCPToolExecutor {
-        type Event = ();
-    }
-
-    impl ReadMCPResourceExecutor {
-        pub fn new(_active_session: ModelHandle<ActiveSession>, _terminal_view_id: EntityId) -> Self {
-            Self {}
-        }
-
-        pub(super) fn should_autoexecute(
-            &self,
-            _input: ExecuteActionInput,
-            _ctx: &mut ModelContext<Self>,
-        ) -> bool {
-            false
-        }
-
-        pub(super) fn execute(
-            &mut self,
-            _input: ExecuteActionInput,
-            _ctx: &mut ModelContext<Self>,
-        ) -> impl Into<AnyActionExecution> + use<> {
-            ActionExecution::<()>::InvalidAction
-        }
-
-        pub(super) fn preprocess_action(
-            &mut self,
-            _action: PreprocessActionInput,
-            _ctx: &mut ModelContext<Self>,
-        ) -> BoxFuture<'static, ()> {
-            futures::future::ready(()).boxed()
-        }
-    }
-
-    impl Entity for ReadMCPResourceExecutor {
-        type Event = ();
-    }
-}
-
-#[cfg(not(feature = "mcp_client"))]
-use mcp_executor_stubs::{CallMCPToolExecutor, ReadMCPResourceExecutor};
 use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::agent::{
     AIAgentAction, AIAgentActionId, AIAgentActionResult, AIAgentActionResultType,
@@ -364,11 +267,8 @@ pub struct BlocklistAIActionExecutor {
     call_mcp_tool_executor: ModelHandle<CallMCPToolExecutor>,
     suggest_new_conversation_executor: ModelHandle<SuggestNewConversationExecutor>,
     suggest_prompt_executor: ModelHandle<PromptSuggestionExecutor>,
-    #[cfg(not(feature = "warp_lite"))]
     read_documents_executor: ModelHandle<ReadDocumentsExecutor>,
-    #[cfg(not(feature = "warp_lite"))]
     edit_documents_executor: ModelHandle<EditDocumentsExecutor>,
-    #[cfg(not(feature = "warp_lite"))]
     create_documents_executor: ModelHandle<CreateDocumentsExecutor>,
     use_computer_executor: ModelHandle<UseComputerExecutor>,
     request_computer_use_executor: ModelHandle<RequestComputerUseExecutor>,
@@ -434,11 +334,8 @@ impl BlocklistAIActionExecutor {
         let suggest_new_conversation_executor =
             ctx.add_model(|_| SuggestNewConversationExecutor::new());
         let suggest_prompt_executor = ctx.add_model(|_| PromptSuggestionExecutor::new());
-        #[cfg(not(feature = "warp_lite"))]
         let read_documents_executor = ctx.add_model(|_| ReadDocumentsExecutor::new());
-        #[cfg(not(feature = "warp_lite"))]
         let edit_documents_executor = ctx.add_model(|_| EditDocumentsExecutor::new());
-        #[cfg(not(feature = "warp_lite"))]
         let create_documents_executor = ctx
             .add_model(|_| CreateDocumentsExecutor::new(active_session.clone(), terminal_view_id));
         let use_computer_executor = ctx.add_model(|_| UseComputerExecutor::new());
@@ -468,11 +365,8 @@ impl BlocklistAIActionExecutor {
             call_mcp_tool_executor,
             suggest_new_conversation_executor,
             suggest_prompt_executor,
-            #[cfg(not(feature = "warp_lite"))]
             read_documents_executor,
-            #[cfg(not(feature = "warp_lite"))]
             edit_documents_executor,
-            #[cfg(not(feature = "warp_lite"))]
             create_documents_executor,
             use_computer_executor,
             request_computer_use_executor,
@@ -651,22 +545,15 @@ impl BlocklistAIActionExecutor {
             AIAgentActionType::SuggestPrompt { .. } => self
                 .suggest_prompt_executor
                 .update(ctx, |executor, ctx| executor.preprocess_action(input, ctx)),
-            #[cfg(not(feature = "warp_lite"))]
             AIAgentActionType::ReadDocuments(_) => self
                 .read_documents_executor
                 .update(ctx, |executor, ctx| executor.preprocess_action(input, ctx)),
-            #[cfg(not(feature = "warp_lite"))]
             AIAgentActionType::EditDocuments(_) => self
                 .edit_documents_executor
                 .update(ctx, |executor, ctx| executor.preprocess_action(input, ctx)),
-            #[cfg(not(feature = "warp_lite"))]
             AIAgentActionType::CreateDocuments(_) => self
                 .create_documents_executor
                 .update(ctx, |executor, ctx| executor.preprocess_action(input, ctx)),
-            #[cfg(feature = "warp_lite")]
-            AIAgentActionType::ReadDocuments(_)
-            | AIAgentActionType::EditDocuments(_)
-            | AIAgentActionType::CreateDocuments(_) => futures::future::ready(()).boxed(),
             AIAgentActionType::UseComputer(_) => self
                 .use_computer_executor
                 .update(ctx, |executor, ctx| executor.preprocess_action(input, ctx)),
@@ -839,27 +726,20 @@ impl BlocklistAIActionExecutor {
                 .suggest_prompt_executor
                 .update(ctx, |executor, ctx| executor.execute(input, ctx))
                 .into(),
-            #[cfg(not(feature = "warp_lite"))]
             AIAgentActionType::ReadDocuments(_) => self
                 .read_documents_executor
                 .update(ctx, |executor, ctx| executor.execute(input, ctx))
                 .into(),
-            #[cfg(not(feature = "warp_lite"))]
             AIAgentActionType::EditDocuments(_) => self
                 .edit_documents_executor
                 .update(ctx, |executor, ctx| executor.execute(input, ctx))
                 .into(),
-            #[cfg(not(feature = "warp_lite"))]
             AIAgentActionType::CreateDocuments(_) => self
                 .create_documents_executor
                 .update(ctx, |executor, ctx| {
                     executor.execute(input, conversation_id, ctx)
                 })
                 .into(),
-            #[cfg(feature = "warp_lite")]
-            AIAgentActionType::ReadDocuments(_)
-            | AIAgentActionType::EditDocuments(_)
-            | AIAgentActionType::CreateDocuments(_) => AnyActionExecution::NotReady,
             AIAgentActionType::UseComputer(_) => self
                 .use_computer_executor
                 .update(ctx, |executor, ctx| executor.execute(input, ctx))
@@ -879,10 +759,14 @@ impl BlocklistAIActionExecutor {
                 .read_skill_executor
                 .update(ctx, |executor, ctx| executor.execute(input, ctx))
                 .into(),
-            AIAgentActionType::FetchConversation { .. } => self
-                .fetch_conversation_executor
-                .update(ctx, |executor, ctx| executor.execute(input, ctx))
-                .into(),
+            AIAgentActionType::FetchConversation { .. } => {
+                let execution = self
+                    .fetch_conversation_executor
+                    .update(ctx, |executor, ctx| executor.execute(input, ctx));
+                #[cfg(feature = "agent_runtime")]
+                let execution = execution.into();
+                execution
+            }
             AIAgentActionType::SendMessageToAgent { .. } => self
                 .send_message_executor
                 .update(ctx, |executor, ctx| executor.execute(input, ctx)),
@@ -1122,22 +1006,15 @@ impl BlocklistAIActionExecutor {
             AIAgentActionType::SuggestPrompt { .. } => self
                 .suggest_prompt_executor
                 .update(ctx, |executor, ctx| executor.should_autoexecute(input, ctx)),
-            #[cfg(not(feature = "warp_lite"))]
             AIAgentActionType::ReadDocuments(_) => self
                 .read_documents_executor
                 .update(ctx, |executor, ctx| executor.should_autoexecute(input, ctx)),
-            #[cfg(not(feature = "warp_lite"))]
             AIAgentActionType::EditDocuments(_) => self
                 .edit_documents_executor
                 .update(ctx, |executor, ctx| executor.should_autoexecute(input, ctx)),
-            #[cfg(not(feature = "warp_lite"))]
             AIAgentActionType::CreateDocuments(_) => self
                 .create_documents_executor
                 .update(ctx, |executor, ctx| executor.should_autoexecute(input, ctx)),
-            #[cfg(feature = "warp_lite")]
-            AIAgentActionType::ReadDocuments(_)
-            | AIAgentActionType::EditDocuments(_)
-            | AIAgentActionType::CreateDocuments(_) => false,
             AIAgentActionType::UseComputer(_) => self
                 .use_computer_executor
                 .update(ctx, |executor, ctx| executor.should_autoexecute(input, ctx)),

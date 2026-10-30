@@ -37,6 +37,7 @@ use warpui::{AppContext, EntityId, SingletonEntity, ViewHandle, WindowId};
 
 use super::{render_group_member_icon_collage, select_unique_pane_kinds};
 use crate::ai::agent::conversation::{ConversationStatus, StatusColorStyle};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_management::AgentNotificationsModel;
 use crate::ai::cloud_environments::CloudAmbientAgentEnvironment;
 use crate::ai::conversation_status_ui::render_status_element;
@@ -47,19 +48,17 @@ use crate::code::editor::{add_color, remove_color};
 use crate::code::icon_from_file_path;
 use crate::context_chips::display_chip::GitLineChanges;
 use crate::context_chips::github_pr_display_text_from_url;
-#[cfg(not(feature = "warp_lite"))]
 use crate::drive::DriveObjectType;
-#[cfg(not(feature = "warp_lite"))]
 use crate::drive::cloud_object_styling::warp_drive_icon_color;
 use crate::editor::EditorView;
+use crate::lite_i18n::choose;
 use crate::pane_group::pane::IPaneType;
-use crate::pane_group::{
-    CodePane, PaneGroup, PaneId, TabBarHoverIndex, TerminalPane,
-};
-#[cfg(not(feature = "warp_lite"))]
-use crate::pane_group::{NotebookPane, WorkflowPane};
+#[cfg(feature = "agent_runtime")]
+use crate::pane_group::{CodePane, NotebookPane, WorkflowPane};
+use crate::pane_group::{PaneGroup, PaneId, TabBarHoverIndex, TerminalPane};
 use crate::safe_triangle::SafeTriangle;
 use crate::tab::{SelectedTabColor, TAB_INDICATOR_SYNCED_COLOR, TabData, tab_position_id};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
 use crate::terminal::session_settings::SessionSettings;
 use crate::terminal::view::TerminalViewState;
@@ -905,20 +904,13 @@ pub(super) enum SummaryPaneKind {
     CLIAgent { agent: CLIAgent, is_ambient: bool },
     Code { title: String },
     CodeDiff,
-    #[cfg(not(feature = "warp_lite"))]
     File,
-    #[cfg(not(feature = "warp_lite"))]
     Notebook { is_plan: bool },
-    #[cfg(not(feature = "warp_lite"))]
     Workflow { is_ai_prompt: bool },
     Settings,
-    #[cfg(not(feature = "warp_lite"))]
     EnvVarCollection,
-    #[cfg(not(feature = "warp_lite"))]
     EnvironmentManagement,
-    #[cfg(not(feature = "warp_lite"))]
     AIFact,
-    #[cfg(not(feature = "warp_lite"))]
     AIDocument,
     ExecutionProfileEditor,
     Other,
@@ -1068,21 +1060,29 @@ fn summary_conversation_status_for_terminal(
     terminal_view: &TerminalView,
     app: &AppContext,
 ) -> Option<ConversationStatus> {
-    let cli_agent_session = CLIAgentSessionsModel::as_ref(app).session(terminal_view.id());
-    if let Some(session) = cli_agent_session
-        .filter(|s| s.supports_rich_status())
-        .filter(|s| !matches!(s.agent, CLIAgent::Unknown))
+    #[cfg(feature = "agent_runtime")]
     {
-        return Some(session.status.to_conversation_status());
-    }
+        let cli_agent_session = CLIAgentSessionsModel::as_ref(app).session(terminal_view.id());
+        if let Some(session) = cli_agent_session
+            .filter(|s| s.supports_rich_status())
+            .filter(|s| !matches!(s.agent, CLIAgent::Unknown))
+        {
+            return Some(session.status.to_conversation_status());
+        }
 
-    let is_ambient = terminal_view.is_ambient_agent_session(app);
-    let has_conversation = terminal_view
-        .selected_conversation_display_title(app)
-        .is_some();
-    (has_conversation || is_ambient)
-        .then(|| terminal_view.selected_conversation_status_for_display(app))
-        .flatten()
+        let is_ambient = terminal_view.is_ambient_agent_session(app);
+        let has_conversation = terminal_view
+            .selected_conversation_display_title(app)
+            .is_some();
+        (has_conversation || is_ambient)
+            .then(|| terminal_view.selected_conversation_status_for_display(app))
+            .flatten()
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    {
+        let _ = (terminal_view, app);
+        None
+    }
 }
 
 fn coalesce_summary_branch_entries(
@@ -1457,7 +1457,9 @@ fn render_detail_kind_badge_icon(
         TypedPane::Terminal(terminal_pane) => {
             let terminal_view = terminal_pane.terminal_view(app);
             let terminal_view = terminal_view.as_ref(app);
+            #[cfg(feature = "agent_runtime")]
             let cli_agent_session = CLIAgentSessionsModel::as_ref(app).session(terminal_view.id());
+            #[cfg(feature = "agent_runtime")]
             if let Some(icon) = cli_agent_session.and_then(|session| session.agent.icon()) {
                 let color = cli_agent_session
                     .and_then(|session| session.agent.brand_color())
@@ -1489,18 +1491,16 @@ fn render_detail_kind_badge_icon(
             };
             icon.to_warpui_icon(color).finish()
         }
+        #[cfg(feature = "agent_runtime")]
         TypedPane::Code(_) => icon_from_file_path(&props.title, appearance)
             .unwrap_or_else(|| WarpIcon::Code2.to_warpui_icon(sub_text).finish()),
         typed => {
-            #[cfg(not(feature = "warp_lite"))]
             let fill = typed
                 .warp_drive_object_type()
                 .map(|object_type| {
                     WarpThemeFill::Solid(warp_drive_icon_color(appearance, object_type))
                 })
                 .unwrap_or(sub_text);
-            #[cfg(feature = "warp_lite")]
-            let fill = sub_text;
             typed.icon().to_warpui_icon(fill).finish()
         }
     }
@@ -1544,7 +1544,7 @@ fn render_settings_button(
 
             if hover_state.is_hovered() && !is_popup_open {
                 let tooltip = ui_builder
-                    .tool_tip("View options".to_string())
+                    .tool_tip(choose("View options", "显示选项").to_string())
                     .build()
                     .finish();
                 let mut stack = Stack::new().with_child(button_container);
@@ -1624,12 +1624,12 @@ fn render_new_tab_button(
         let contents = if hover_state.is_hovered() {
             let tooltip = if let Some(sublabel) = tab_configs_keybinding.clone() {
                 ui_builder
-                    .tool_tip_with_sublabel("Tab configs".to_string(), sublabel)
+                    .tool_tip_with_sublabel(choose("Tab configs", "终端配置").to_string(), sublabel)
                     .build()
                     .finish()
             } else {
                 ui_builder
-                    .tool_tip("Tab configs".to_string())
+                    .tool_tip(choose("Tab configs", "终端配置").to_string())
                     .build()
                     .finish()
             };
@@ -1770,9 +1770,13 @@ fn render_groups(
 
     if workspace.tabs.is_empty() {
         return Container::new(
-            Text::new_inline("No tabs open", appearance.ui_font_family(), 12.)
-                .with_color(theme.sub_text_color(theme.background()).into())
-                .finish(),
+            Text::new_inline(
+                choose("No tabs open", "没有打开的标签页"),
+                appearance.ui_font_family(),
+                12.,
+            )
+            .with_color(theme.sub_text_color(theme.background()).into())
+            .finish(),
         )
         .with_padding(Padding::uniform(12.))
         .finish();
@@ -1906,7 +1910,7 @@ fn render_groups(
         } else {
             return Container::new(
                 Text::new_inline(
-                    "No tabs match your search.",
+                    choose("No tabs match your search.", "没有匹配的标签页。"),
                     appearance.ui_font_family(),
                     12.,
                 )
@@ -2806,14 +2810,16 @@ fn render_grouped_tabs_header(
             let title_text = group
                 .name
                 .clone()
-                .unwrap_or_else(|| "New Group".to_string());
+                .unwrap_or_else(|| choose("New Group", "新分组").to_string());
             Text::new_inline(title_text, font_family, 12.)
                 .with_clip(ClipConfig::ellipsis())
                 .with_color(main_text_color.into())
                 .finish()
         };
     let subtitle_text = if member_count == 1 {
-        "1 tab".to_string()
+        choose("1 tab", "1 个标签页").to_string()
+    } else if cfg!(feature = "warp_lite") {
+        format!("{member_count} 个标签页")
     } else {
         format!("{member_count} tabs")
     };
@@ -2961,7 +2967,11 @@ fn render_grouped_tabs_header(
             anchor: TabContextMenuAnchor::Pointer(position),
         });
     });
-    hoverable.finish()
+    SavePosition::new(
+        hoverable.finish(),
+        &format!("vertical_tabs:group_header:{group_id:?}"),
+    )
+    .finish()
 }
 
 /// Renders a tab group: pane-like header followed by indented member rows. A colored group tints the
@@ -2988,7 +2998,8 @@ fn render_grouped_tab_container(
 
     let member_count = members.len();
     let group_id = group.id;
-    let group = group.clone();
+    let mut group = group.clone();
+    group.name = Some(workspace.tab_group_display_name(group.id, app));
     let any_member_active = members
         .iter()
         .any(|(tab_index, _)| *tab_index == workspace.active_tab_index);
@@ -3251,7 +3262,7 @@ fn render_group_header(props: GroupHeaderProps<'_>, app: &AppContext) -> Box<dyn
     let theme = appearance.theme();
     let title = pane_group.display_title(app);
     let title = if title.is_empty() {
-        "Untitled tab".to_string()
+        choose("Untitled tab", "未命名标签页").to_string()
     } else {
         title
     };
@@ -3312,11 +3323,13 @@ fn resolve_icon_with_status_variant(
     appearance: &Appearance,
     app: &AppContext,
 ) -> IconWithStatusVariant {
+    #[cfg(not(feature = "agent_runtime"))]
+    let _ = (&title,);
+
     let theme = appearance.theme();
     let main_text = theme.main_text_color(theme.background());
     let sub_text = theme.sub_text_color(theme.background());
 
-    #[cfg(not(feature = "warp_lite"))]
     let drive_color = |object_type: DriveObjectType| -> WarpThemeFill {
         WarpThemeFill::Solid(warp_drive_icon_color(appearance, object_type))
     };
@@ -3336,6 +3349,7 @@ fn resolve_icon_with_status_variant(
                 }
             }
         }
+        #[cfg(feature = "agent_runtime")]
         TypedPane::Code(_) => match icon_from_file_path(title, appearance) {
             Some(icon_element) => IconWithStatusVariant::NeutralElement { icon_element },
             _ => IconWithStatusVariant::Neutral {
@@ -3343,42 +3357,32 @@ fn resolve_icon_with_status_variant(
                 icon_color: sub_text,
             },
         },
-        // Settings uses the foreground color per design spec
-        TypedPane::Settings => IconWithStatusVariant::Neutral {
-            icon: typed.icon(),
-            icon_color: main_text,
-        },
-        #[cfg(not(feature = "warp_lite"))]
-        TypedPane::EnvironmentManagement => IconWithStatusVariant::Neutral {
+        // Settings and environment management use the foreground color per design spec
+        TypedPane::Settings | TypedPane::EnvironmentManagement => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: main_text,
         },
         // Warp Drive object types use their established index colors
-        #[cfg(not(feature = "warp_lite"))]
         TypedPane::Notebook { is_plan } => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::Notebook {
                 is_ai_document: *is_plan,
             }),
         },
-        #[cfg(not(feature = "warp_lite"))]
         TypedPane::Workflow { is_ai_prompt: true } => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::AgentModeWorkflow),
         },
-        #[cfg(not(feature = "warp_lite"))]
         TypedPane::Workflow {
             is_ai_prompt: false,
         } => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::Workflow),
         },
-        #[cfg(not(feature = "warp_lite"))]
         TypedPane::EnvVarCollection => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::EnvVarCollection),
         },
-        #[cfg(not(feature = "warp_lite"))]
         TypedPane::AIFact => IconWithStatusVariant::Neutral {
             icon: typed.icon(),
             icon_color: drive_color(DriveObjectType::AIFact),
@@ -3400,9 +3404,17 @@ fn has_unread_activity(typed: &TypedPane<'_>, app: &AppContext) -> bool {
 }
 
 fn has_unread_activity_for_terminal_view(terminal_view_id: EntityId, app: &AppContext) -> bool {
-    AgentNotificationsModel::as_ref(app)
-        .notifications()
-        .has_unread_for_terminal_view(terminal_view_id)
+    #[cfg(feature = "agent_runtime")]
+    {
+        AgentNotificationsModel::as_ref(app)
+            .notifications()
+            .has_unread_for_terminal_view(terminal_view_id)
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    {
+        let _ = (terminal_view_id, app);
+        false
+    }
 }
 
 const INDICATOR_DOT_SIZE: f32 = 8.;
@@ -3558,7 +3570,7 @@ fn render_pane_row(props: PaneProps<'_>, app: &AppContext) -> Box<dyn Element> {
             .with_child(title_row.finish());
 
         if !effective_subtitle.is_empty() {
-            let subtitle_clip = if matches!(props.typed, TypedPane::Code(_)) {
+            let subtitle_clip = if props.typed.is_code() {
                 ClipConfig::start()
             } else {
                 ClipConfig::ellipsis()
@@ -3587,29 +3599,41 @@ fn render_pane_row(props: PaneProps<'_>, app: &AppContext) -> Box<dyn Element> {
 
 enum TypedPane<'a> {
     Terminal(&'a TerminalPane),
+    #[cfg(feature = "agent_runtime")]
     Code(&'a CodePane),
     CodeDiff,
-    #[cfg(not(feature = "warp_lite"))]
     File,
-    #[cfg(not(feature = "warp_lite"))]
-    Notebook { is_plan: bool },
-    #[cfg(not(feature = "warp_lite"))]
-    Workflow { is_ai_prompt: bool },
+    Notebook {
+        is_plan: bool,
+    },
+    Workflow {
+        is_ai_prompt: bool,
+    },
     Settings,
-    #[cfg(not(feature = "warp_lite"))]
     EnvVarCollection,
-    #[cfg(not(feature = "warp_lite"))]
     EnvironmentManagement,
-    #[cfg(not(feature = "warp_lite"))]
     AIFact,
-    #[cfg(not(feature = "warp_lite"))]
     AIDocument,
     ExecutionProfileEditor,
     Other,
 }
 
 impl TypedPane<'_> {
+    fn is_code(&self) -> bool {
+        #[cfg(feature = "agent_runtime")]
+        {
+            matches!(self, Self::Code(_))
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            false
+        }
+    }
+
     fn summary_pane_kind(&self, title: &str, app: &AppContext) -> SummaryPaneKind {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&title,);
+
         match self {
             TypedPane::Terminal(terminal_pane) => {
                 let terminal_view = terminal_pane.terminal_view(app);
@@ -3626,66 +3650,47 @@ impl TypedPane<'_> {
                     Some(_) | None => SummaryPaneKind::Terminal,
                 }
             }
+            #[cfg(feature = "agent_runtime")]
             TypedPane::Code(_) => SummaryPaneKind::Code {
                 title: title.to_string(),
             },
             TypedPane::CodeDiff => SummaryPaneKind::CodeDiff,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::File => SummaryPaneKind::File,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Notebook { is_plan } => SummaryPaneKind::Notebook { is_plan: *is_plan },
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Workflow { is_ai_prompt } => SummaryPaneKind::Workflow {
                 is_ai_prompt: *is_ai_prompt,
             },
             TypedPane::Settings => SummaryPaneKind::Settings,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::EnvVarCollection => SummaryPaneKind::EnvVarCollection,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::EnvironmentManagement => SummaryPaneKind::EnvironmentManagement,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIFact => SummaryPaneKind::AIFact,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIDocument => SummaryPaneKind::AIDocument,
             TypedPane::ExecutionProfileEditor => SummaryPaneKind::ExecutionProfileEditor,
             TypedPane::Other => SummaryPaneKind::Other,
         }
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn warp_drive_object_type(&self) -> Option<DriveObjectType> {
         typed_pane_warp_drive_object_type(self)
     }
 
     fn supports_vertical_tabs_detail_sidecar(&self) -> bool {
-        if matches!(self, TypedPane::Terminal(_) | TypedPane::Code(_)) {
-            return true;
-        }
-        #[cfg(not(feature = "warp_lite"))]
-        if self.warp_drive_object_type().is_some() {
-            return true;
-        }
-        false
+        (matches!(self, TypedPane::Terminal(_)) || self.is_code())
+            || self.warp_drive_object_type().is_some()
     }
     fn kind_label(&self) -> &'static str {
         match self {
-            TypedPane::Terminal(_) => "Terminal",
+            TypedPane::Terminal(_) => choose("Terminal", "终端"),
+            #[cfg(feature = "agent_runtime")]
             TypedPane::Code(_) => "Code",
             TypedPane::CodeDiff => "Code Diff",
-            #[cfg(not(feature = "warp_lite"))]
-            TypedPane::File => "File",
-            #[cfg(not(feature = "warp_lite"))]
+            TypedPane::File => choose("File", "文件"),
             TypedPane::Notebook { .. } => "Notebook",
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Workflow { .. } => "Workflow",
-            TypedPane::Settings => "Settings",
-            #[cfg(not(feature = "warp_lite"))]
+            TypedPane::Settings => choose("Settings", "设置"),
             TypedPane::EnvVarCollection => "Environment Variables",
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::EnvironmentManagement => "Environments",
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIFact => "Rules",
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIDocument => "Plan",
             TypedPane::ExecutionProfileEditor => "Execution Profile",
             TypedPane::Other => "Other",
@@ -3693,53 +3698,47 @@ impl TypedPane<'_> {
     }
 
     fn badge(&self, app: &AppContext) -> Option<String> {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&app,);
+
         match self {
+            #[cfg(feature = "agent_runtime")]
             TypedPane::Code(code_pane) => code_pane
                 .file_view(app)
                 .as_ref(app)
                 .contains_unsaved_changes(app)
-                .then(|| "Unsaved".to_string()),
+                .then(|| choose("Unsaved", "未保存").to_string()),
             TypedPane::Terminal(_)
             | TypedPane::CodeDiff
-            | TypedPane::Settings
-            | TypedPane::ExecutionProfileEditor
-            | TypedPane::Other => None,
-            #[cfg(not(feature = "warp_lite"))]
-            TypedPane::File
+            | TypedPane::File
             | TypedPane::Notebook { .. }
             | TypedPane::Workflow { .. }
+            | TypedPane::Settings
             | TypedPane::EnvVarCollection
             | TypedPane::EnvironmentManagement
             | TypedPane::AIFact
-            | TypedPane::AIDocument => None,
+            | TypedPane::AIDocument
+            | TypedPane::ExecutionProfileEditor
+            | TypedPane::Other => None,
         }
     }
 
     fn icon(&self) -> WarpIcon {
         match self {
             TypedPane::Terminal(_) => WarpIcon::Terminal,
+            #[cfg(feature = "agent_runtime")]
             TypedPane::Code(_) => WarpIcon::Code2,
             TypedPane::CodeDiff => WarpIcon::Diff,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::File => WarpIcon::File,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Notebook { is_plan: true } => WarpIcon::Compass,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Notebook { is_plan: false } => WarpIcon::Notebook,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Workflow { is_ai_prompt: true } => WarpIcon::Prompt,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::Workflow {
                 is_ai_prompt: false,
             } => WarpIcon::Workflow,
-            TypedPane::Settings => WarpIcon::Gear,
-            #[cfg(not(feature = "warp_lite"))]
-            TypedPane::EnvironmentManagement => WarpIcon::Gear,
-            #[cfg(not(feature = "warp_lite"))]
+            TypedPane::Settings | TypedPane::EnvironmentManagement => WarpIcon::Gear,
             TypedPane::EnvVarCollection => WarpIcon::EnvVarCollection,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIFact => WarpIcon::BookOpen,
-            #[cfg(not(feature = "warp_lite"))]
             TypedPane::AIDocument => WarpIcon::Compass,
             TypedPane::ExecutionProfileEditor => WarpIcon::Lightning,
             TypedPane::Other => WarpIcon::File,
@@ -3752,7 +3751,7 @@ fn pane_display_title_and_subtitle(
     title: &str,
     secondary_title: &str,
 ) -> (String, String) {
-    if matches!(typed, TypedPane::Code(_)) && !title.is_empty() {
+    if typed.is_code() && !title.is_empty() {
         let path = Path::new(title);
         let filename = path
             .file_name()
@@ -3787,7 +3786,10 @@ fn build_vertical_tabs_summary_data(
     let mut primary_seen = HashMap::new();
     let mut working_directories = Vec::new();
     let mut working_directory_seen = HashMap::new();
+    #[cfg(not(feature = "warp_lite"))]
     let mut branch_entries = Vec::new();
+    #[cfg(feature = "warp_lite")]
+    let branch_entries = Vec::new();
     let mut has_unread_activity = false;
 
     for pane_id in visible_pane_ids {
@@ -3802,6 +3804,8 @@ fn build_vertical_tabs_summary_data(
             pane_configuration.title().trim(),
             pane_configuration.title_secondary().trim(),
         );
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&pane_subtitle,);
 
         match typed {
             TypedPane::Terminal(terminal_pane) => {
@@ -3844,6 +3848,7 @@ fn build_vertical_tabs_summary_data(
                     );
                 }
 
+                #[cfg(not(feature = "warp_lite"))]
                 if let (Some(repo_path), Some(branch_name)) = (
                     terminal_view
                         .current_local_repo_path()
@@ -3865,6 +3870,7 @@ fn build_vertical_tabs_summary_data(
                     });
                 }
             }
+            #[cfg(feature = "agent_runtime")]
             TypedPane::Code(_) => {
                 push_normalized_unique_summary_label(
                     &mut primary_labels,
@@ -3879,24 +3885,16 @@ fn build_vertical_tabs_summary_data(
                 );
             }
             TypedPane::CodeDiff
-            | TypedPane::Settings
-            | TypedPane::ExecutionProfileEditor
-            | TypedPane::Other => {
-                push_normalized_unique_summary_label(
-                    &mut primary_labels,
-                    &mut primary_seen,
-                    &pane_title,
-                    None,
-                );
-            }
-            #[cfg(not(feature = "warp_lite"))]
-            TypedPane::File
+            | TypedPane::File
             | TypedPane::Notebook { .. }
             | TypedPane::Workflow { .. }
+            | TypedPane::Settings
             | TypedPane::EnvVarCollection
             | TypedPane::EnvironmentManagement
             | TypedPane::AIFact
-            | TypedPane::AIDocument => {
+            | TypedPane::AIDocument
+            | TypedPane::ExecutionProfileEditor
+            | TypedPane::Other => {
                 push_normalized_unique_summary_label(
                     &mut primary_labels,
                     &mut primary_seen,
@@ -4027,21 +4025,21 @@ impl<'a> PaneProps<'a> {
                 self.display_title_override.as_deref(),
                 app,
             ),
-            TypedPane::Code(_)
-            | TypedPane::CodeDiff
-            | TypedPane::Settings
-            | TypedPane::ExecutionProfileEditor
-            | TypedPane::Other => {
+            #[cfg(feature = "agent_runtime")]
+            TypedPane::Code(_) => {
                 non_terminal_search_text_fragments(self.generated_or_tab_title(), &self.subtitle)
             }
-            #[cfg(not(feature = "warp_lite"))]
-            TypedPane::File
+            TypedPane::CodeDiff
+            | TypedPane::File
             | TypedPane::Notebook { .. }
             | TypedPane::Workflow { .. }
+            | TypedPane::Settings
             | TypedPane::EnvVarCollection
             | TypedPane::EnvironmentManagement
             | TypedPane::AIFact
-            | TypedPane::AIDocument => {
+            | TypedPane::AIDocument
+            | TypedPane::ExecutionProfileEditor
+            | TypedPane::Other => {
                 non_terminal_search_text_fragments(self.generated_or_tab_title(), &self.subtitle)
             }
         };
@@ -4143,11 +4141,17 @@ fn terminal_pane_search_text_fragments(
             .text()
             .to_string()
         });
+    #[cfg(not(feature = "warp_lite"))]
     let pull_request_label = terminal_view
         .current_pull_request_url(app)
         .as_deref()
         .map(terminal_pull_request_badge_label);
 
+    #[cfg(feature = "warp_lite")]
+    {
+        vec![primary_text, working_directory]
+    }
+    #[cfg(not(feature = "warp_lite"))]
     terminal_search_text_fragments(
         primary_text,
         working_directory,
@@ -4223,7 +4227,7 @@ fn terminal_primary_line_data(
     }
 
     TerminalPrimaryLineData::Text {
-        text: "New session".to_string(),
+        text: choose("New session", "新会话").to_string(),
         font: TerminalPrimaryLineFont::Ui,
     }
 }
@@ -4234,7 +4238,7 @@ fn terminal_kind_badge_label(is_oz_agent: bool, cli_agent: Option<CLIAgent>) -> 
     } else if is_oz_agent {
         "Oz".to_string()
     } else {
-        "Terminal".to_string()
+        choose("Terminal", "终端").to_string()
     }
 }
 
@@ -4288,32 +4292,41 @@ fn preferred_agent_tab_titles(
 }
 
 fn terminal_agent_text(terminal_view: &TerminalView, app: &AppContext) -> TerminalAgentText {
-    let cli_agent_session = CLIAgentSessionsModel::as_ref(app).session(terminal_view.id());
-    let is_plugin_backed = cli_agent_session.is_some_and(|session| session.listener.is_some());
-    let is_ambient_agent = terminal_view.is_ambient_agent_session(app);
+    #[cfg(feature = "agent_runtime")]
+    {
+        let cli_agent_session = CLIAgentSessionsModel::as_ref(app).session(terminal_view.id());
+        let is_plugin_backed = cli_agent_session.is_some_and(|session| session.listener.is_some());
+        let is_ambient_agent = terminal_view.is_ambient_agent_session(app);
 
-    let mut agent_text = TerminalAgentText {
-        is_oz_agent: is_ambient_agent,
-        cli_agent: cli_agent_session.map(|session| session.agent),
-        ..Default::default()
-    };
+        let mut agent_text = TerminalAgentText {
+            is_oz_agent: is_ambient_agent,
+            cli_agent: cli_agent_session.map(|session| session.agent),
+            ..Default::default()
+        };
 
-    if cli_agent_session.is_some() && !is_plugin_backed {
-        return agent_text;
+        if cli_agent_session.is_some() && !is_plugin_backed {
+            return agent_text;
+        }
+
+        agent_text.conversation_display_title =
+            terminal_view.selected_conversation_display_title(app);
+        agent_text.conversation_latest_user_prompt =
+            terminal_view.selected_conversation_latest_user_prompt_for_tab_name(app);
+        agent_text.is_oz_agent =
+            agent_text.conversation_display_title.is_some() || agent_text.is_oz_agent;
+
+        if let Some(session) = cli_agent_session {
+            agent_text.cli_agent_title = session.session_context.title_like_text();
+            agent_text.cli_agent_latest_user_prompt = session.session_context.latest_user_prompt();
+        }
+
+        agent_text
     }
-
-    agent_text.conversation_display_title = terminal_view.selected_conversation_display_title(app);
-    agent_text.conversation_latest_user_prompt =
-        terminal_view.selected_conversation_latest_user_prompt_for_tab_name(app);
-    agent_text.is_oz_agent =
-        agent_text.conversation_display_title.is_some() || agent_text.is_oz_agent;
-
-    if let Some(session) = cli_agent_session {
-        agent_text.cli_agent_title = session.session_context.title_like_text();
-        agent_text.cli_agent_latest_user_prompt = session.session_context.latest_user_prompt();
+    #[cfg(not(feature = "agent_runtime"))]
+    {
+        let _ = (terminal_view, app);
+        TerminalAgentText::default()
     }
-
-    agent_text
 }
 
 fn terminal_pull_request_badge_label(pull_request_url: &str) -> String {
@@ -4342,19 +4355,22 @@ fn vtab_diff_stats_text(line_changes: &GitLineChanges) -> String {
 
 impl PaneGroup {
     fn resolve_pane_type(&self, pane_id: PaneId, app: &AppContext) -> TypedPane<'_> {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&app,);
+
         match pane_id.pane_type() {
             IPaneType::Terminal => TypedPane::Terminal(
                 self.downcast_pane_by_id::<TerminalPane>(pane_id)
                     .expect("IPaneType::Terminal must correspond to a TerminalPane"),
             ),
+            #[cfg(feature = "agent_runtime")]
             IPaneType::Code => TypedPane::Code(
                 self.downcast_pane_by_id::<CodePane>(pane_id)
                     .expect("IPaneType::Code must correspond to a CodePane"),
             ),
             IPaneType::CodeDiff => TypedPane::CodeDiff,
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::File => TypedPane::File,
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             IPaneType::Notebook => {
                 let is_plan = self
                     .downcast_pane_by_id::<NotebookPane>(pane_id)
@@ -4362,7 +4378,7 @@ impl PaneGroup {
                     .unwrap_or(false);
                 TypedPane::Notebook { is_plan }
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             IPaneType::Workflow => {
                 let is_ai_prompt = self
                     .downcast_pane_by_id::<WorkflowPane>(pane_id)
@@ -4374,21 +4390,20 @@ impl PaneGroup {
                 TypedPane::Workflow { is_ai_prompt }
             }
             IPaneType::Settings => TypedPane::Settings,
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::EnvVarCollection => TypedPane::EnvVarCollection,
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::EnvironmentManagement => TypedPane::EnvironmentManagement,
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::AIFact => TypedPane::AIFact,
-            #[cfg(not(feature = "warp_lite"))]
             IPaneType::AIDocument => TypedPane::AIDocument,
             IPaneType::ExecutionProfileEditor => TypedPane::ExecutionProfileEditor,
             IPaneType::CustomRouterEditor
             | IPaneType::GetStarted
             | IPaneType::NetworkLog
             | IPaneType::DeferredPlaceholder => TypedPane::Other,
-            #[cfg(all(not(feature = "warp_lite"), test))]
+            #[cfg(test)]
             IPaneType::Dummy => TypedPane::Other,
+
+            #[cfg(not(feature = "agent_runtime"))]
+            IPaneType::Code | IPaneType::Notebook | IPaneType::Workflow => TypedPane::Other,
         }
     }
 }
@@ -4465,7 +4480,8 @@ fn render_terminal_row_content(
     let theme = appearance.theme();
     let main_text_color = theme.main_text_color(theme.background());
     let sub_text_color = theme.sub_text_color(theme.background());
-    let primary_info = *TabSettings::as_ref(app).vertical_tabs_primary_info.value();
+    let primary_info =
+        resolve_primary_info(*TabSettings::as_ref(app).vertical_tabs_primary_info.value());
 
     let title_text = terminal_view.terminal_title_from_shell();
     let working_directory = resolved_terminal_working_directory(terminal_view, app)
@@ -4562,6 +4578,9 @@ fn render_terminal_row_content(
         }
     };
 
+    #[cfg(feature = "warp_lite")]
+    let _ = metadata_left;
+
     let first_line_element = render_row_title_line(
         first_line,
         row_shows_synced_inputs_indicator(props, app),
@@ -4574,6 +4593,7 @@ fn render_terminal_row_content(
         .with_cross_axis_alignment(CrossAxisAlignment::Start);
     content.add_child(first_line_element);
     content.add_child(Container::new(second_line).with_margin_top(2.).finish());
+    #[cfg(not(feature = "warp_lite"))]
     content.add_child(
         Container::new(render_terminal_metadata_line(
             terminal_view,
@@ -4998,7 +5018,11 @@ fn render_summary_overflow_line(
     appearance: &Appearance,
 ) -> Box<dyn Element> {
     Text::new_inline(
-        format!("+ {hidden_count} more"),
+        if cfg!(feature = "warp_lite") {
+            format!("另有 {hidden_count} 个")
+        } else {
+            format!("+ {hidden_count} more")
+        },
         appearance.ui_font_family(),
         10.,
     )
@@ -5119,23 +5143,16 @@ pub(super) fn render_summary_pane_kind_icon_circle(
         ),
         SummaryPaneKind::Terminal
         | SummaryPaneKind::CodeDiff
-        | SummaryPaneKind::Settings
-        | SummaryPaneKind::ExecutionProfileEditor
-        | SummaryPaneKind::Other => {
-            let (icon, icon_color) = summary_pane_kind_icon(kind, appearance);
-            (
-                icon.to_warpui_icon(icon_color).finish(),
-                internal_colors::fg_overlay_2(theme).into(),
-            )
-        }
-        #[cfg(not(feature = "warp_lite"))]
-        SummaryPaneKind::File
+        | SummaryPaneKind::File
         | SummaryPaneKind::Notebook { .. }
         | SummaryPaneKind::Workflow { .. }
+        | SummaryPaneKind::Settings
         | SummaryPaneKind::EnvVarCollection
         | SummaryPaneKind::EnvironmentManagement
         | SummaryPaneKind::AIFact
-        | SummaryPaneKind::AIDocument => {
+        | SummaryPaneKind::AIDocument
+        | SummaryPaneKind::ExecutionProfileEditor
+        | SummaryPaneKind::Other => {
             let (icon, icon_color) = summary_pane_kind_icon(kind, appearance);
             (
                 icon.to_warpui_icon(icon_color).finish(),
@@ -5184,7 +5201,6 @@ fn summary_pane_kind_icon(
     let theme = appearance.theme();
     let main_text = theme.main_text_color(theme.background());
     let sub_text = theme.sub_text_color(theme.background());
-    #[cfg(not(feature = "warp_lite"))]
     let drive_color = |object_type: DriveObjectType| -> WarpThemeFill {
         WarpThemeFill::Solid(warp_drive_icon_color(appearance, object_type))
     };
@@ -5203,9 +5219,7 @@ fn summary_pane_kind_icon(
         ),
         SummaryPaneKind::Code { .. } => (WarpIcon::Code2, sub_text),
         SummaryPaneKind::CodeDiff => (WarpIcon::Diff, sub_text),
-        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::File => (WarpIcon::File, sub_text),
-        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::Notebook { is_plan } => (
             if is_plan {
                 WarpIcon::Compass
@@ -5216,7 +5230,6 @@ fn summary_pane_kind_icon(
                 is_ai_document: is_plan,
             }),
         ),
-        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::Workflow { is_ai_prompt } => (
             if is_ai_prompt {
                 WarpIcon::Prompt
@@ -5229,17 +5242,14 @@ fn summary_pane_kind_icon(
                 drive_color(DriveObjectType::Workflow)
             },
         ),
-        SummaryPaneKind::Settings => (WarpIcon::Gear, main_text),
-        #[cfg(not(feature = "warp_lite"))]
-        SummaryPaneKind::EnvironmentManagement => (WarpIcon::Gear, main_text),
-        #[cfg(not(feature = "warp_lite"))]
+        SummaryPaneKind::Settings | SummaryPaneKind::EnvironmentManagement => {
+            (WarpIcon::Gear, main_text)
+        }
         SummaryPaneKind::EnvVarCollection => (
             WarpIcon::EnvVarCollection,
             drive_color(DriveObjectType::EnvVarCollection),
         ),
-        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::AIFact => (WarpIcon::BookOpen, drive_color(DriveObjectType::AIFact)),
-        #[cfg(not(feature = "warp_lite"))]
         SummaryPaneKind::AIDocument => (WarpIcon::Compass, sub_text),
         SummaryPaneKind::ExecutionProfileEditor => (WarpIcon::Lightning, sub_text),
         SummaryPaneKind::Other => (WarpIcon::File, sub_text),
@@ -5403,6 +5413,7 @@ fn render_terminal_primary_line(
     }
 }
 
+#[cfg(not(feature = "warp_lite"))]
 #[allow(clippy::too_many_arguments)]
 fn render_terminal_metadata_line(
     terminal_view: &TerminalView,
@@ -5447,6 +5458,7 @@ fn render_terminal_metadata_line(
     // SpaceBetween treats this padding as part of the right element's natural width, so when the
     // panel is narrow and the Shrinkable text has fully collapsed, there is still a guaranteed
     // 4px gap between the text and the first chip — matching the spacing between chips.
+    #[cfg(not(feature = "warp_lite"))]
     if let Some(right_badges) = render_terminal_right_badges(
         terminal_view,
         pane_group_id,
@@ -5465,6 +5477,7 @@ fn render_terminal_metadata_line(
         .finish()
 }
 
+#[cfg(not(feature = "warp_lite"))]
 fn render_terminal_right_badges(
     terminal_view: &TerminalView,
     pane_group_id: EntityId,
@@ -5593,7 +5606,7 @@ fn render_compact_non_terminal_title(
     appearance: &Appearance,
 ) -> Box<dyn Element> {
     let theme = appearance.theme();
-    let clip_config = if matches!(typed, TypedPane::Code(_)) {
+    let clip_config = if typed.is_code() {
         ClipConfig::start()
     } else {
         ClipConfig::ellipsis()
@@ -5706,26 +5719,35 @@ fn compute_tab_group_color_mode(
                         })
                 }
                 _ => {
-                    match pane_group.code_view_from_pane_id(pane_id, app) {
-                        Some(code_view) => {
-                            // Code pane: determine color from the open file path using longest-prefix
-                            // matching against configured directories, so e.g. warp-internal/code.rs
-                            // inherits the color assigned to warp-internal.
-                            code_view
-                                .as_ref(app)
-                                .local_path(app)
-                                .as_deref()
-                                // TODO(andy): avoid canonicalizing on a render code path
-                                .and_then(|file_path| dunce::canonicalize(file_path).ok())
-                                .and_then(|file_path| {
-                                    dir_colors
-                                        .color_for_directory(&file_path)
-                                        .and_then(|c| c.ansi_color())
-                                })
+                    {
+                        #[cfg(feature = "agent_runtime")]
+                        {
+                            match pane_group.code_view_from_pane_id(pane_id, app) {
+                                Some(code_view) => {
+                                    // Code pane: determine color from the open file path using longest-prefix
+                                    // matching against configured directories, so e.g. warp-internal/code.rs
+                                    // inherits the color assigned to warp-internal.
+                                    code_view
+                                        .as_ref(app)
+                                        .local_path(app)
+                                        .as_deref()
+                                        // TODO(andy): avoid canonicalizing on a render code path
+                                        .and_then(|file_path| dunce::canonicalize(file_path).ok())
+                                        .and_then(|file_path| {
+                                            dir_colors
+                                                .color_for_directory(&file_path)
+                                                .and_then(|c| c.ansi_color())
+                                        })
+                                }
+                                _ => {
+                                    // Other non-terminal panes (notebook, workflow, etc.): fall back to the
+                                    // cached directory color from the tab's last active terminal.
+                                    tab.default_directory_color
+                                }
+                            }
                         }
-                        _ => {
-                            // Other non-terminal panes (notebook, workflow, etc.): fall back to the
-                            // cached directory color from the tab's last active terminal.
+                        #[cfg(not(feature = "agent_runtime"))]
+                        {
                             tab.default_directory_color
                         }
                     }
@@ -5763,10 +5785,21 @@ fn compute_tab_group_color_mode(
     }
 }
 
+fn resolve_primary_info(primary: VerticalTabsPrimaryInfo) -> VerticalTabsPrimaryInfo {
+    if cfg!(feature = "warp_lite") && matches!(primary, VerticalTabsPrimaryInfo::Branch) {
+        VerticalTabsPrimaryInfo::WorkingDirectory
+    } else {
+        primary
+    }
+}
+
 fn resolve_compact_subtitle(
     primary: VerticalTabsPrimaryInfo,
     subtitle_pref: VerticalTabsCompactSubtitle,
 ) -> VerticalTabsCompactSubtitle {
+    if cfg!(feature = "warp_lite") && matches!(subtitle_pref, VerticalTabsCompactSubtitle::Branch) {
+        return default_compact_subtitle(primary);
+    }
     let is_conflict = matches!(
         (primary, subtitle_pref),
         (
@@ -5788,6 +5821,14 @@ fn resolve_compact_subtitle(
 }
 
 fn default_compact_subtitle(primary: VerticalTabsPrimaryInfo) -> VerticalTabsCompactSubtitle {
+    if cfg!(feature = "warp_lite") {
+        return match primary {
+            VerticalTabsPrimaryInfo::Command => VerticalTabsCompactSubtitle::WorkingDirectory,
+            VerticalTabsPrimaryInfo::WorkingDirectory | VerticalTabsPrimaryInfo::Branch => {
+                VerticalTabsCompactSubtitle::Command
+            }
+        };
+    }
     match primary {
         VerticalTabsPrimaryInfo::Command => VerticalTabsCompactSubtitle::Branch,
         VerticalTabsPrimaryInfo::WorkingDirectory => VerticalTabsCompactSubtitle::Branch,
@@ -5800,27 +5841,33 @@ fn subtitle_options_for_primary(
 ) -> [(VerticalTabsCompactSubtitle, &'static str); 2] {
     match primary {
         VerticalTabsPrimaryInfo::Command => [
-            (VerticalTabsCompactSubtitle::Branch, "Branch"),
+            (
+                VerticalTabsCompactSubtitle::Branch,
+                choose("Branch", "分支"),
+            ),
             (
                 VerticalTabsCompactSubtitle::WorkingDirectory,
-                "Working Directory",
+                choose("Working Directory", "工作目录"),
             ),
         ],
         VerticalTabsPrimaryInfo::WorkingDirectory => [
-            (VerticalTabsCompactSubtitle::Branch, "Branch"),
+            (
+                VerticalTabsCompactSubtitle::Branch,
+                choose("Branch", "分支"),
+            ),
             (
                 VerticalTabsCompactSubtitle::Command,
-                "Command / Conversation",
+                choose("Command / Conversation", "命令"),
             ),
         ],
         VerticalTabsPrimaryInfo::Branch => [
             (
                 VerticalTabsCompactSubtitle::Command,
-                "Command / Conversation",
+                choose("Command / Conversation", "命令"),
             ),
             (
                 VerticalTabsCompactSubtitle::WorkingDirectory,
-                "Working Directory",
+                choose("Working Directory", "工作目录"),
             ),
         ],
     }
@@ -5840,7 +5887,8 @@ pub(super) fn render_settings_popup(
         .value();
     let current_tab_item_mode = *TabSettings::as_ref(app).vertical_tabs_tab_item_mode.value();
     let current_mode = *TabSettings::as_ref(app).vertical_tabs_view_mode.value();
-    let current_primary_info = *TabSettings::as_ref(app).vertical_tabs_primary_info.value();
+    let current_primary_info =
+        resolve_primary_info(*TabSettings::as_ref(app).vertical_tabs_primary_info.value());
     let current_subtitle = resolve_compact_subtitle(
         current_primary_info,
         *TabSettings::as_ref(app)
@@ -5863,7 +5911,7 @@ pub(super) fn render_settings_popup(
     let sub_text = theme.sub_text_color(theme.background());
     let view_as_header = Container::new(
         Text::new_inline(
-            "View as".to_string(),
+            choose("View as", "显示方式").to_string(),
             appearance.ui_font_family(),
             SETTINGS_POPUP_MENU_ITEM_FONT_SIZE,
         )
@@ -5882,7 +5930,7 @@ pub(super) fn render_settings_popup(
                 Expanded::new(
                     1.,
                     render_popup_text_segment(
-                        "Panes",
+                        choose("Panes", "面板"),
                         matches!(current_granularity, VerticalTabsDisplayGranularity::Panes),
                         state.panes_segment_mouse_state.clone(),
                         VerticalTabsDisplayGranularity::Panes,
@@ -5896,7 +5944,7 @@ pub(super) fn render_settings_popup(
                 Expanded::new(
                     1.,
                     render_popup_text_segment(
-                        "Tabs",
+                        choose("Tabs", "标签页"),
                         matches!(current_granularity, VerticalTabsDisplayGranularity::Tabs),
                         state.tabs_segment_mouse_state.clone(),
                         VerticalTabsDisplayGranularity::Tabs,
@@ -5922,7 +5970,7 @@ pub(super) fn render_settings_popup(
 
     let tab_item_header = Container::new(
         Text::new_inline(
-            "Tab item".to_string(),
+            choose("Tab item", "标签页内容").to_string(),
             appearance.ui_font_family(),
             SETTINGS_POPUP_MENU_ITEM_FONT_SIZE,
         )
@@ -5934,7 +5982,7 @@ pub(super) fn render_settings_popup(
     .finish();
 
     let focused_session_option = render_tab_item_mode_option(
-        "Focused session",
+        choose("Focused session", "当前会话"),
         matches!(
             current_tab_item_mode,
             VerticalTabsTabItemMode::FocusedSession
@@ -5947,7 +5995,7 @@ pub(super) fn render_settings_popup(
 
     let summary_option = if FeatureFlag::VerticalTabsSummaryMode.is_enabled() {
         Some(render_tab_item_mode_option(
-            "Summary",
+            choose("Summary", "摘要"),
             matches!(current_tab_item_mode, VerticalTabsTabItemMode::Summary),
             state.summary_option_mouse_state.clone(),
             VerticalTabsTabItemMode::Summary,
@@ -5960,7 +6008,7 @@ pub(super) fn render_settings_popup(
 
     let density_header = Container::new(
         Text::new_inline(
-            "Density".to_string(),
+            choose("Density", "紧凑程度").to_string(),
             appearance.ui_font_family(),
             SETTINGS_POPUP_MENU_ITEM_FONT_SIZE,
         )
@@ -6037,7 +6085,7 @@ pub(super) fn render_settings_popup(
 
     let pane_title_header = Container::new(
         Text::new_inline(
-            "Pane title as".to_string(),
+            choose("Pane title as", "面板标题显示").to_string(),
             appearance.ui_font_family(),
             SETTINGS_POPUP_MENU_ITEM_FONT_SIZE,
         )
@@ -6049,7 +6097,7 @@ pub(super) fn render_settings_popup(
     .finish();
 
     let command_option = render_primary_info_option(
-        "Command / Conversation",
+        choose("Command / Conversation", "命令"),
         matches!(current_primary_info, VerticalTabsPrimaryInfo::Command),
         state.command_option_mouse_state.clone(),
         VerticalTabsPrimaryInfo::Command,
@@ -6058,7 +6106,7 @@ pub(super) fn render_settings_popup(
     );
 
     let directory_option = render_primary_info_option(
-        "Working Directory",
+        choose("Working Directory", "工作目录"),
         matches!(
             current_primary_info,
             VerticalTabsPrimaryInfo::WorkingDirectory
@@ -6069,8 +6117,9 @@ pub(super) fn render_settings_popup(
         theme,
     );
 
+    #[cfg(not(feature = "warp_lite"))]
     let branch_option = render_primary_info_option(
-        "Branch",
+        choose("Branch", "分支"),
         matches!(current_primary_info, VerticalTabsPrimaryInfo::Branch),
         state.branch_option_mouse_state.clone(),
         VerticalTabsPrimaryInfo::Branch,
@@ -6101,6 +6150,7 @@ pub(super) fn render_settings_popup(
         popup_col.add_child(pane_title_header);
         popup_col.add_child(command_option);
         popup_col.add_child(directory_option);
+        #[cfg(not(feature = "warp_lite"))]
         popup_col.add_child(branch_option);
 
         if matches!(current_mode, VerticalTabsViewMode::Compact) {
@@ -6108,7 +6158,7 @@ pub(super) fn render_settings_popup(
 
             let subtitle_header = Container::new(
                 Text::new_inline(
-                    "Additional metadata".to_string(),
+                    choose("Additional metadata", "附加信息").to_string(),
                     appearance.ui_font_family(),
                     SETTINGS_POPUP_MENU_ITEM_FONT_SIZE,
                 )
@@ -6126,6 +6176,11 @@ pub(super) fn render_settings_popup(
                 state.subtitle_option_2_mouse_state.clone(),
             ];
             for (i, (value, label)) in options.iter().enumerate() {
+                if cfg!(feature = "warp_lite")
+                    && matches!(value, VerticalTabsCompactSubtitle::Branch)
+                {
+                    continue;
+                }
                 popup_col.add_child(render_compact_subtitle_option(
                     label,
                     current_subtitle == *value,
@@ -6137,12 +6192,12 @@ pub(super) fn render_settings_popup(
             }
         }
 
-        if matches!(current_mode, VerticalTabsViewMode::Expanded) {
+        if !cfg!(feature = "warp_lite") && matches!(current_mode, VerticalTabsViewMode::Expanded) {
             popup_col.add_child(make_divider(theme));
 
             let show_header = Container::new(
                 Text::new_inline(
-                    "Show".to_string(),
+                    choose("Show", "显示").to_string(),
                     appearance.ui_font_family(),
                     SETTINGS_POPUP_MENU_ITEM_FONT_SIZE,
                 )
@@ -6166,7 +6221,7 @@ pub(super) fn render_settings_popup(
             };
 
             popup_col.add_child(render_show_toggle_option(
-                "PR link",
+                choose("PR link", "PR 链接"),
                 show_pr_link,
                 state.show_pr_link_mouse_state.clone(),
                 WorkspaceAction::ToggleVerticalTabsShowPrLink,
@@ -6175,7 +6230,7 @@ pub(super) fn render_settings_popup(
                 theme,
             ));
             popup_col.add_child(render_show_toggle_option(
-                "Diff stats",
+                choose("Diff stats", "变更统计"),
                 show_diff_stats,
                 state.show_diff_stats_mouse_state.clone(),
                 WorkspaceAction::ToggleVerticalTabsShowDiffStats,
@@ -6188,7 +6243,7 @@ pub(super) fn render_settings_popup(
     popup_col.add_child(make_divider(theme));
 
     popup_col.add_child(render_show_toggle_option(
-        "Show details on hover",
+        choose("Show details on hover", "悬停显示详情"),
         show_details_on_hover,
         state.show_details_on_hover_mouse_state.clone(),
         WorkspaceAction::ToggleVerticalTabsShowDetailsOnHover,
@@ -6866,12 +6921,15 @@ fn render_terminal_detail_section(
     let theme = appearance.theme();
     let text_colors = detail_sidecar_text_colors(theme);
     let working_directory = resolved_terminal_working_directory(terminal_view, app);
+    #[cfg(not(feature = "warp_lite"))]
     let git_branch = terminal_view.current_git_branch(app);
+    #[cfg(feature = "agent_runtime")]
     let cli_agent_session = CLIAgentSessionsModel::as_ref(app).session(terminal_view.id());
     let agent_text = terminal_agent_text(terminal_view, app);
     let (conversation_display_title, cli_agent_title) =
         preferred_agent_tab_titles(&agent_text, agent_tab_text_preference(app));
     let kind_label = terminal_kind_badge_label(agent_text.is_oz_agent, agent_text.cli_agent);
+    #[cfg(feature = "agent_runtime")]
     let status = if let Some(session) = cli_agent_session.filter(|s| s.supports_rich_status()) {
         Some(session.status.to_conversation_status())
     } else if agent_text.is_oz_agent {
@@ -6879,6 +6937,8 @@ fn render_terminal_detail_section(
     } else {
         None
     };
+    #[cfg(not(feature = "agent_runtime"))]
+    let status: Option<ConversationStatus> = None;
 
     let title_text = terminal_view.terminal_title_from_shell();
     let primary_line = terminal_primary_line_data(
@@ -6907,6 +6967,7 @@ fn render_terminal_detail_section(
             appearance,
         ));
     }
+    #[cfg(not(feature = "warp_lite"))]
     if let Some(branch) = git_branch.filter(|branch| !branch.trim().is_empty()) {
         section.add_child(render_git_branch_text(
             &branch,
@@ -6933,33 +6994,36 @@ fn render_terminal_detail_section(
         appearance,
     ));
 
-    let mut right_badges = Flex::row()
-        .with_cross_axis_alignment(CrossAxisAlignment::Center)
-        .with_spacing(4.);
-    let mut has_right_badges = false;
-    if let Some(git_line_changes) = terminal_view.current_diff_line_changes(app) {
-        right_badges.add_child(render_terminal_diff_stats_badge(
-            &git_line_changes,
-            props.pane_group_id,
-            props.pane_id,
-            VerticalTabsChipEntrypoint::DetailsSidecar,
-            props.badge_mouse_states.diff_stats.clone(),
-            appearance,
-        ));
-        has_right_badges = true;
-    }
-    if let Some(pull_request_url) = terminal_view.current_pull_request_url(app) {
-        right_badges.add_child(render_terminal_pull_request_badge(
-            terminal_pull_request_badge_label(&pull_request_url),
-            pull_request_url,
-            VerticalTabsChipEntrypoint::DetailsSidecar,
-            props.badge_mouse_states.pull_request.clone(),
-            appearance,
-        ));
-        has_right_badges = true;
-    }
-    if has_right_badges {
-        metadata_row.add_child(right_badges.finish());
+    #[cfg(not(feature = "warp_lite"))]
+    {
+        let mut right_badges = Flex::row()
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_spacing(4.);
+        let mut has_right_badges = false;
+        if let Some(git_line_changes) = terminal_view.current_diff_line_changes(app) {
+            right_badges.add_child(render_terminal_diff_stats_badge(
+                &git_line_changes,
+                props.pane_group_id,
+                props.pane_id,
+                VerticalTabsChipEntrypoint::DetailsSidecar,
+                props.badge_mouse_states.diff_stats.clone(),
+                appearance,
+            ));
+            has_right_badges = true;
+        }
+        if let Some(pull_request_url) = terminal_view.current_pull_request_url(app) {
+            right_badges.add_child(render_terminal_pull_request_badge(
+                terminal_pull_request_badge_label(&pull_request_url),
+                pull_request_url,
+                VerticalTabsChipEntrypoint::DetailsSidecar,
+                props.badge_mouse_states.pull_request.clone(),
+                appearance,
+            ));
+            has_right_badges = true;
+        }
+        if has_right_badges {
+            metadata_row.add_child(right_badges.finish());
+        }
     }
     section.add_child(metadata_row.finish());
 
@@ -6968,6 +7032,7 @@ fn render_terminal_detail_section(
         .finish()
 }
 
+#[cfg(feature = "agent_runtime")]
 fn render_code_detail_section(
     props: &PaneProps<'_>,
     appearance: &Appearance,
@@ -7005,7 +7070,11 @@ fn render_code_detail_section(
 
     if extra_open_tabs > 0 {
         section.add_child(render_detail_wrapping_text(
-            format!("and {extra_open_tabs} more"),
+            if cfg!(feature = "warp_lite") {
+                format!("另有 {extra_open_tabs} 个")
+            } else {
+                format!("and {extra_open_tabs} more")
+            },
             12.,
             text_colors.sub,
             None,
@@ -7042,7 +7111,6 @@ fn render_code_detail_section(
         .finish()
 }
 
-#[cfg(not(feature = "warp_lite"))]
 fn render_warp_drive_object_detail_section(
     props: &PaneProps<'_>,
     appearance: &Appearance,
@@ -7079,7 +7147,6 @@ fn code_detail_kind_label(file_name: &str) -> Option<String> {
         .map(|language| language.display_name().to_string())
 }
 
-#[cfg(not(feature = "warp_lite"))]
 fn typed_pane_warp_drive_object_type(typed: &TypedPane<'_>) -> Option<DriveObjectType> {
     match typed {
         TypedPane::Notebook { is_plan } => Some(DriveObjectType::Notebook {
@@ -7094,8 +7161,9 @@ fn typed_pane_warp_drive_object_type(typed: &TypedPane<'_>) -> Option<DriveObjec
         TypedPane::AIDocument => Some(DriveObjectType::Notebook {
             is_ai_document: true,
         }),
+        #[cfg(feature = "agent_runtime")]
+        TypedPane::Code(_) => None,
         TypedPane::Terminal(_)
-        | TypedPane::Code(_)
         | TypedPane::CodeDiff
         | TypedPane::File
         | TypedPane::Settings
@@ -7117,19 +7185,19 @@ fn render_detail_section(
             appearance,
             app,
         ),
+        #[cfg(feature = "agent_runtime")]
         TypedPane::Code(_) => render_code_detail_section(props, appearance, app),
-        #[cfg(not(feature = "warp_lite"))]
         TypedPane::Notebook { .. }
         | TypedPane::Workflow { .. }
         | TypedPane::EnvVarCollection
         | TypedPane::AIFact
         | TypedPane::AIDocument => render_warp_drive_object_detail_section(props, appearance, app),
         TypedPane::CodeDiff
+        | TypedPane::File
         | TypedPane::Settings
+        | TypedPane::EnvironmentManagement
         | TypedPane::ExecutionProfileEditor
         | TypedPane::Other => Empty::new().finish(),
-        #[cfg(not(feature = "warp_lite"))]
-        TypedPane::File | TypedPane::EnvironmentManagement => Empty::new().finish(),
     }
 }
 pub(super) struct DetailSidecarOverlay {
@@ -7316,7 +7384,8 @@ fn render_compact_pane_row(props: PaneProps<'_>, app: &AppContext) -> Box<dyn El
         theme,
     );
 
-    let primary_info = *TabSettings::as_ref(app).vertical_tabs_primary_info.value();
+    let primary_info =
+        resolve_primary_info(*TabSettings::as_ref(app).vertical_tabs_primary_info.value());
     let compact_subtitle = resolve_compact_subtitle(
         primary_info,
         *TabSettings::as_ref(app)
@@ -7428,7 +7497,7 @@ fn render_compact_pane_row(props: PaneProps<'_>, app: &AppContext) -> Box<dyn El
                 },
                 12.,
                 main_text_color,
-                if matches!(props.typed, TypedPane::Code(_)) {
+                if props.typed.is_code() {
                     ClipConfig::start()
                 } else {
                     ClipConfig::ellipsis()
@@ -7439,7 +7508,7 @@ fn render_compact_pane_row(props: PaneProps<'_>, app: &AppContext) -> Box<dyn El
             let subtitle = if effective_subtitle.is_empty() {
                 None
             } else {
-                let subtitle_clip = if matches!(props.typed, TypedPane::Code(_)) {
+                let subtitle_clip = if props.typed.is_code() {
                     ClipConfig::start()
                 } else {
                     ClipConfig::ellipsis()

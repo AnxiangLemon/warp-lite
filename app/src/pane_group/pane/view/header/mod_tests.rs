@@ -7,6 +7,7 @@ use warpui::platform::WindowStyle;
 use warpui::{App, AppContext, Element, Entity, TypedActionView, View, ViewContext};
 
 use super::{Event, OpenOverlay};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::BlocklistAIHistoryModel;
 use crate::auth::AuthStateProvider;
 use crate::cloud_object::model::persistence::CloudModel;
@@ -17,6 +18,7 @@ use crate::server::server_api::ServerApiProvider;
 use crate::server::server_api::team::MockTeamClient;
 use crate::server::server_api::workspace::MockWorkspaceClient;
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::permissions_manager::SessionPermissionsManager;
 use crate::test_util::settings::initialize_settings_for_tests;
 use crate::{
@@ -127,8 +129,10 @@ fn initialize_app(app: &mut App) {
     app.add_singleton_model(|_| UserProfiles::new(Vec::new()));
     app.add_singleton_model(CloudModel::mock);
     app.add_singleton_model(|ctx| UpdateManager::new(None, Arc::new(MockObjectClient::new()), ctx));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(SessionPermissionsManager::new);
     app.add_singleton_model(|_| KeybindingChangedNotifier::mock());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| BlocklistAIHistoryModel::new_for_test());
     #[cfg(feature = "voice_input")]
     app.add_singleton_model(voice_input::VoiceInput::new);

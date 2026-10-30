@@ -1,17 +1,23 @@
 use std::collections::HashMap;
+#[cfg(feature = "agent_runtime")]
 use std::collections::hash_map::Entry;
 
-use warpui::{Entity, EntityId, ModelContext, ModelHandle, SingletonEntity, WeakViewHandle};
+#[cfg(feature = "agent_runtime")]
+use warpui::EntityId;
+use warpui::{Entity, ModelContext, ModelHandle, SingletonEntity, WeakViewHandle};
 
 use crate::cloud_object::Owner;
 use crate::cloud_object::model::persistence::CloudModel;
 use crate::env_vars::view::env_var_collection::EnvVarCollectionView;
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::{EnvVarCollectionPane, PaneContent};
+#[cfg(feature = "agent_runtime")]
+use crate::safe_warn;
 use crate::server::cloud_objects::update_manager::{
     ObjectOperation, OperationSuccessType, UpdateManager, UpdateManagerEvent,
 };
 use crate::server::ids::SyncId;
-use crate::{PaneViewLocator, WindowId, safe_warn};
+use crate::{PaneViewLocator, WindowId};
 
 pub struct EnvVarCollectionManager {
     panes_by_hashed_id: HashMap<String, EnvVarCollectionPaneData>,
@@ -54,6 +60,7 @@ impl EnvVarCollectionManager {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn create_pane(
         &mut self,
         source: &EnvVarCollectionSource,
@@ -91,6 +98,7 @@ impl EnvVarCollectionManager {
         EnvVarCollectionPane::new(view, ctx)
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn register_pane(
         &mut self,
         pane: &EnvVarCollectionPane,
@@ -126,6 +134,7 @@ impl EnvVarCollectionManager {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn deregister_pane(&mut self, pane: &EnvVarCollectionPane, ctx: &mut ModelContext<Self>) {
         let Some(env_var_collection_id) = pane
             .env_var_collection_view(ctx)

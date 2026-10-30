@@ -54,7 +54,7 @@ pub struct NewSessionDataSource {
 }
 
 impl NewSessionDataSource {
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
     pub fn new(binding_source: ModelHandle<BindingSource>, ctx: &mut ModelContext<Self>) -> Self {
         if FeatureFlag::UseTantivySearch.is_enabled() {
             Self::new_full_text(binding_source, ctx)
@@ -63,7 +63,7 @@ impl NewSessionDataSource {
         }
     }
 
-    #[cfg(target_family = "wasm")]
+    #[cfg(any(target_family = "wasm", not(feature = "full_text_search")))]
     pub fn new(binding_source: ModelHandle<BindingSource>, ctx: &mut ModelContext<Self>) -> Self {
         Self::new_fuzzy(binding_source, ctx)
     }
@@ -76,7 +76,7 @@ impl NewSessionDataSource {
         }
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
     fn new_full_text(
         binding_source: ModelHandle<BindingSource>,
         ctx: &mut ModelContext<Self>,
@@ -297,7 +297,7 @@ impl NewSessionSearcher for FuzzyNewSessionSearcher {
     }
 }
 
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
 mod full_text_searcher {
     use std::collections::HashMap;
     use std::sync::Arc;

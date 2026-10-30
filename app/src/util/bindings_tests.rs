@@ -160,3 +160,35 @@ fn test_terminal_page_scroll_bindings_are_editable() {
         });
     });
 }
+
+#[test]
+#[cfg(all(feature = "warp_lite", not(feature = "agent_runtime")))]
+fn lite_registered_quit_binding_passes_startup_validators() {
+    App::test((), |mut app| async move {
+        crate::workspace::view::tests::initialize_app(&mut app);
+        app.read(|ctx| {
+            let binding = ctx
+                .get_binding_by_name("workspace:terminate_app")
+                .expect("Native Lite must register the real quit binding");
+            if matches!(
+                OperatingSystem::get(),
+                OperatingSystem::Windows | OperatingSystem::Linux
+            ) {
+                assert!(
+                    trigger_to_keystroke(binding.trigger).is_some(),
+                    "quit binding must have a keyboard trigger: {binding:?}"
+                );
+            }
+            assert_eq!(
+                super::is_binding_pty_compliant(binding),
+                warpui::keymap::IsBindingValid::Yes,
+                "registered quit binding must preserve PTY control characters: {binding:?}",
+            );
+            assert_eq!(
+                super::is_binding_cross_platform(binding),
+                warpui::keymap::IsBindingValid::Yes,
+                "registered quit binding must pass the app startup validator: {binding:?}",
+            );
+        });
+    });
+}

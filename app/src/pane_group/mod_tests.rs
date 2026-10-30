@@ -1,9 +1,13 @@
 use std::collections::HashMap;
 
+#[cfg(feature = "agent_runtime")]
 use ai::index::full_source_code_embedding::manager::CodebaseIndexManager;
+#[cfg(feature = "agent_runtime")]
 use ai::project_context::model::ProjectContextModel;
+#[cfg(feature = "agent_runtime")]
 use chrono::Utc;
 use pathfinder_geometry::rect::RectF;
+#[cfg(feature = "agent_runtime")]
 use persistence::model::{
     AgentConversation, AgentConversationData, AgentConversationRecord, ConversationUsageMetadata,
 };
@@ -11,8 +15,11 @@ use persistence::model::{
 use repo_metadata::RepoMetadataModel;
 use repo_metadata::repositories::DetectedRepositories;
 use repo_metadata::watcher::DirectoryWatcher;
+#[cfg(feature = "agent_runtime")]
 use session_sharing_protocol::common::SessionId;
+#[cfg(feature = "agent_runtime")]
 use shared_session::permissions_manager::SessionPermissionsManager;
+#[cfg(feature = "agent_runtime")]
 use uuid::Uuid;
 use warp_core::features::FeatureFlag;
 use warp_server_client::iap::IapManager;
@@ -22,60 +29,99 @@ use warpui::windowing::state::ApplicationStage;
 use warpui::{App, ModelHandle};
 use watcher::HomeDirectoryWatcher;
 
+#[cfg(feature = "agent_runtime")]
 use super::child_agent::hydration::{
     RemoteChildHydrationAction, decide_remote_child_hydration_action,
 };
+#[cfg(feature = "agent_runtime")]
 use super::child_agent::{
     HiddenChildAgentConversationRequest, HiddenChildAgentTaskContext,
     create_hidden_child_agent_conversation,
 };
 use super::*;
+#[cfg(feature = "agent_runtime")]
+use crate::AgentNotificationsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::AIRequestUsageModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::api::ServerConversationToken;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::conversation::{
     AIAgentHarness, AIConversation, AIConversationId, ServerAIConversationMetadata,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_conversations_model::AgentConversationsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ambient_agents::github_auth_notifier::GitHubAuthNotifier;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ambient_agents::task::TaskPrincipalInfo;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ambient_agents::{
     AgentSource, AmbientAgentLiveSessionState, AmbientAgentTask, AmbientAgentTaskId,
     AmbientAgentTaskState,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::history_model::CloudConversationData;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::local_agent_task_sync_model::LocalAgentTaskSyncModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::orchestration_event_streamer::OrchestrationEventStreamer;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::orchestration_events::OrchestrationEventService;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::orchestration_topology::descendant_conversation_ids_in_spawn_order;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{BlocklistAIHistoryModel, QueuedQueryModel};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::cloud_environments::CloudEnvironmentCatalog;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::document::ai_document_model::AIDocumentModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::harness_availability::HarnessAvailabilityModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::llms::LLMPreferences;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::templatable_manager::TemplatableMCPServerManager;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::mcp::{FileBasedMCPManager, FileMCPWatcher};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::outline::RepoOutlines;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::persisted_workspace::PersistedWorkspace;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::restored_conversations::RestoredAgentConversations;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::skills::SkillManager;
+use crate::auth::AuthStateProvider;
 use crate::auth::auth_manager::AuthManager;
+#[cfg(feature = "agent_runtime")]
 use crate::auth::user::TEST_USER_UID;
 use crate::changelog_model::ChangelogModel;
 use crate::cloud_object::model::persistence::CloudModel;
+#[cfg(feature = "agent_runtime")]
 use crate::cloud_object::{Owner, Revision, ServerMetadata, ServerPermissions};
 use crate::context_chips::prompt::Prompt;
 use crate::network::NetworkStatus;
+#[cfg(feature = "agent_runtime")]
 use crate::notebooks::editor::keys::NotebookKeybindings;
+#[cfg(feature = "agent_runtime")]
 use crate::notebooks::manager::NotebookManager;
+#[cfg(feature = "agent_runtime")]
 use crate::notebooks::notebook::NotebookView;
+#[cfg(feature = "agent_runtime")]
 use crate::pricing::PricingInfoModel;
 use crate::resource_center::TipsCompleted;
+#[cfg(feature = "agent_runtime")]
 use crate::search::files::model::FileSearchModel;
 use crate::server::cloud_objects::listener::Listener;
 use crate::server::cloud_objects::update_manager::UpdateManager;
+#[cfg(feature = "agent_runtime")]
 use crate::server::ids::ServerId;
 use crate::server::server_api::ServerApiProvider;
 use crate::server::sync_queue::SyncQueue;
@@ -85,13 +131,17 @@ use crate::settings_view::keybindings::KeybindingChangedNotifier;
 use crate::suggestions::ignored_suggestions_model::IgnoredSuggestionsModel;
 use crate::system::SystemStats;
 use crate::terminal::alt_screen_reporting::AltScreenReporting;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
 use crate::terminal::history::History;
 use crate::terminal::keys::TerminalKeybindings;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::local_tty::TerminalManager;
 use crate::terminal::local_tty::spawner::PtySpawner;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::model::terminal_model::ConversationTranscriptViewerStatus;
 use crate::terminal::resizable_data::ResizableData;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::{
     IsSharedSessionCreator, SharedSessionActionSource, SharedSessionScrollbackType,
     SharedSessionSource, SharedSessionStatus,
@@ -100,15 +150,15 @@ use crate::test_util::settings::initialize_settings_for_tests;
 use crate::undo_close::UndoCloseStack;
 use crate::warp_managed_paths_watcher::WarpManagedPathsWatcher;
 use crate::workflows::local_workflows::LocalWorkflows;
+#[cfg(feature = "agent_runtime")]
+use crate::workspace::OneTimeModalModel;
 use crate::workspace::sync_inputs::SyncedInputState;
-use crate::workspace::{ActiveSession, OneTimeModalModel, WorkspaceRegistry};
+use crate::workspace::{ActiveSession, WorkspaceRegistry};
 use crate::workspaces::team_tester::TeamTesterStatus;
 use crate::workspaces::update_manager::TeamUpdateManager;
 use crate::workspaces::user_profiles::UserProfiles;
 use crate::workspaces::user_workspaces::UserWorkspaces;
-use crate::{
-    AgentNotificationsModel, GlobalResourceHandles, GlobalResourceHandlesProvider, experiments,
-};
+use crate::{GlobalResourceHandles, GlobalResourceHandlesProvider, experiments};
 
 fn initialize_app(app: &mut App) {
     initialize_settings_for_tests(app);
@@ -133,6 +183,7 @@ fn initialize_app(app: &mut App) {
     app.add_singleton_model(|_| SystemStats::new());
     app.add_singleton_model(SyncQueue::mock);
     app.add_singleton_model(CloudModel::mock);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(CloudEnvironmentCatalog::new);
     app.add_singleton_model(UserWorkspaces::default_mock);
     app.add_singleton_model(TeamTesterStatus::mock);
@@ -145,82 +196,142 @@ fn initialize_app(app: &mut App) {
     app.add_singleton_model(HomeDirectoryWatcher::new_for_test);
     app.add_singleton_model(DirectoryWatcher::new);
     app.add_singleton_model(WarpManagedPathsWatcher::new_for_testing);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(FileMCPWatcher::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| FileBasedMCPManager::default());
 
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| TemplatableMCPServerManager::default());
     app.add_singleton_model(|_ctx| UserProfiles::new(Vec::new()));
     app.add_singleton_model(|_| Appearance::mock());
+    #[cfg(not(feature = "agent_runtime"))]
+    {
+        app.add_singleton_model(|_| crate::settings_view::pane_manager::SettingsPaneManager::new());
+        app.add_singleton_model(|_| crate::settings_view::DisplayCount::mock());
+        app.add_singleton_model(crate::appearance::AppearanceManager::new);
+        app.add_singleton_model(|_| crate::gpu_state::GPUState::new());
+        app.add_singleton_model(crate::default_terminal::DefaultTerminal::new);
+    }
     app.add_singleton_model(PrivacySettings::mock);
     app.add_singleton_model(|_ctx| SyncedInputState::mock());
     app.add_singleton_model(LocalWorkflows::new);
     app.add_singleton_model(|_| Prompt::mock());
     app.add_singleton_model(|_| ResizableData::default());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(NotebookManager::mock);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(shared_session::manager::Manager::new);
     app.add_singleton_model(|_| ActiveSession::default());
     let global_resources = GlobalResourceHandles::mock(app);
     app.add_singleton_model(|_| GlobalResourceHandlesProvider::new(global_resources.clone()));
     app.add_singleton_model(|_| KeybindingChangedNotifier::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(NotebookKeybindings::new);
     app.add_singleton_model(TerminalKeybindings::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| BlocklistAIHistoryModel::new_for_test());
     // QueuedQueryModel subscribes to history events; register after the
     // history model is in place.
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(QueuedQueryModel::new);
     // Pill bar model subscribes to history events; register after the
     // history model is in place.
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         crate::ai::blocklist::agent_view::orchestration_pill_bar_model::OrchestrationPillBarModel::new(
             Default::default(),
             ctx,
         )
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| CLIAgentSessionsModel::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(OrchestrationEventService::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(LocalAgentTaskSyncModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(OrchestrationEventStreamer::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| ActiveAgentViewsModel::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(crate::ai::blocklist::BlocklistAIPermissions::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(AgentNotificationsModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         AIExecutionProfilesModel::new(&crate::LaunchMode::new_for_unit_test(), ctx)
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         AIRequestUsageModel::new_for_test(ServerApiProvider::as_ref(ctx).get_ai_client(), ctx)
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(SessionPermissionsManager::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(LLMPreferences::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(HarnessAvailabilityModel::new);
     #[cfg(feature = "voice_input")]
     app.add_singleton_model(voice_input::VoiceInput::new);
     #[cfg(feature = "local_fs")]
     app.add_singleton_model(RepoMetadataModel::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(SkillManager::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(FileSearchModel::new);
     app.add_singleton_model(|_| crate::code_review::git_repo_model::GitRepoModels::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(RepoOutlines::new_for_test);
     crate::terminal::available_shells::register(app);
     app.update(experiments::init);
     AltScreenReporting::register(app);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| {
         CodebaseIndexManager::new_for_test(ServerApiProvider::as_ref(ctx).get(), ctx)
     });
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| PersistedWorkspace::new(vec![], HashMap::new(), None, ctx));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| ProjectContextModel::default());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|ctx| crate::ai::agent_tips::AITipModel::new_for_agent_tips(ctx));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| RestoredAgentConversations::new_seeded(vec![]));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(OneTimeModalModel::new);
     app.add_singleton_model(|_| WorkspaceRegistry::new());
     app.add_singleton_model(UndoCloseStack::new);
     app.add_singleton_model(|_| IgnoredSuggestionsModel::new(vec![]));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| PricingInfoModel::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(crate::ai::pricing_promotion::PricingPromotionState::new);
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(AIDocumentModel::new);
     app.add_singleton_model(|_| History::new(vec![]));
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(|_| GitHubAuthNotifier::new());
+    #[cfg(feature = "agent_runtime")]
     app.add_singleton_model(AgentConversationsModel::new);
     app.add_singleton_model(remote_server::manager::RemoteServerManager::new);
+}
+
+#[cfg(feature = "agent_runtime")]
+fn nonterminal_pane_for_close_test(ctx: &mut ViewContext<PaneGroup>) -> NotebookPane {
+    NotebookPane::new(new_notebook(ctx), ctx)
+}
+
+#[cfg(not(feature = "agent_runtime"))]
+fn nonterminal_pane_for_close_test(ctx: &mut ViewContext<PaneGroup>) -> SettingsPane {
+    use crate::settings_view::pane_manager::SettingsPaneManager;
+    use crate::settings_view::{SettingsSection, SettingsView};
+    let window_id = ctx.window_id();
+    let view =
+        ctx.add_typed_action_view(|ctx| SettingsView::new(Some(SettingsSection::Appearance), ctx));
+    SettingsPaneManager::handle(ctx)
+        .update(ctx, |manager, _| manager.register_view(window_id, view));
+    SettingsPane::new(SettingsSection::Appearance, None, window_id, ctx)
 }
 
 struct MockOptions {
@@ -278,14 +389,17 @@ fn is_active_session(panes: &PaneGroup, pane_id: PaneId, ctx: &AppContext) -> bo
     panes.active_session_id(ctx).map(Into::into) == Some(pane_id)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn new_notebook(ctx: &mut ViewContext<PaneGroup>) -> ViewHandle<NotebookView> {
     ctx.add_typed_action_view(NotebookView::new)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn new_ambient_agent_task_id() -> AmbientAgentTaskId {
     Uuid::new_v4().to_string().parse().unwrap()
 }
 
+#[cfg(feature = "agent_runtime")]
 fn ambient_agent_task_for_current_user(task_id: AmbientAgentTaskId) -> AmbientAgentTask {
     let now = Utc::now();
     AmbientAgentTask {
@@ -319,6 +433,7 @@ fn ambient_agent_task_for_current_user(task_id: AmbientAgentTaskId) -> AmbientAg
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn mock_server_metadata() -> ServerMetadata {
     ServerMetadata {
         uid: ServerId::default(),
@@ -333,6 +448,7 @@ fn mock_server_metadata() -> ServerMetadata {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn mock_server_permissions() -> ServerPermissions {
     ServerPermissions {
         space: Owner::mock_current_user(),
@@ -342,6 +458,7 @@ fn mock_server_permissions() -> ServerPermissions {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn test_server_conversation_metadata(
     task_id: Option<AmbientAgentTaskId>,
 ) -> ServerAIConversationMetadata {
@@ -369,6 +486,7 @@ fn test_server_conversation_metadata(
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn cloud_conversation_with_ambient_task(task_id: AmbientAgentTaskId) -> CloudConversationData {
     let mut conversation = AIConversation::new(false, false);
     conversation.set_task_id(task_id);
@@ -376,6 +494,7 @@ fn cloud_conversation_with_ambient_task(task_id: AmbientAgentTaskId) -> CloudCon
     CloudConversationData::Oz(Box::new(conversation))
 }
 
+#[cfg(feature = "agent_runtime")]
 fn persisted_remote_child_conversation(
     conversation_id: AIConversationId,
     parent_conversation_id: Option<AIConversationId>,
@@ -418,6 +537,7 @@ fn persisted_remote_child_conversation(
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn start_parent_conversation(
     panes: &PaneGroup,
     parent_pane_id: PaneId,
@@ -430,6 +550,7 @@ fn start_parent_conversation(
     start_parent_conversation_for_terminal_view(parent_terminal_view_id, ctx)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn start_parent_conversation_for_terminal_view(
     terminal_view_id: EntityId,
     ctx: &mut ViewContext<PaneGroup>,
@@ -438,6 +559,7 @@ fn start_parent_conversation_for_terminal_view(
         history_model.start_new_conversation(terminal_view_id, false, false, false, ctx)
     })
 }
+#[cfg(feature = "agent_runtime")]
 fn restore_conversation_for_terminal_view(
     terminal_view_id: EntityId,
     conversation: AIConversation,
@@ -452,6 +574,7 @@ fn restore_conversation_for_terminal_view(
     conversation_id
 }
 
+#[cfg(feature = "agent_runtime")]
 fn restore_child_conversation_for_terminal_view(
     terminal_view_id: EntityId,
     parent_conversation_id: AIConversationId,
@@ -462,6 +585,7 @@ fn restore_child_conversation_for_terminal_view(
     restore_conversation_for_terminal_view(terminal_view_id, child_conversation, ctx)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn restore_child_conversation_with_task_context_for_terminal_view(
     terminal_view_id: EntityId,
     parent_conversation_id: AIConversationId,
@@ -474,6 +598,7 @@ fn restore_child_conversation_with_task_context_for_terminal_view(
     restore_conversation_for_terminal_view(terminal_view_id, child_conversation, ctx)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn restore_remote_child_conversation_for_terminal_view(
     terminal_view_id: EntityId,
     parent_conversation_id: AIConversationId,
@@ -486,6 +611,7 @@ fn restore_remote_child_conversation_for_terminal_view(
     child_conversation.mark_as_remote_child();
     restore_conversation_for_terminal_view(terminal_view_id, child_conversation, ctx)
 }
+#[cfg(feature = "agent_runtime")]
 fn restore_child_conversation(
     panes: &PaneGroup,
     pane_id: PaneId,
@@ -499,6 +625,7 @@ fn restore_child_conversation(
     restore_child_conversation_for_terminal_view(terminal_view_id, parent_conversation_id, ctx)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn restore_child_conversation_with_task_context(
     panes: &PaneGroup,
     pane_id: PaneId,
@@ -518,6 +645,7 @@ fn restore_child_conversation_with_task_context(
     )
 }
 
+#[cfg(feature = "agent_runtime")]
 fn restore_remote_child_conversation(
     panes: &PaneGroup,
     pane_id: PaneId,
@@ -537,6 +665,7 @@ fn restore_remote_child_conversation(
     )
 }
 
+#[cfg(feature = "agent_runtime")]
 fn enter_agent_view_for_conversation(
     panes: &PaneGroup,
     pane_id: PaneId,
@@ -556,6 +685,7 @@ fn enter_agent_view_for_conversation(
         });
 }
 
+#[cfg(feature = "agent_runtime")]
 fn create_already_fullscreen_parent_pane_data(
     panes: &PaneGroup,
     ctx: &mut ViewContext<PaneGroup>,
@@ -589,6 +719,7 @@ fn create_already_fullscreen_parent_pane_data(
     (pane_data, pane_id, child_conversation_id)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn request_ambient_agent_task_id_for_hidden_child(
     panes: &PaneGroup,
     child_pane_id: PaneId,
@@ -602,6 +733,7 @@ fn request_ambient_agent_task_id_for_hidden_child(
     ai_controller.update(ctx, |controller, _| controller.get_ambient_agent_task_id())
 }
 
+#[cfg(feature = "agent_runtime")]
 fn ambient_child_session_state(
     panes: &PaneGroup,
     child_pane_id: PaneId,
@@ -719,6 +851,23 @@ impl pane::PaneContent for PreAttachReturnsFalsePane {
 // }
 
 #[test]
+fn test_initial_terminal_pane_is_attached() {
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let pane_group = mock_pane_group(&mut app, Default::default());
+        pane_group.read(&app, |panes, ctx| {
+            let terminal = panes
+                .active_session_view(ctx)
+                .expect("a terminal pane should exist");
+            assert!(
+                terminal.as_ref(ctx).focus_handle().is_some(),
+                "the initial terminal must be attached to its pane group"
+            );
+        });
+    });
+}
+
+#[test]
 #[allow(clippy::clone_on_copy)]
 fn test_pane_focus_on_close() {
     App::test((), |mut app| async move {
@@ -746,6 +895,7 @@ fn test_pane_focus_on_close() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_insert_hidden_child_agent_pane_keeps_focus_and_active_session() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -793,6 +943,7 @@ fn test_insert_hidden_child_agent_pane_keeps_focus_and_active_session() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_swapping_to_child_agent_from_maximized_pane_keeps_maximized_state() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -839,6 +990,7 @@ fn test_swapping_to_child_agent_from_maximized_pane_keeps_maximized_state() {
     });
 }
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_insert_hidden_ambient_child_agent_pane_suppresses_details_auto_open() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -863,6 +1015,7 @@ fn test_insert_hidden_ambient_child_agent_pane_suppresses_details_auto_open() {
     });
 }
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_hidden_child_creation_applies_ambient_task_id_to_controller() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -906,6 +1059,7 @@ fn test_hidden_child_creation_applies_ambient_task_id_to_controller() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_restored_hidden_child_pane_reapplies_ambient_task_id_to_controller() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -938,6 +1092,7 @@ fn test_restored_hidden_child_pane_reapplies_ambient_task_id_to_controller() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_restored_remote_hidden_child_pane_enters_existing_ambient_session() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1017,6 +1172,7 @@ fn test_restored_remote_hidden_child_pane_enters_existing_ambient_session() {
 /// when `TasksUpdated` / `ConversationsLoaded` fires. The pane group must
 /// never produce a worse state than the pre-Fix-B fallback.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_restored_remote_hidden_child_pane_fallback_when_task_data_unavailable() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1111,6 +1267,7 @@ fn test_restored_remote_hidden_child_pane_fallback_when_task_data_unavailable() 
 /// test ties those three boundaries together at the PaneGroup integration
 /// layer.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_pane_group_restore_loop_keeps_orchestration_topology_and_materializes_child_pane() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -1265,6 +1422,7 @@ fn test_pane_group_restore_loop_keeps_orchestration_topology_and_materializes_ch
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_create_missing_child_agent_panes_restores_remote_child_from_history_model() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1322,6 +1480,7 @@ fn test_create_missing_child_agent_panes_restores_remote_child_from_history_mode
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_ambient_transcript_restore_creates_cloud_mode_pane_when_handoff_enabled() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
     let _cloud_mode = FeatureFlag::CloudMode.override_enabled(true);
@@ -1374,6 +1533,7 @@ fn test_ambient_transcript_restore_creates_cloud_mode_pane_when_handoff_enabled(
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_ambient_transcript_restore_uses_generic_viewer_when_handoff_disabled() {
     let _handoff = FeatureFlag::HandoffCloudCloud.override_enabled(false);
     let _setup_v2 = FeatureFlag::CloudModeSetupV2.override_enabled(true);
@@ -1415,6 +1575,7 @@ fn test_ambient_transcript_restore_uses_generic_viewer_when_handoff_disabled() {
 /// — the "session opens but the terminal is not interactive" symptom — instead of falling back
 /// to opening a fresh, writable shared-session tab.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn attach_execution_session_refuses_read_only_transcript_viewer_pane() {
     let _handoff = FeatureFlag::HandoffCloudCloud.override_enabled(false);
     let _setup_v2 = FeatureFlag::CloudModeSetupV2.override_enabled(true);
@@ -1456,6 +1617,7 @@ fn attach_execution_session_refuses_read_only_transcript_viewer_pane() {
 /// cleared when a join actually starts. A caller that gets `false` opens a fresh pane instead,
 /// and clearing eagerly would leave this pane looking writable while attached to nothing.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn attach_execution_session_keeps_read_only_state_when_the_attach_fails() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1501,6 +1663,7 @@ fn attach_execution_session_keeps_read_only_state_when_the_attach_fails() {
 /// the snapshot falls through to an empty `LeafContents::Terminal` and the
 /// pane restores as a stray local terminal on the next launch.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn create_shared_session_viewer_with_cloud_mode_populates_ambient_agent_view_model() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1533,6 +1696,7 @@ fn create_shared_session_viewer_with_cloud_mode_populates_ambient_agent_view_mod
 /// path) keep getting a `TerminalView` without an `ambient_agent_view_model`.
 /// Future changes that would flip this default are loud.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn create_shared_session_viewer_without_cloud_mode_does_not_populate_ambient_agent_view_model() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -1561,6 +1725,7 @@ fn create_shared_session_viewer_without_cloud_mode_does_not_populate_ambient_age
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_entering_parent_agent_view_lazily_restores_hidden_child_pane() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -1607,6 +1772,7 @@ fn test_entering_parent_agent_view_lazily_restores_hidden_child_pane() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_entering_remote_parent_agent_view_lazily_restores_local_hidden_child_pane() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -1689,6 +1855,7 @@ fn test_entering_remote_parent_agent_view_lazily_restores_local_hidden_child_pan
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_entering_remote_parent_agent_view_lazily_restores_remote_hidden_child_pane() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -1771,6 +1938,7 @@ fn test_entering_remote_parent_agent_view_lazily_restores_remote_hidden_child_pa
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_add_pane_restores_hidden_child_when_parent_is_already_fullscreen() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -1807,6 +1975,7 @@ fn test_add_pane_restores_hidden_child_when_parent_is_already_fullscreen() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_reattach_panes_restores_hidden_child_when_parent_is_already_fullscreen() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -1849,6 +2018,7 @@ fn test_reattach_panes_restores_hidden_child_when_parent_is_already_fullscreen()
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_restore_closed_pane_restores_hidden_child_when_parent_is_already_fullscreen() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
     let _undo_closed_panes = FeatureFlag::UndoClosedPanes.override_enabled(true);
@@ -1902,6 +2072,7 @@ fn test_restore_closed_pane_restores_hidden_child_when_parent_is_already_fullscr
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_replace_pane_restores_hidden_child_when_replacement_is_already_fullscreen() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -1942,6 +2113,7 @@ fn test_replace_pane_restores_hidden_child_when_replacement_is_already_fullscree
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_ensure_hidden_child_agent_pane_materializes_missing_child_pane() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -1975,6 +2147,7 @@ fn test_ensure_hidden_child_agent_pane_materializes_missing_child_pane() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_ensure_hidden_child_agent_pane_materializes_restored_remote_child_linked_by_parent_agent_id()
  {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
@@ -2045,6 +2218,7 @@ fn test_ensure_hidden_child_agent_pane_materializes_restored_remote_child_linked
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_entering_parent_agent_view_skips_child_owned_by_another_pane() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -2090,6 +2264,7 @@ fn test_entering_parent_agent_view_skips_child_owned_by_another_pane() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_ensure_hidden_child_agent_pane_skips_child_owned_by_another_pane_group() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -2135,6 +2310,7 @@ fn test_ensure_hidden_child_agent_pane_skips_child_owned_by_another_pane_group()
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_entering_parent_agent_view_skips_child_owned_by_another_pane_group() {
     let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
@@ -2193,10 +2369,10 @@ fn test_active_session_id_reset_on_last_pane_close() {
                 terminal_id.as_terminal_pane_id()
             );
 
-            // Add a non-terminal pane (Notebook) so the pane group remains alive when terminal is closed.
+            // Add a non-terminal pane (Notebook or Settings) so the pane group remains alive when terminal is closed.
             panes.add_pane_with_direction(
                 Direction::Right,
-                NotebookPane::new(new_notebook(ctx), ctx),
+                nonterminal_pane_for_close_test(ctx),
                 false, /* focus_new_pane */
                 ctx,
             );
@@ -2238,7 +2414,8 @@ fn test_add_pane_aborts_cleanly_when_pre_attach_returns_false() {
 }
 
 #[test]
-fn test_focus_notebook() {
+
+fn test_focus_nonterminal_pane() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
         let pane_group = mock_pane_group(&mut app, Default::default());
@@ -2246,17 +2423,17 @@ fn test_focus_notebook() {
         pane_group.update(&mut app, |panes, ctx| {
             let first_terminal_id = get_newly_created_pane_id(panes, &[]);
 
-            // Add a notebook to the left.
+            // Add a non-terminal pane to the left.
             panes.add_pane_with_direction(
                 Direction::Left,
-                NotebookPane::new(new_notebook(ctx), ctx),
+                nonterminal_pane_for_close_test(ctx),
                 true, /* focus_new_pane */
                 ctx,
             );
-            let notebook_id = get_newly_created_pane_id(panes, &[first_terminal_id]);
+            let nonterminal_id = get_newly_created_pane_id(panes, &[first_terminal_id]);
 
             // The new pane should be focused, but the terminal is still the active session.
-            assert_eq!(panes.focused_pane_id(ctx), notebook_id);
+            assert_eq!(panes.focused_pane_id(ctx), nonterminal_id);
             assert_eq!(
                 panes.active_session_id(ctx).map(Into::into),
                 Some(first_terminal_id)
@@ -2267,14 +2444,14 @@ fn test_focus_notebook() {
             );
             assert!(is_active_session(panes, first_terminal_id, ctx));
             assert_eq!(
-                split_pane_state(panes, notebook_id, ctx),
+                split_pane_state(panes, nonterminal_id, ctx),
                 SplitPaneState::InSplitPane(PaneState::Focused)
             );
 
             // Add a terminal below.
             panes.add_terminal_pane(Direction::Down, None, ctx);
             let second_terminal_id =
-                get_newly_created_pane_id(panes, &[first_terminal_id, notebook_id]);
+                get_newly_created_pane_id(panes, &[first_terminal_id, nonterminal_id]);
 
             // The new terminal should be both focused and the active session.
             assert_eq!(panes.focused_pane_id(ctx), second_terminal_id);
@@ -2293,14 +2470,14 @@ fn test_focus_notebook() {
             );
             assert!(is_active_session(panes, second_terminal_id, ctx));
             assert_eq!(
-                split_pane_state(panes, notebook_id, ctx),
+                split_pane_state(panes, nonterminal_id, ctx),
                 SplitPaneState::InSplitPane(PaneState::Unfocused)
             );
 
-            // Close the new terminal. Focus should switch to the notebook, and the first terminal
+            // Close the new terminal. Focus should switch to the non-terminal pane, and the first terminal
             // session will activate.
             panes.close_pane(second_terminal_id, ctx);
-            assert_eq!(panes.focused_pane_id(ctx), notebook_id);
+            assert_eq!(panes.focused_pane_id(ctx), nonterminal_id);
             assert_eq!(
                 panes.active_session_id(ctx).map(Into::into),
                 Some(first_terminal_id)
@@ -2310,7 +2487,7 @@ fn test_focus_notebook() {
                 SplitPaneState::InSplitPane(PaneState::Unfocused)
             );
             assert_eq!(
-                split_pane_state(panes, notebook_id, ctx),
+                split_pane_state(panes, nonterminal_id, ctx),
                 SplitPaneState::InSplitPane(PaneState::Focused)
             );
             assert!(is_active_session(panes, first_terminal_id, ctx));
@@ -2319,6 +2496,7 @@ fn test_focus_notebook() {
 }
 
 #[test]
+
 fn test_group_without_terminals() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -2327,21 +2505,21 @@ fn test_group_without_terminals() {
         pane_group.update(&mut app, |panes, ctx| {
             let terminal_id = get_newly_created_pane_id(panes, &[]);
 
-            // Add a notebook to the left.
+            // Add a non-terminal pane to the left.
             panes.add_pane_with_direction(
                 Direction::Left,
-                NotebookPane::new(new_notebook(ctx), ctx),
+                nonterminal_pane_for_close_test(ctx),
                 true, /* focus_new_pane */
                 ctx,
             );
-            let notebook_id = get_newly_created_pane_id(panes, &[terminal_id]);
+            let nonterminal_id = get_newly_created_pane_id(panes, &[terminal_id]);
 
             // Close the terminal, which should leave the group without an active session.
             panes.close_pane(terminal_id, ctx);
-            assert_eq!(panes.focused_pane_id(ctx), notebook_id);
+            assert_eq!(panes.focused_pane_id(ctx), nonterminal_id);
             assert_eq!(panes.active_session_id(ctx), None);
             assert_eq!(
-                split_pane_state(panes, notebook_id, ctx),
+                split_pane_state(panes, nonterminal_id, ctx),
                 SplitPaneState::NotInSplitPane
             );
         });
@@ -2360,25 +2538,25 @@ fn test_close_active_session() {
             panes.add_terminal_pane(Direction::Up, None, ctx);
             let second_terminal_id = get_newly_created_pane_id(panes, &[first_terminal_id]);
 
-            // Add a notebook to the left.
+            // Add a non-terminal pane to the left.
             panes.add_pane_with_direction(
                 Direction::Left,
-                NotebookPane::new(new_notebook(ctx), ctx),
+                nonterminal_pane_for_close_test(ctx),
                 true, /* focus_new_pane */
                 ctx,
             );
-            let notebook_id =
+            let nonterminal_id =
                 get_newly_created_pane_id(panes, &[first_terminal_id, second_terminal_id]);
-            assert_eq!(panes.focused_pane_id(ctx), notebook_id);
+            assert_eq!(panes.focused_pane_id(ctx), nonterminal_id);
             assert_eq!(
                 panes.active_session_id(ctx).map(Into::into),
                 Some(second_terminal_id)
             );
 
-            // Close the active session, which should leave the notebook focused and activate the
+            // Close the active session, which should leave the non-terminal pane focused and activate the
             // remaining session.
             panes.close_pane(second_terminal_id, ctx);
-            assert_eq!(panes.focused_pane_id(ctx), notebook_id);
+            assert_eq!(panes.focused_pane_id(ctx), nonterminal_id);
             assert_eq!(
                 panes.active_session_id(ctx).map(Into::into),
                 Some(first_terminal_id)
@@ -2401,7 +2579,7 @@ fn test_close_active_session() {
                 SplitPaneState::InSplitPane(PaneState::Focused)
             );
             assert_eq!(
-                split_pane_state(panes, notebook_id, ctx),
+                split_pane_state(panes, nonterminal_id, ctx),
                 SplitPaneState::InSplitPane(PaneState::Unfocused)
             );
             assert!(is_active_session(panes, first_terminal_id, ctx));
@@ -2624,6 +2802,7 @@ fn test_initial_widths_are_computed_correctly() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_is_terminal_pane_being_shared() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -2651,6 +2830,7 @@ fn test_is_terminal_pane_being_shared() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_number_of_shared_panes() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
@@ -2690,6 +2870,7 @@ fn test_number_of_shared_panes() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_start_shared_session_from_modal() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
     App::test((), |mut app| async move {
@@ -2769,6 +2950,7 @@ fn test_start_shared_session_from_modal() {
 /// Currently, the pane group is responsible for creating and owning
 /// the terminal manager, which in turn owns the Network model for the share.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_stop_shared_session() {
     let _guard = FeatureFlag::CreatingSharedSessions.override_enabled(true);
 
@@ -2889,6 +3071,7 @@ fn test_navigation_skips_hidden_closed_panes() {
 /// `forget_transitively_shared_pane`, but the non-undo branch destroys the
 /// pane directly and previously skipped that cleanup, leaking stale entries.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_close_pane_clears_transitively_shared_child_entry_on_non_undo_branch() {
     let _undo_closed_panes = FeatureFlag::UndoClosedPanes.override_enabled(false);
 
@@ -3008,7 +3191,7 @@ fn test_terminal_pane_headers() {
         pane_group.update(&mut app, |pane_group, ctx| {
             pane_group.add_pane_with_direction(
                 Direction::Left,
-                NotebookPane::new(new_notebook(ctx), ctx),
+                nonterminal_pane_for_close_test(ctx),
                 true, /* focus_new_pane */
                 ctx,
             );
@@ -3283,6 +3466,7 @@ fn test_focused_pane_is_synchronized_with_application_focus() {
 /// `AmbientAgentTask::active_live_session_state` falls back to parsing the
 /// session id out of `session_link` when `session_id` is absent, so a test
 /// that exercises that branch would need a different helper.
+#[cfg(feature = "agent_runtime")]
 fn hydration_decision_task(
     state: AmbientAgentTaskState,
     is_sandbox_running: bool,
@@ -3299,6 +3483,7 @@ fn hydration_decision_task(
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn decide_remote_child_hydration_attachable_live_session_chooses_live_attach() {
     // InProgress + sandbox running + parseable session id -> Attachable.
     let task = hydration_decision_task(
@@ -3321,6 +3506,7 @@ fn decide_remote_child_hydration_attachable_live_session_chooses_live_attach() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn decide_remote_child_hydration_inactive_with_token_loads_transcript() {
     // Terminal state -> Inactive, server token present -> LoadTranscript.
     let task = hydration_decision_task(
@@ -3344,6 +3530,7 @@ fn decide_remote_child_hydration_inactive_with_token_loads_transcript() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn decide_remote_child_hydration_active_unattachable_with_token_loads_transcript() {
     // InProgress + sandbox running + unparseable session id ->
     // ActiveUnattachable. With a server token we still prefer LoadTranscript
@@ -3370,6 +3557,7 @@ fn decide_remote_child_hydration_active_unattachable_with_token_loads_transcript
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn decide_remote_child_hydration_inactive_without_token_falls_back() {
     // Terminal state, no server token -> nothing to attach to and nothing to
     // load. Terminal => tombstone is appropriate.
@@ -3392,6 +3580,7 @@ fn decide_remote_child_hydration_inactive_without_token_falls_back() {
 /// `task_is_terminal: false` so the dispatch arm skips the
 /// conversation-ended tombstone.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn decide_remote_child_hydration_active_unattachable_without_token_falls_back_non_terminal() {
     let task = hydration_decision_task(
         AmbientAgentTaskState::InProgress,
@@ -3418,6 +3607,7 @@ fn decide_remote_child_hydration_active_unattachable_without_token_falls_back_no
 /// `Fallback` arm handles "nothing to attach to, nothing to load"
 /// correctly. Terminal here => tombstone is appropriate.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn decide_remote_child_hydration_empty_token_falls_back() {
     for empty_token in [Some(""), Some("   "), Some("\t\n")] {
         let task =

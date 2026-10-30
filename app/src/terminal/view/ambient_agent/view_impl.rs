@@ -1,47 +1,75 @@
 //! [`TerminalView`]-specific implementation for ambient agent functionality.
 
+#[cfg(feature = "agent_runtime")]
 use std::cell::Cell;
+#[cfg(feature = "agent_runtime")]
 use std::rc::Rc;
 
+#[cfg(feature = "agent_runtime")]
 use warp_cli::agent::Harness;
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use warp_core::send_telemetry_from_ctx;
+#[cfg(feature = "agent_runtime")]
 use warp_core::ui::appearance::Appearance;
+#[cfg(feature = "agent_runtime")]
 use warp_terminal::model::BlockId;
+#[cfg(feature = "agent_runtime")]
 use warpui::elements::Align;
+#[cfg(feature = "agent_runtime")]
 use warpui::prelude::{Empty, Vector2F};
-use warpui::{
-    AppContext, Element, EntityId, ModelHandle, SingletonEntity, ViewContext, ViewHandle,
-};
+#[cfg(feature = "agent_runtime")]
+use warpui::{AppContext, Element, EntityId, SingletonEntity};
+use warpui::{ModelHandle, ViewContext, ViewHandle};
 
+use super::AmbientAgentViewModel;
+#[cfg(feature = "agent_runtime")]
 use super::loading_screen::{
     render_cloud_mode_cancelled_screen, render_cloud_mode_error_screen,
     render_cloud_mode_github_auth_required_screen, render_cloud_mode_loading_screen,
 };
-use super::{AmbientAgentEntryBlock, AmbientAgentViewModel, AmbientAgentViewModelEvent};
+#[cfg(feature = "agent_runtime")]
+use super::{AmbientAgentEntryBlock, AmbientAgentViewModelEvent};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::AIRequestUsageModel;
-use crate::ai::agent::conversation::{AIConversationId, ConversationStatus};
+#[cfg(feature = "agent_runtime")]
+use crate::ai::agent::conversation::ConversationStatus;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::{RenderableAIError, display_user_query_with_mode};
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), feature = "agent_runtime"))]
 use crate::ai::agent_sdk::driver::harness::auth_check_command_for;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ambient_agents::telemetry::{CloudAgentTelemetryEvent, CloudModeEntryPoint};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::BlocklistAIHistoryModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::conversation_details_panel::ConversationDetailsData;
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::TerminalViewResources;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::CLIAgent;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::AIConversationId;
+use crate::terminal::view::TerminalView;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::rich_content::{RichContentInsertionPosition, RichContentMetadata};
-use crate::terminal::view::{
-    ConversationDetailsPanelAutoOpenPolicy, Event as TerminalViewEvent, TerminalView,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::view::{ConversationDetailsPanelAutoOpenPolicy, Event as TerminalViewEvent};
+#[cfg(feature = "agent_runtime")]
 use crate::workspace::view::cloud_agent_capacity_modal::CloudAgentCapacityModalVariant;
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::user_workspaces::UserWorkspaces;
 
 const CHILD_AGENT_GITHUB_AUTH_REQUIRED_BLOCKED_ACTION: &str =
     "GitHub authentication required before starting the child agent.";
 
 impl TerminalView {
+    #[cfg(feature = "agent_runtime")]
     fn active_ambient_agent_conversation_id(&self, ctx: &AppContext) -> Option<AIConversationId> {
         self.agent_view_controller
             .as_ref(ctx)
@@ -49,6 +77,7 @@ impl TerminalView {
             .active_conversation_id()
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn active_ambient_agent_conversation_is_child(&self, ctx: &AppContext) -> bool {
         let Some(conversation_id) = self.active_ambient_agent_conversation_id(ctx) else {
             return false;
@@ -59,6 +88,7 @@ impl TerminalView {
             .is_some_and(|conversation| conversation.is_child_agent_conversation())
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn update_active_ambient_agent_conversation_status(
         &self,
         status: ConversationStatus,
@@ -80,6 +110,7 @@ impl TerminalView {
         });
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn show_out_of_credits_modal(&self, ctx: &mut ViewContext<Self>) {
         let is_on_paid_plan = UserWorkspaces::as_ref(ctx)
             .current_workspace()
@@ -97,6 +128,7 @@ impl TerminalView {
     }
 
     /// Handles ambient agent view model events.
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn handle_ambient_agent_event(
         &mut self,
         event: &AmbientAgentViewModelEvent,
@@ -430,6 +462,7 @@ impl TerminalView {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn maybe_insert_setup_command_blocks(
         &mut self,
         block_id: &BlockId,
@@ -531,6 +564,7 @@ impl TerminalView {
     }
 
     /// Returns whether this view is a live shared-session viewer for a non-Oz cloud run.
+    #[cfg(feature = "agent_runtime")]
     fn is_third_party_cloud_agent_viewer(&self, ctx: &AppContext) -> bool {
         // The ambient model's harness resolves asynchronously after join, when we fetch the task.
         // Until then, use the synced CLI-agent session (which we get on shared session join, if the
@@ -559,6 +593,7 @@ impl TerminalView {
     /// Transcript viewer entry is handled directly in `load_data_into_transcript_viewer` so
     /// the snapshot block exists before we retag — we intentionally do not trigger that path
     /// here.
+    #[cfg(feature = "agent_runtime")]
     pub(crate) fn sync_agent_view_for_shared_third_party_viewer(
         &mut self,
         ctx: &mut ViewContext<Self>,
@@ -615,6 +650,7 @@ impl TerminalView {
     /// `detect_cli_agent_from_model`, this does NOT gate on `is_active_and_long_running` —
     /// we want to classify the block as the harness session as soon as it starts, before the
     /// long-running timer would otherwise elapse.
+    #[cfg(feature = "agent_runtime")]
     fn block_matches_run_harness(&self, block_id: &BlockId, ctx: &AppContext) -> bool {
         let command = {
             let model = self.model.lock();
@@ -636,7 +672,7 @@ impl TerminalView {
         // command instead so it stays in the existing setup-commands
         // group. The driver's harness impls are the single source of
         // truth for what an auth check command looks like.
-        #[cfg(not(target_family = "wasm"))]
+        #[cfg(all(not(target_family = "wasm"), feature = "agent_runtime"))]
         {
             let command_trimmed = command.trim();
             if let Some(auth_cmd) = auth_check_command_for(selected_harness)
@@ -661,6 +697,7 @@ impl TerminalView {
     /// 2. Already in nested cloud mode with convo started: pop to parent terminal and start a
     ///    new cloud mode session there (siblings).
     /// 3. Not in nested cloud mode: enter cloud mode from this terminal session.
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn enter_cloud_agent_view(
         &mut self,
         initial_prompt: Option<String>,
@@ -720,6 +757,7 @@ impl TerminalView {
     ///
     /// If called from fullscreen agent view, this defers the cloud mode start until after the
     /// agent view has exited so the resulting rich content is scoped to the terminal-level.
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn enter_cloud_mode_from_session(
         &mut self,
         initial_prompt: Option<String>,
@@ -759,6 +797,25 @@ impl TerminalView {
     /// Start a cloud mode session nested under this one, pushing a new pane onto this view's
     /// pane_stack and returning the pushed view + model handle. The new pane enters setup mode
     /// with `initial_prompt` (if any) pre-filled in the input.
+    #[cfg(not(feature = "agent_runtime"))]
+    pub(crate) fn start_cloud_mode(
+        &mut self,
+        initial_prompt: Option<String>,
+        ctx: &mut ViewContext<Self>,
+    ) -> Option<(ViewHandle<TerminalView>, ModelHandle<AmbientAgentViewModel>)> {
+        let _ = initial_prompt;
+        self.show_error_toast(
+            crate::lite_i18n::choose(
+                "Agent runtime is unavailable in this build",
+                "此版本不提供智能体运行环境",
+            )
+            .to_owned(),
+            ctx,
+        );
+        None
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub(crate) fn start_cloud_mode(
         &mut self,
         initial_prompt: Option<String>,
@@ -871,6 +928,7 @@ impl TerminalView {
     }
 
     /// Renders the ambient agent progress view based on agent progress.
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn render_ambient_agent_progress(
         &self,
         appearance: &Appearance,
@@ -925,7 +983,7 @@ impl TerminalView {
     }
 
     /// Handles events from the first-time cloud agent setup view.
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn handle_first_time_cloud_agent_setup_event(
         &mut self,
         event: &super::FirstTimeCloudAgentSetupViewEvent,
@@ -957,6 +1015,7 @@ impl TerminalView {
     /// associated task ID. Otherwise falls back to populating the panel from
     /// the active local `AIConversation`, so the same panel can surface
     /// conversation metadata for non-cloud Warp Agent runs (APP-3595).
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn fetch_and_update_conversation_details_panel(
         &mut self,
         ctx: &mut ViewContext<Self>,
@@ -999,6 +1058,7 @@ impl TerminalView {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn refresh_conversation_details_panel_if_open(
         &mut self,
         ctx: &mut ViewContext<Self>,
@@ -1013,6 +1073,7 @@ impl TerminalView {
     /// This is used for legacy local cloud mode session startup and shared
     /// ambient session joins. Local non-cloud conversations require an explicit
     /// user click on the pane-header toggle button.
+    #[cfg(feature = "agent_runtime")]
     pub(in crate::terminal::view) fn maybe_auto_open_conversation_details_panel(
         &mut self,
         ctx: &mut ViewContext<Self>,

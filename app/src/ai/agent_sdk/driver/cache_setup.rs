@@ -174,6 +174,6 @@ fn build_export_command(environment: &BTreeMap<String, String>, shell_type: Shel
         .join("; ")
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "cache_setup_tests.rs"]
 mod tests;

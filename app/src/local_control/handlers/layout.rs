@@ -95,19 +95,7 @@ fn tab_create_action(params: &serde_json::Value) -> Result<WorkspaceAction, Cont
         None | Some(TabType::Terminal) => Ok(WorkspaceAction::AddTerminalTab {
             hide_homepage: false,
         }),
-        Some(TabType::Agent) => {
-            #[cfg(not(feature = "warp_lite"))]
-            {
-                Ok(WorkspaceAction::AddAgentTab)
-            }
-            #[cfg(feature = "warp_lite")]
-            {
-                Err(ControlError::new(
-                    ErrorCode::UnsupportedAction,
-                    "tab.create does not support agent tabs",
-                ))
-            }
-        }
+        Some(TabType::Agent) => Ok(WorkspaceAction::AddAgentTab),
         Some(TabType::Default) => Ok(WorkspaceAction::AddDefaultTab),
         Some(TabType::CloudAgent) => Err(ControlError::new(
             ErrorCode::UnsupportedAction,

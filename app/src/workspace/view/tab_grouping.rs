@@ -5,6 +5,7 @@ use warp_core::features::FeatureFlag;
 use warpui::{EntityId, UpdateView, ViewContext};
 
 use super::{Workspace, group_member_indices};
+use crate::lite_i18n::choose;
 use crate::menu::{MenuItem, MenuItemFields};
 use crate::tab::{MOVE_TO_GROUP_LABEL, TabData};
 use crate::workspace::action::{TabContextMenuAnchor, WorkspaceAction};
@@ -13,6 +14,36 @@ use crate::workspace::util::PaneViewLocator;
 
 // TODO(johnturcoo) move tab grouping helpers here from workspace/view.rs.
 impl Workspace {
+    pub fn tab_group_display_name(&self, group_id: TabGroupId, app: &warpui::AppContext) -> String {
+        if let Some(name) = self
+            .tab_groups
+            .get(&group_id)
+            .and_then(|group| group.name.as_ref())
+        {
+            return name.clone();
+        }
+        #[cfg(feature = "warp_lite")]
+        for tab in self
+            .tabs
+            .iter()
+            .filter(|tab| tab.group_id == Some(group_id))
+        {
+            let pane_group = tab.pane_group.as_ref(app);
+            for pane_id in pane_group.visible_pane_ids() {
+                if let Some(terminal) = pane_group.terminal_view_from_pane_id(pane_id, app)
+                    && let Some(directory) = terminal.as_ref(app).display_working_directory(app)
+                    && let Some(name) =
+                        crate::workspace::tab_group::directory_group_name(&directory)
+                {
+                    return name;
+                }
+            }
+        }
+        #[cfg(not(feature = "warp_lite"))]
+        let _ = app;
+        choose("New Group", "新分组").to_string()
+    }
+
     /// Clears the multi-selection on every tab.
     pub(super) fn clear_tab_multi_selection(&mut self, ctx: &mut ViewContext<Self>) {
         for tab in &mut self.tabs {
@@ -298,6 +329,7 @@ impl Workspace {
         ctx.dispatch_global_action("workspace:save_app", ());
         ctx.notify();
 
+        #[cfg(not(feature = "warp_lite"))]
         ctx.dispatch_typed_action_deferred(WorkspaceAction::RenameTabGroup(group_id));
     }
 
@@ -464,7 +496,7 @@ impl Workspace {
     fn tab_selection_menu_items(&self) -> Vec<MenuItem<WorkspaceAction>> {
         let shared_group = self.selection_shared_group();
         let mut menu_items = vec![
-            MenuItemFields::new("Create group from tabs")
+            MenuItemFields::new(choose("Create group from tabs", "将所选标签页加入新分组"))
                 .with_on_select_action(WorkspaceAction::NewTabGroupFromSelectedTabs)
                 .into_item(),
         ];
@@ -472,7 +504,7 @@ impl Workspace {
         // Only single-group selections have an unambiguous group to leave.
         if shared_group.is_some() {
             menu_items.push(
-                MenuItemFields::new("Remove from group")
+                MenuItemFields::new(choose("Remove from group", "从分组移除"))
                     .with_on_select_action(WorkspaceAction::RemoveSelectedTabsFromGroup)
                     .into_item(),
             );
@@ -701,7 +733,7 @@ impl Workspace {
                     .tab_groups
                     .get(&group_id)
                     .and_then(|g| g.name.clone())
-                    .unwrap_or_else(|| "Untitled group".to_string());
+                    .unwrap_or_else(|| choose("Untitled group", "未命名分组").to_string());
                 let action = match tab_index {
                     Some(tab_index) => WorkspaceAction::MoveTabToGroup {
                         tab_index,

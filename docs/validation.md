@@ -1,38 +1,63 @@
-# 源码整理验证记录（2026-10-30）
+# Warp Lite 验证记录（2026-10-30）
 
-本次整理补充 README 与开发说明，过滤本地构建产物、排错日志及一次性迁移脚本，并收集此前未提交的 Lite 模块拆分代码。
+本轮已修复此前开发快照的编译错误，恢复完整的共享模块与 feature 边界，移除不完整的替代模块，并在当前仓库目录重新构建和运行验证。
 
-## 已完成
+## 构建环境与产物
 
-- `.gitignore` 验证：`target-lite/`、`dist/`、`lite_check*.txt` 和两个一次性 import 改写脚本均被排除；`.env.example` 可继续跟踪。
-- 暂存区 `git diff --cached --check` 通过；修正六个新文件的行尾或末尾空行。
-- 暂存区未包含上述本地产物，保留编译资源、许可证与 `Cargo.lock`。
+- 平台：Windows x64 / MSVC，Rust `1.92.0`。
+- 构建：`cargo build -p warp --profile lite --bin warp-lite --no-default-features --features warp_lite --locked`，成功。
+- 优化 EXE：约 52 MiB，源码目录为当前 checkout；不是沿用旧 `dist/` 程序。
+- EXE SHA256：`D3F715C47B2A9413C6912A622BEB1FE03AC03AB106B274050E6EEFB26F2069B3`。
+- 从其他工作目录执行 `script/run-lite.ps1 -Release -BuildOnly`，退出码 `0`。
+- `script/package-lite.ps1 -SkipBuild -SystemShaderCompiler` 本地打包成功，新 EXE `--version` 输出 `Warp Lite 0.1.0`，退出码 `0`。
 
-## 发布阻塞
+本地验证包包含运行 DLL、shell 脚本和单项许可证，但尚未生成完整的 Cargo 依赖第三方许可清单，因此不作为正式二进制发行包发布。本轮向仓库提交源码，`dist/` 不提交。
 
-- `./script/format` 失败：`app/src/ai_lite/facts/manager.rs` 不存在，无法解析 `manager` module。
-- `cargo check -p warp --bin warp-lite --no-default-features --features warp_lite --locked` 报错：`facts` 缺失 `manager` 与 `view` module，同时存在 `crate::ai::agent::Shared` 未解析及 Lite 兼容接口缺失等错误。
-- `cargo clippy --workspace --exclude warp_completer --all-targets --tests -- -D warnings` 失败：`rquickjs-sys v0.3.1` 的 build script 找不到 `patch` 工具。其余 Clippy 组合与完整 presubmit 未运行。
-- Lite 编译已报告 3220 个错误与 245 个警告，确认失败后停止编译器；该数量是本次输出记录，不代表完整问题清单。`cargo check` 返回 101。
-- 未验证 GUI 行为或 macOS / Linux 构建。旧 `dist/` 分发包与历史成功日志不作为当前源码可构建的证据。
+## 静态检查
 
-应先完成 Lite 接口对齐和缺失模块修复，再重新执行格式化、Clippy 与相关测试。当前整理结果属于开发中的源码快照，不是已验证的发布版本。
+| 检查 | 结果 |
+| --- | --- |
+| `./script/format` / `--check` | 通过 |
+| `script/check_no_inline_test_modules` | 通过 |
+| workspace Clippy，排除 `warp_completer`，all targets / tests，`-D warnings` | 通过 |
+| `cargo clippy -p warp --all-targets --tests -- -D warnings` | 通过 |
+| `cargo clippy -p warp_completer --all-targets --tests -- -D warnings` | 通过 |
+| PowerShell parser、Bash syntax、文档相对链接 | 通过 |
+| `git diff --check` 与构建产物排除检查 | 通过 |
 
-## 独立仓库自动化清理
+Lite 优化构建仍有共享模块的 `dead_code` 警告；未通过全局关闭 lint 隐藏这些警告。上表三组严格 Clippy 使用 `script/presubmit` 指定的 feature 配置。
 
-本次仅修改 `.github/` 配置和文档，未修改 Rust 源码、依赖或运行资源。
-删除上游专用 workflows、actions、维护脚本、发布配置及私有 Dependabot 配置，
-仅保留本仓库的只读 `Repository checks`，Issue / PR 模板与手动 triage 提示。
+## 针对性单元测试：99 项通过
 
-已完成验证：
+- `http_client`、`warp_server_client`、`warp_managed_secrets`、`mcp` 的离线配置：45 项。
+- Lite CLI、中文文案和相关 Lite 测试：40 项。
+- 终端持久化类型兼容：4 项。
+- 外置 PNG 的格式、尺寸、文件替换与错误处理：5 项。
+- 禁用遥测时不构造、不发送、不改写事件文件：3 项。
+- SQLite 侧栏状态 round trip：1 项。
+- MCP capabilities 的独立查询回归：1 项。
 
-- 所有保留 YAML 与 JSON 可解析，文档相对链接有效。
-- 自动化仅有 push / PR / 手动触发，权限为 `contents: read`；不包含定时任务、
-  上游组织引用、私有 secrets 或私有 runner。
-- workflow 的 Bash 脚本语法检查通过。
-- 在隔离的临时 Git 仓库执行实际 workflow 脚本：正常变更、手动执行与首次 push 均通过；
-  trailing whitespace 和误提交 `dist/` 产物均被正确拒绝。
-- 暂存区 `git diff --cached --check` 通过。
+本机没有 `cargo-nextest`，本轮使用 `cargo test` 和其生成的测试程序执行以上测试，未宣称运行完整 workspace test suite。
 
-Rust 构建状态保持上文记录，未重复执行已知失败的 Rust 检查；依照维护者已授权的
-开发快照方式提交发布。轻量 workflow 不替代应用构建与测试。
+## 实际 GUI 集成测试：6 项通过
+
+测试使用当前源码构建的 `integration` binary、`warp_lite` feature 和真实显示模式，并使用独立的 `WarpIntegrationLiteSmoke-*` 应用标识与数据目录。
+
+| 测试 | 验证内容 |
+| --- | --- |
+| `test_lite_terminal_smoke` | PowerShell、Git、中文与空格路径、中文输出、取消命令、SQLite 快照及真实渲染截图 |
+| `test_lite_terminal_management` | 标签、分组、分屏和本地终端管理 |
+| `test_lite_chinese_settings` | 中文设置文案及搜索 |
+| `test_lite_restore_named_tabs` | 命名标签恢复 |
+| `test_lite_restore_saved_tabs` | 新进程恢复已保存的目录、分组、侧栏与历史输出 |
+| `test_lite_close_confirmation` | 运行中命令的关闭确认 |
+
+跨进程恢复使用 SQLite backup API 生成一致性备份后验证。直接复制 WAL 模式主文件曾导致测试输入缺少最新 schema；使用一致性备份后通过。
+
+## 依赖检查与范围
+
+`script/verify-lite-dependencies.ps1` 通过：Windows x64 Lite 运行依赖共 652 个 package / version 组合，没有发现检查规则禁止的服务依赖。AWS SDK、Tantivy、Tink / HPKE、libgit2、QuickJS 与完整语言解析器等不在 Lite 运行图中。仍有 HTTP / TLS 的共享类型与库依赖，不能据此宣称所有网络相关代码都已删除。
+
+macOS、Linux、Windows ARM64 未进行本轮构建或运行验证。本机没有 `oz-dev`，无法发现并使用云端 runner；本轮结论限定在本地 Windows x64。
+
+验证日志、截图和依赖审计 JSON 留在被忽略的 `.note/publish/` 中；可复现命令见 [开发说明](development.md)。

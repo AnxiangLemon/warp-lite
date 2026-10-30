@@ -131,7 +131,7 @@ impl fmt::Display for BoundedFloatError {
     }
 }
 
-define_settings_group!(TuiZeroStateSettings, settings: [
+define_settings_group!(TuiZeroStateSettings, schema_cfg: feature = "agent_runtime", settings: [
     object: TuiZeroStateObjectSetting {
         type: TuiZeroStateObject,
         default: TuiZeroStateObject::default(),

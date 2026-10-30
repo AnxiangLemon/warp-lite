@@ -17,7 +17,7 @@ pub struct DataSource {
 }
 
 impl DataSource {
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
     pub fn new(active_session_handle: ModelHandle<SessionSource>) -> Self {
         if warp_core::features::FeatureFlag::UseTantivySearch.is_enabled() {
             Self::new_full_text(active_session_handle)
@@ -26,12 +26,12 @@ impl DataSource {
         }
     }
 
-    #[cfg(target_family = "wasm")]
+    #[cfg(any(target_family = "wasm", not(feature = "full_text_search")))]
     pub fn new(active_session_handle: ModelHandle<SessionSource>) -> Self {
         Self::new_fuzzy(active_session_handle)
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
     fn new_full_text(active_session_handle: ModelHandle<SessionSource>) -> Self {
         use crate::search::command_palette::navigation::search::FullTextSessionSearcher;
         let searcher = Box::new(FullTextSessionSearcher::new(active_session_handle));

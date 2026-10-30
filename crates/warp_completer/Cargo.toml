@@ -13,7 +13,7 @@ async-trait.workspace = true
 anyhow.workspace = true
 bincode.workspace = true
 cfg-if.workspace = true
-clap.workspace = true
+clap = { workspace = true, optional = true }
 derive-new = "0.5.8"
 dirs.workspace = true
 futures.workspace = true
@@ -30,7 +30,7 @@ shellexpand.workspace = true
 smol_str.workspace = true
 string-offset.workspace = true
 thiserror.workspace = true
-warp_cli.workspace = true
+warp_cli = { workspace = true, optional = true }
 warp_core.workspace = true
 warp_js = { workspace = true, optional = true }
 warpui_core.workspace = true
@@ -52,9 +52,12 @@ command = { path = "../command", features = ["test-util"] }
 [dev-dependencies]
 anyhow.workspace = true
 # Enable the `test-util` feature for our own package when running tests.
-warp_completer = { path = ".", features = ["test-util"] }
+warp_completer = { path = ".", default-features = false, features = ["test-util"] }
 
 [features]
+default = ["cli_signatures"]
+# Registers completions generated from the Warp CLI command parser.
+cli_signatures = ["dep:clap", "dep:warp_cli"]
 # Enables the completions-on-js implementation of the completion engine.
 # Note that this feature is only compatible with non-wasm targets.
 v2 = ["dep:warp_js", "dep:rquickjs"]

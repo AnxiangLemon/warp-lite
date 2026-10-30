@@ -3,7 +3,7 @@ mod auth_secret_ftux_view;
 pub(crate) mod auth_secret_selector;
 mod block;
 mod delete_auth_secret_confirmation_dialog;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 mod first_time_setup;
 mod footer;
 mod harness_selector;
@@ -23,7 +23,7 @@ pub use auth_secret_selector::{
     AuthSecretSelector, AuthSecretSelectorAction, AuthSecretSelectorEvent,
 };
 pub use block::*;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub use first_time_setup::{FirstTimeCloudAgentSetupView, FirstTimeCloudAgentSetupViewEvent};
 pub use footer::{render_error_footer, render_loading_footer};
 pub use harness_selector::{HarnessSelector, HarnessSelectorAction, HarnessSelectorEvent};
@@ -39,15 +39,22 @@ pub use progress::{ProgressProps, ProgressStep, ProgressStepState, render_progre
 pub use progress_ui_state::AmbientAgentProgressUIState;
 pub use tips::{CloudModeTip, get_cloud_mode_tips};
 use warp_core::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use warpui::geometry::vector::Vector2F;
-use warpui::{AppContext, ModelHandle, ViewHandle, WindowId};
+use warpui::{AppContext, ModelHandle};
+#[cfg(feature = "agent_runtime")]
+use warpui::{ViewHandle, WindowId};
 
 use crate::ai::blocklist::agent_view::{AgentViewController, AgentViewState};
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::TerminalViewResources;
-use crate::terminal::{TerminalManager, TerminalModel, TerminalView, shared_session};
+use crate::terminal::TerminalModel;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::{TerminalManager, TerminalView, shared_session};
 
 /// Creates a cloud mode terminal view and manager for ambient agent sessions.
 /// See `viewer::TerminalManager::enable_orchestration_polling` for the flag.
+#[cfg(feature = "agent_runtime")]
 pub fn create_cloud_mode_view(
     resources: TerminalViewResources,
     view_bounds_size: Vector2F,
@@ -100,6 +107,7 @@ pub fn create_cloud_mode_view(
 /// path (`PaneGroup::create_shared_session_viewer`) so every ambient viewer re-attaches on
 /// follow-up runs — including a raw `shared_session` link join whose model is created lazily
 /// at `SessionJoined`.
+#[cfg(feature = "agent_runtime")]
 pub fn wire_ambient_agent_session_events(
     terminal_manager: &ModelHandle<Box<dyn TerminalManager>>,
     view_model: &ModelHandle<AmbientAgentViewModel>,

@@ -7,6 +7,35 @@ use warp_core::features::FeatureFlag;
 use super::*;
 
 #[test]
+#[cfg(all(feature = "warp_lite", feature = "local_fs"))]
+fn lite_file_links_ignore_disabled_viewers_in_saved_preferences() {
+    let _flag = FeatureFlag::JupyterNotebookRendering.override_enabled(true);
+    for path in ["README.md", "analysis.ipynb", "main.rs"] {
+        assert!(!renders_in_warp_notebook_viewer(path));
+        assert_eq!(
+            resolve_file_target_with_editor_choice(
+                Path::new(path),
+                EditorChoice::Warp,
+                true,
+                EditorLayout::NewTab,
+                None,
+            ),
+            FileTarget::SystemDefault,
+        );
+        assert_eq!(
+            resolve_file_target_with_editor_choice(
+                Path::new(path),
+                EditorChoice::ExternalEditor(Editor::VSCode),
+                true,
+                EditorLayout::NewTab,
+                None,
+            ),
+            FileTarget::ExternalEditor(Editor::VSCode),
+        );
+    }
+}
+
+#[test]
 fn test_binary_files_not_openable() {
     assert!(is_file_openable_in_warp(Path::new("image.png")).is_none());
     assert!(is_file_openable_in_warp(Path::new("video.mp4")).is_none());
@@ -27,6 +56,7 @@ fn test_open_code_panels_file_editor_default_is_warp() {
 
 #[test]
 #[cfg(feature = "local_fs")]
+#[cfg(not(feature = "warp_lite"))]
 fn test_resolve_file_target_markdown_viewer_precedence() {
     let target = resolve_file_target_with_editor_choice(
         Path::new("README.md"),
@@ -41,6 +71,7 @@ fn test_resolve_file_target_markdown_viewer_precedence() {
 
 #[test]
 #[cfg(feature = "local_fs")]
+#[cfg(not(feature = "warp_lite"))]
 fn test_resolve_file_target_warp_uses_default_layout() {
     let target = resolve_file_target_with_editor_choice(
         Path::new("data.txt"),
@@ -57,6 +88,7 @@ fn test_resolve_file_target_warp_uses_default_layout() {
 /// external editor or the system default app, even when user settings prefer one.
 #[test]
 #[cfg(feature = "local_fs")]
+#[cfg(not(feature = "warp_lite"))]
 fn test_resolve_file_target_to_open_in_warp_never_leaves_warp() {
     use crate::util::file::external_editor::settings::{
         OpenCodePanelsFileEditor, OpenConversationLayoutPreference, OpenFileEditor, OpenFileLayout,
@@ -113,6 +145,7 @@ fn test_resolve_file_target_binary_uses_env_editor() {
 }
 
 #[test]
+#[cfg(not(feature = "warp_lite"))]
 fn test_renders_in_warp_notebook_viewer() {
     // Markdown always renders in the notebook viewer, independent of the flag.
     let off = FeatureFlag::JupyterNotebookRendering.override_enabled(false);
@@ -132,6 +165,7 @@ fn test_renders_in_warp_notebook_viewer() {
 
 #[test]
 #[cfg(feature = "local_fs")]
+#[cfg(not(feature = "warp_lite"))]
 fn test_resolve_file_target_jupyter_notebook_flag_on() {
     let _flag = FeatureFlag::JupyterNotebookRendering.override_enabled(true);
     // Even with prefer_markdown_viewer off and an explicit Warp editor choice,
@@ -148,6 +182,7 @@ fn test_resolve_file_target_jupyter_notebook_flag_on() {
 
 #[test]
 #[cfg(feature = "local_fs")]
+#[cfg(not(feature = "warp_lite"))]
 fn test_resolve_file_target_jupyter_notebook_flag_off() {
     let _flag = FeatureFlag::JupyterNotebookRendering.override_enabled(false);
     // With the flag off, a Jupyter notebook opens as JSON in the code editor,
@@ -183,45 +218,26 @@ fn test_markdown_files() {
 }
 
 #[test]
-#[cfg(feature = "local_fs")]
 fn test_code_files() {
-    assert_eq!(
-        is_file_openable_in_warp(Path::new("main.rs")),
-        Some(OpenableFileType::Code)
-    );
-    assert_eq!(
-        is_file_openable_in_warp(Path::new("app.js")),
-        Some(OpenableFileType::Code)
-    );
-    assert_eq!(
-        is_file_openable_in_warp(Path::new("script.py")),
-        Some(OpenableFileType::Code)
-    );
-    assert_eq!(
-        is_file_openable_in_warp(Path::new("config.json")),
-        Some(OpenableFileType::Code)
-    );
-}
-
-#[test]
-#[cfg(not(feature = "local_fs"))]
-fn test_code_files() {
-    assert_eq!(
-        is_file_openable_in_warp(Path::new("main.rs")),
-        Some(OpenableFileType::Text)
-    );
-    assert_eq!(
-        is_file_openable_in_warp(Path::new("app.js")),
-        Some(OpenableFileType::Text)
-    );
-    assert_eq!(
-        is_file_openable_in_warp(Path::new("script.py")),
-        Some(OpenableFileType::Text)
-    );
-    assert_eq!(
-        is_file_openable_in_warp(Path::new("config.json")),
-        Some(OpenableFileType::Text)
-    );
+    let expected = if cfg!(all(feature = "local_fs", feature = "rich_documents")) {
+        OpenableFileType::Code
+    } else {
+        OpenableFileType::Text
+    };
+    for path in ["main.rs", "app.js", "script.py", "config.json"] {
+        assert_eq!(is_file_openable_in_warp(Path::new(path)), Some(expected));
+        #[cfg(feature = "local_fs")]
+        assert_eq!(
+            resolve_file_target_with_editor_choice(
+                Path::new(path),
+                EditorChoice::ExternalEditor(Editor::VSCode),
+                false,
+                EditorLayout::NewTab,
+                None,
+            ),
+            FileTarget::ExternalEditor(Editor::VSCode),
+        );
+    }
 }
 
 #[test]
@@ -243,9 +259,10 @@ fn test_text_files() {
 
 #[test]
 fn test_is_supported_code_file() {
-    assert!(is_supported_code_file(Path::new("main.rs")));
-    assert!(is_supported_code_file(Path::new("app.js")));
-    assert!(is_supported_code_file(Path::new("script.py")));
+    let expected = cfg!(all(feature = "local_fs", feature = "rich_documents"));
+    for path in ["main.rs", "app.js", "script.py"] {
+        assert_eq!(is_supported_code_file(Path::new(path)), expected);
+    }
     assert!(!is_supported_code_file(Path::new("data.txt")));
     assert!(!is_supported_code_file(Path::new("image.png")));
 }
@@ -378,4 +395,20 @@ fn test_starts_with_shebang_missing_path() {
     let dir = tempfile::tempdir().unwrap();
     let p = dir.path().join("nope");
     assert!(!starts_with_shebang(&p));
+}
+
+#[test]
+#[cfg(all(feature = "warp_lite", feature = "local_fs"))]
+fn lite_file_links_never_offer_open_in_warp() {
+    warpui::App::test((), |mut app| async move {
+        crate::test_util::settings::initialize_settings_for_tests(&mut app);
+        app.update(|ctx| {
+            for path in ["main.rs", "README.md", "notes.txt"] {
+                assert!(!crate::util::tooltips::should_show_open_in_warp_link(
+                    Path::new(path),
+                    ctx
+                ));
+            }
+        });
+    });
 }

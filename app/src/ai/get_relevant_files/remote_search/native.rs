@@ -450,6 +450,6 @@ fn remote_availability_failure(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "native_tests.rs"]
 mod tests;

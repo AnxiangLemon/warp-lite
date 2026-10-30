@@ -1,3 +1,5 @@
+#![cfg(feature = "agent_runtime")]
+
 //! A singleton model for restoring conversations by ID across terminal views.
 
 use std::collections::{HashMap, HashSet};
@@ -165,6 +167,6 @@ impl Entity for RestoredAgentConversations {
 
 impl SingletonEntity for RestoredAgentConversations {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "restored_conversations_tests.rs"]
 mod tests;

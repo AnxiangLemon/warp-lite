@@ -977,6 +977,6 @@ enum ActionResult {
     BlockNotFound,
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "shell_command_tests.rs"]
 mod tests;

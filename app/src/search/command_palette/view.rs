@@ -23,7 +23,7 @@ use warpui::{
 use super::super::palette_styles as styles;
 use super::CommandPaletteMixer;
 use crate::appearance::Appearance;
-use crate::cloud_object::CloudObjectTypeAndId;
+use crate::drive::CloudObjectTypeAndId;
 use crate::features::FeatureFlag;
 use crate::palette::PaletteMode;
 use crate::root_view::OpenLaunchConfigArg;
@@ -46,7 +46,9 @@ use crate::settings::CtrlTabBehavior;
 use crate::terminal::keys_settings::KeysSettings;
 use crate::themes::theme::WarpTheme;
 use crate::view_components::DismissibleToast;
-use crate::workspace::{ForkedConversationDestination, WorkspaceAction, active_terminal_in_window};
+#[cfg(feature = "agent_runtime")]
+use crate::workspace::active_terminal_in_window;
+use crate::workspace::{ForkedConversationDestination, WorkspaceAction};
 use crate::{ToastStack, send_telemetry_from_ctx};
 
 lazy_static! {
@@ -238,11 +240,13 @@ impl View {
         let binding_source = ctx.add_model(|_| BindingSource::None);
         let session_source = ctx.add_model(|_| SessionSource::None);
 
+        #[cfg(feature = "agent_runtime")]
         let window_id = ctx.window_id();
         let data_source_store = ctx.add_model(|ctx| {
             DataSourceStore::new(
                 binding_source.clone(),
                 session_source.clone(),
+                #[cfg(feature = "agent_runtime")]
                 window_id,
                 ctx,
             )
@@ -275,7 +279,12 @@ impl View {
 
         let mixer = ctx.add_model(|_| CommandPaletteMixer::new());
         data_source_store.update(ctx, |store, ctx| {
-            store.reset_search_mixer(mixer.clone(), false, ctx);
+            store.reset_search_mixer(
+                mixer.clone(),
+                #[cfg(feature = "agent_runtime")]
+                false,
+                ctx,
+            );
             ctx.notify();
         });
 
@@ -410,7 +419,12 @@ impl View {
 
         let mixer = self.search_bar.as_ref(ctx).mixer().clone();
         self.data_source_store.update(ctx, |store, ctx| {
-            store.reset_search_mixer(mixer.clone(), self.is_shared_session_viewer, ctx);
+            store.reset_search_mixer(
+                mixer.clone(),
+                #[cfg(feature = "agent_runtime")]
+                self.is_shared_session_viewer,
+                ctx,
+            );
             ctx.notify();
         });
     }
@@ -824,6 +838,7 @@ impl View {
                 conversation_id,
                 terminal_view_id,
             } => {
+                #[cfg(feature = "agent_runtime")]
                 let should_block = {
                     window_id
                         .and_then(|window_id| {
@@ -837,6 +852,8 @@ impl View {
                         .unwrap_or(false)
                 };
 
+                #[cfg(not(feature = "agent_runtime"))]
+                let should_block = false;
                 if should_block {
                     if let Some(window_id) = window_id {
                         ToastStack::handle(ctx).update(ctx, |toast_stack, ctx| {
@@ -853,7 +870,6 @@ impl View {
                     return;
                 }
 
-                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::RestoreOrNavigateToConversation {
                     pane_view_locator,
                     window_id,
@@ -864,7 +880,6 @@ impl View {
                 send_telemetry_from_app_ctx!(TelemetryEvent::SelectNavigationPaletteItem, ctx);
             }
             CommandPaletteItemAction::ForkConversation { conversation_id } => {
-                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ForkAIConversation {
                     conversation_id,
                     fork_from_exchange: None,
@@ -958,6 +973,9 @@ impl View {
                     "OpenProjectConvo action unexpectedly handled in command palette for project: {project_name}"
                 );
             }
+            #[cfg(not(feature = "agent_runtime"))]
+            CommandPaletteItemAction::NewConversation => {}
+            #[cfg(feature = "agent_runtime")]
             CommandPaletteItemAction::NewConversation => {
                 let window_id = match self.binding_source.as_ref(ctx) {
                     BindingSource::View { window_id, .. } => *window_id,
@@ -996,7 +1014,6 @@ impl View {
                 }
 
                 if let Some(terminal_view_id) = terminal_view_id {
-                    #[cfg(not(feature = "warp_lite"))]
                     ctx.dispatch_typed_action(&WorkspaceAction::StartNewConversation {
                         terminal_view_id,
                     });

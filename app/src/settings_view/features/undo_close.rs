@@ -133,7 +133,7 @@ impl UndoCloseView {
             .with_child(
                 Container::new(
                     Text::new_inline(
-                        "Grace period (seconds)",
+                        crate::settings_view::lite_i18n::text("Grace period (seconds)"),
                         appearance.ui_font_family(),
                         appearance.ui_font_size(),
                     )

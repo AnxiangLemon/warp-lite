@@ -323,6 +323,6 @@ pub fn process_attachment(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "attachments_tests.rs"]
 mod tests;

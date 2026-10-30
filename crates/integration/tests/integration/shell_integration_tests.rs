@@ -10,6 +10,14 @@
 use super::integration_tests;
 
 integration_tests! {
+    // Windows Lite uses the native PowerShell bootstrap and isolated test application data.
+    #[cfg(target_os = "windows")]
+    test_lite_terminal_smoke,
+    #[cfg(target_os = "windows")]
+    test_lite_restore_named_tabs,
+    #[cfg(target_os = "windows")]
+    #[ignore = "Requires a completed first-stage Lite smoke database and its project directory"]
+    test_lite_restore_saved_tabs,
     // Test command execution works.
     test_single_command,
     // Test shell process terminates when session is closed.

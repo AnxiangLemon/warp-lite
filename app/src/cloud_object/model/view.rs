@@ -7,9 +7,9 @@ use warpui::{AppContext, Entity, ModelContext, ModelHandle, SingletonEntity};
 
 use super::persistence::{CloudModel, CloudModelEvent};
 use crate::auth::{AuthStateProvider, UserUid};
-use crate::cloud_object::{
-    CloudFolder, CloudObject, CloudObjectLocation, ContentEditability, SharingAccessLevel, Space,
-};
+use crate::cloud_object::{CloudObject, CloudObjectLocation, Space};
+use crate::drive::folders::CloudFolder;
+use crate::drive::sharing::{ContentEditability, SharingAccessLevel};
 use crate::safe_info;
 use crate::server::cloud_objects::update_manager::{
     ObjectOperation, OperationSuccessType, UpdateManager, UpdateManagerEvent,
@@ -66,15 +66,19 @@ pub enum CloudViewModelEvent {
 }
 
 impl CloudViewModel {
+    pub fn new_offline() -> Self {
+        Self {
+            folder_timestamp_cache: Default::default(),
+        }
+    }
+
     pub fn new(ctx: &mut ModelContext<Self>) -> Self {
         ctx.subscribe_to_model(&CloudModel::handle(ctx), Self::handle_cloud_model_event);
         ctx.subscribe_to_model(
             &UpdateManager::handle(ctx),
             Self::handle_update_manager_event,
         );
-        Self {
-            folder_timestamp_cache: Default::default(),
-        }
+        Self::new_offline()
     }
 
     #[cfg(test)]

@@ -93,6 +93,6 @@ fn local_cli_is_installed(command: &str) -> bool {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "local_harness_setup_tests.rs"]
 mod tests;

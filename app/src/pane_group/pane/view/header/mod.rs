@@ -2,14 +2,19 @@ use std::fmt::Debug;
 
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::{Vector2F, vec2f};
+#[cfg(feature = "agent_runtime")]
 use sharing::SharedPaneContent;
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use warp_core::settings::Setting;
 use warp_errors::report_error;
+#[cfg(feature = "agent_runtime")]
+use warpui::elements::Dismiss;
 use warpui::elements::{
     AcceptedByDropTarget, Align, Border, ChildAnchor, Clipped, ConstrainedBox, Container,
-    CornerRadius, CrossAxisAlignment, Dismiss, Draggable, DraggableState, Empty, Flex, Hoverable,
-    Icon, MainAxisAlignment, MainAxisSize, MouseStateHandle, OffsetPositioning, ParentAnchor,
+    CornerRadius, CrossAxisAlignment, Draggable, DraggableState, Empty, Flex, Hoverable, Icon,
+    MainAxisAlignment, MainAxisSize, MouseStateHandle, OffsetPositioning, ParentAnchor,
     ParentElement, ParentOffsetBounds, PositionedElementAnchor, PositionedElementOffsetBounds,
     Radius, SavePosition, Shrinkable, Stack, Text,
 };
@@ -33,20 +38,20 @@ use crate::pane_group::{
     BackingView, Direction, PaneDragDropLocation, PaneId, TabBarAxis, TabBarHoverIndex,
 };
 use crate::send_telemetry_from_ctx;
-use crate::server::telemetry::{SharingDialogSource, TelemetryEvent};
+#[cfg(feature = "agent_runtime")]
+use crate::server::telemetry::SharingDialogSource;
+use crate::server::telemetry::TelemetryEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::CodeSettings;
 use crate::tab::tab_position_id;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::TerminalAction;
+#[cfg(feature = "agent_runtime")]
 use crate::view_components::{FeaturePopup, NewFeaturePopupEvent, NewFeaturePopupLabel};
 use crate::workspace::{TabBarDropTargetData, TabBarLocation, VerticalTabsPaneDropTargetData};
 
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 mod sharing;
-#[cfg(feature = "warp_lite")]
-#[path = "sharing_lite.rs"]
-mod sharing;
-#[cfg(feature = "warp_lite")]
-pub use sharing::SharingDialogLite;
 
 pub(crate) mod components;
 
@@ -137,9 +142,11 @@ pub struct PaneHeader<P: BackingView> {
     overflow_menu:
         ViewHandle<Menu<PaneHeaderAction<P::PaneHeaderOverflowMenuAction, P::CustomAction>>>,
     toolbelt_buttons: Vec<ToolbeltButton>,
+    #[cfg(feature = "agent_runtime")]
     shared_content: SharedPaneContent,
     open_overlay: OpenOverlay,
     is_visible_in_pane_group: bool, // If this pane header is being dragged along the tab bar, then it is not visible in the pane group
+    #[cfg(feature = "agent_runtime")]
     toolbelt_feature_popup: ViewHandle<FeaturePopup>,
 }
 
@@ -154,13 +161,16 @@ impl<P: BackingView> PaneHeader<P> {
             me.handle_overflow_menu_action(event, ctx);
         });
 
+        #[cfg(feature = "agent_runtime")]
         let shared_content = SharedPaneContent::new(ctx);
 
+        #[cfg(feature = "agent_runtime")]
         let toolbelt_feature_popup = ctx.add_view(|_| {
             FeaturePopup::new_feature(NewFeaturePopupLabel::FromString(
                 "Open files and review code diffs".to_string(),
             ))
         });
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_view(&toolbelt_feature_popup, move |me, _, event, ctx| {
             me.handle_toolbelt_feature_popup_event(event, ctx);
         });
@@ -174,10 +184,12 @@ impl<P: BackingView> PaneHeader<P> {
             focus_handle: None,
             mouse_state_handles: Default::default(),
             overflow_menu,
+            #[cfg(feature = "agent_runtime")]
             shared_content,
             open_overlay: Default::default(),
             toolbelt_buttons: Default::default(),
             is_visible_in_pane_group: true,
+            #[cfg(feature = "agent_runtime")]
             toolbelt_feature_popup,
         }
     }
@@ -243,6 +255,7 @@ impl<P: BackingView> PaneHeader<P> {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn handle_toolbelt_feature_popup_event(
         &mut self,
         event: &NewFeaturePopupEvent,
@@ -424,6 +437,9 @@ impl<P: BackingView> PaneHeader<P> {
     }
 
     fn render_toolbelt_buttons(&self, app: &AppContext) -> Box<dyn Element> {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&app,);
+
         let mut flex = Flex::row();
         for toolbelt_button in &self.toolbelt_buttons {
             flex.add_child(
@@ -440,13 +456,17 @@ impl<P: BackingView> PaneHeader<P> {
         let container = Container::new(flex.finish()).with_margin_left(2.).finish();
 
         // Create Stack with the container as the first child
-        let mut stack = Stack::new().with_child(container);
+        let stack = Stack::new().with_child(container);
+        #[cfg(feature = "agent_runtime")]
+        let mut stack = stack;
 
         // Check if tooltip has been dismissed already.
         // We should only trigger this if we are in a git repository,
         // but the pane header will only render if we are already in one.
-        let auth_state = crate::auth::AuthStateProvider::as_ref(app).get();
-        let should_show_tooltip = FeatureFlag::CodeLaunchModal.is_enabled()
+        #[cfg(feature = "agent_runtime")]
+        {
+            let auth_state = crate::auth::AuthStateProvider::as_ref(app).get();
+            let should_show_tooltip = FeatureFlag::CodeLaunchModal.is_enabled()
             && !auth_state.is_onboarded().unwrap_or_default() // We only want to show the tooltip for new users.
             && !*CodeSettings::as_ref(app)
                 .dismissed_code_toolbelt_new_feature_popup
@@ -454,28 +474,29 @@ impl<P: BackingView> PaneHeader<P> {
                 // We should not render the tooltip if no code toolbelt buttons are present.
                 && !self.toolbelt_buttons.is_empty();
 
-        if should_show_tooltip {
-            // Position the FeaturePopup tooltip below the header
-            stack.add_positioned_overlay_child(
-                Dismiss::new(ChildView::new(&self.toolbelt_feature_popup).finish())
-                    .on_dismiss(|ctx, _app| {
-                        ctx.dispatch_typed_action(
-                            PaneHeaderAction::<TerminalAction, TerminalAction>::CustomAction(
-                                TerminalAction::DismissCodeToolbeltTooltip,
-                            ),
-                        );
-                        ctx.notify();
-                    })
-                    .finish(),
-                OffsetPositioning::offset_from_parent(
-                    vec2f(0., 4.),
-                    ParentOffsetBounds::WindowByPosition,
-                    ParentAnchor::BottomLeft,
-                    ChildAnchor::TopLeft,
-                ),
-            );
+            if should_show_tooltip {
+                // Position the FeaturePopup tooltip below the header
+                stack.add_positioned_overlay_child(
+                    Dismiss::new(ChildView::new(&self.toolbelt_feature_popup).finish())
+                        .on_dismiss(|ctx, _app| {
+                            ctx.dispatch_typed_action(PaneHeaderAction::<
+                                TerminalAction,
+                                TerminalAction,
+                            >::CustomAction(
+                                TerminalAction::DismissCodeToolbeltTooltip
+                            ));
+                            ctx.notify();
+                        })
+                        .finish(),
+                    OffsetPositioning::offset_from_parent(
+                        vec2f(0., 4.),
+                        ParentOffsetBounds::WindowByPosition,
+                        ParentAnchor::BottomLeft,
+                        ChildAnchor::TopLeft,
+                    ),
+                );
+            }
         }
-
         stack.finish()
     }
 }
@@ -519,11 +540,14 @@ impl<P: BackingView> PaneHeader<P> {
             required_controls.add_child(close_button);
         }
 
-        let mut optional_controls = Flex::row()
+        let optional_controls = Flex::row()
             .with_main_axis_alignment(MainAxisAlignment::End)
             .with_cross_axis_alignment(CrossAxisAlignment::Center)
             .with_main_axis_size(MainAxisSize::Min);
+        #[cfg(feature = "agent_runtime")]
+        let mut optional_controls = optional_controls;
 
+        #[cfg(feature = "agent_runtime")]
         if should_show_on_header {
             let appearance = Appearance::as_ref(app);
             self.render_sharing_controls(&mut optional_controls, appearance, None, None, app);
@@ -553,6 +577,9 @@ impl<P: BackingView> PaneHeader<P> {
         should_display_overflow_menu_button: bool,
         app: &AppContext,
     ) {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&app,);
+
         match self.open_overlay {
             OpenOverlay::OverflowMenu => {
                 if should_display_overflow_menu_button {
@@ -569,16 +596,21 @@ impl<P: BackingView> PaneHeader<P> {
                 }
             }
             OpenOverlay::SharingDialog => {
-                if self.is_sharing_dialog_enabled(app) {
-                    stack.add_positioned_overlay_child(
-                        ChildView::new(self.sharing_dialog()).finish(),
-                        OffsetPositioning::offset_from_parent(
-                            vec2f(-8., 0.),
-                            ParentOffsetBounds::WindowByPosition,
-                            ParentAnchor::BottomRight,
-                            ChildAnchor::TopRight,
-                        ),
-                    );
+                #[cfg(feature = "agent_runtime")]
+                {
+                    {
+                        if self.is_sharing_dialog_enabled(app) {
+                            stack.add_positioned_overlay_child(
+                                ChildView::new(self.sharing_dialog()).finish(),
+                                OffsetPositioning::offset_from_parent(
+                                    vec2f(-8., 0.),
+                                    ParentOffsetBounds::WindowByPosition,
+                                    ParentAnchor::BottomRight,
+                                    ChildAnchor::TopRight,
+                                ),
+                            );
+                        }
+                    }
                 }
             }
             OpenOverlay::None => {}
@@ -769,14 +801,28 @@ impl<P: BackingView> View for PaneHeader<P> {
             has_overflow_items,
             header_left_inset,
             render_sharing_controls_fn: Box::new(|app, icon_color, button_size| {
-                if !self.is_sharing_dialog_enabled(app) {
-                    return None;
-                }
+                #[cfg(feature = "agent_runtime")]
+                {
+                    if !self.is_sharing_dialog_enabled(app) {
+                        return None;
+                    }
 
-                let appearance = Appearance::as_ref(app);
-                let mut row = Flex::row();
-                self.render_sharing_controls(&mut row, appearance, icon_color, button_size, app);
-                Some(row.finish())
+                    let appearance = Appearance::as_ref(app);
+                    let mut row = Flex::row();
+                    self.render_sharing_controls(
+                        &mut row,
+                        appearance,
+                        icon_color,
+                        button_size,
+                        app,
+                    );
+                    Some(row.finish())
+                }
+                #[cfg(not(feature = "agent_runtime"))]
+                {
+                    let _ = (app, icon_color, button_size);
+                    None
+                }
             }),
         };
         let header_content = self
@@ -924,7 +970,10 @@ impl<P: BackingView> TypedActionView for PaneHeader<P> {
                 ctx.notify();
             }
             PaneHeaderAction::ShareContents => {
-                self.share_pane_contents(SharingDialogSource::PaneHeader, ctx)
+                #[cfg(feature = "agent_runtime")]
+                {
+                    self.share_pane_contents(SharingDialogSource::PaneHeader, ctx)
+                }
             }
             PaneHeaderAction::PaneHeaderDragStarted => {
                 send_telemetry_from_ctx!(TelemetryEvent::PaneDragInitiated, ctx);
@@ -1233,3 +1282,19 @@ fn render_draggable_placeholder_element(
 #[cfg(test)]
 #[path = "mod_tests.rs"]
 mod tests;
+
+#[cfg(not(feature = "agent_runtime"))]
+impl<P: BackingView> PaneHeader<P> {
+    pub fn has_shareable_object<C: warpui::ViewAsRef>(&self, ctx: &C) -> bool {
+        let _ = ctx;
+        false
+    }
+    pub fn has_shareable_shared_session<C: warpui::ViewAsRef>(&self, ctx: &C) -> bool {
+        let _ = ctx;
+        false
+    }
+    pub fn is_sharing_dialog_enabled<C: warpui::ViewAsRef>(&self, ctx: &C) -> bool {
+        let _ = ctx;
+        false
+    }
+}

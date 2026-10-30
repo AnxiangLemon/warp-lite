@@ -1,9 +1,8 @@
 pub(crate) mod ask_user_question_view;
 pub(super) mod aws_bedrock_credentials_error;
 pub(crate) mod code_diff_view;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub(crate) mod create_environment_modal;
-#[cfg(not(feature = "warp_lite"))]
 pub(crate) mod create_or_edit_document;
 pub(super) mod gemini_enterprise_credentials_error;
 pub(crate) mod host_picker;

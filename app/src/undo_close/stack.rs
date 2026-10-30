@@ -1,14 +1,18 @@
 use uuid::Uuid;
 use warp_errors::report_error;
+#[cfg(feature = "agent_runtime")]
+use warpui::ModelHandle;
 use warpui::r#async::SpawnedFutureHandle;
 use warpui::{
-    AppContext, ClosedWindowData, Entity, EntityId, ModelContext, ModelHandle, SingletonEntity,
-    ViewHandle, WeakViewHandle, WindowId,
+    AppContext, ClosedWindowData, Entity, EntityId, ModelContext, SingletonEntity, ViewHandle,
+    WeakViewHandle, WindowId,
 };
 
 use super::UndoCloseSettings;
 use super::settings::UndoCloseSettingsChangedEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::BlocklistAIHistoryModel;
 use crate::pane_group::{PaneGroup, PaneId};
 use crate::send_telemetry_from_app_ctx;
@@ -69,11 +73,13 @@ pub enum ClosedItem {
 
 impl ClosedItem {
     fn discard(self, ctx: &mut ModelContext<UndoCloseStack>) {
+        #[cfg(feature = "agent_runtime")]
         let history_model = BlocklistAIHistoryModel::handle(ctx);
 
         match self {
             ClosedItem::Window(data) => {
                 let ClosedWindowData { window_id, .. } = *data;
+                #[cfg(feature = "agent_runtime")]
                 ActiveAgentViewsModel::handle(ctx).update(ctx, |model, ctx| {
                     model.remove_focused_state_for_window(window_id, ctx);
                 });
@@ -81,6 +87,7 @@ impl ClosedItem {
                     workspace.update(ctx, |workspace, ctx| {
                         for pane_group in workspace.tab_views() {
                             // Mark conversations from all terminal panes in each tab
+                            #[cfg(feature = "agent_runtime")]
                             Self::mark_conversations_historical_for_pane_group(
                                 pane_group,
                                 &history_model,
@@ -93,6 +100,7 @@ impl ClosedItem {
             }
             ClosedItem::Tab { data, .. } => {
                 // Mark conversations from all terminal panes in the tab
+                #[cfg(feature = "agent_runtime")]
                 Self::mark_conversations_historical_for_pane_group(
                     &data.pane_group,
                     &history_model,
@@ -109,6 +117,7 @@ impl ClosedItem {
     /// Marks conversations as historical for all terminal panes in a pane group so they remain searchable.
     /// Historical conversations consist of non-live conversations that were read from disk on startup,
     /// and conversations (recorded here) that were live this session but have now been cleared.
+    #[cfg(feature = "agent_runtime")]
     fn mark_conversations_historical_for_pane_group(
         pane_group: &ViewHandle<PaneGroup>,
         history_model: &ModelHandle<BlocklistAIHistoryModel>,

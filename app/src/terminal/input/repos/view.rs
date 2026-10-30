@@ -85,6 +85,7 @@ impl InlineReposMenuView {
                 mixer.clone(),
                 positioner.clone(),
                 &input_suggestions_model,
+                #[cfg(feature = "agent_runtime")]
                 agent_view_controller,
                 ctx,
             )

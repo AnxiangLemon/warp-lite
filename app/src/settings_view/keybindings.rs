@@ -506,7 +506,7 @@ impl KeybindingsView {
 
         search_editor.update(ctx, |editor, ctx| {
             editor.clear_buffer_and_reset_undo_stack(ctx);
-            editor.set_placeholder_text(SEARCH_PLACEHOLDER, ctx);
+            editor.set_placeholder_text(super::lite_i18n::text(SEARCH_PLACEHOLDER), ctx);
         });
 
         let search_bar = ctx.add_typed_action_view(|_| SearchBar::new(search_editor.clone()));
@@ -757,6 +757,16 @@ impl SettingsPageMeta for KeybindingsView {
             lenses
                 .into_iter()
                 .map(|lens| CommandBinding::from_editable_lens(lens, ctx))
+                .filter(|binding| {
+                    !cfg!(feature = "warp_lite") || crate::command_palette::is_lite_binding(binding)
+                })
+                .filter_map(|mut binding| {
+                    if cfg!(feature = "warp_lite") {
+                        binding.description =
+                            super::lite_i18n::binding_label(&binding.name)?.into();
+                    }
+                    Some(binding)
+                })
                 .sorted_by(|a, b| {
                     // Sort by description then name so that we can deduplicate bindings by name.
                     a.description
@@ -919,7 +929,7 @@ fn render_text(
 ) -> Box<dyn Element> {
     let mut text = appearance
         .ui_builder()
-        .wrappable_text(text.to_string(), true);
+        .wrappable_text(super::lite_i18n::label(text), true);
 
     if let Some(styles) = styles {
         text = text.with_style(styles);
@@ -1102,7 +1112,8 @@ impl SettingsWidget for KeybindingsWidget {
         appearance: &Appearance,
         app: &AppContext,
     ) -> Box<dyn Element> {
-        let local_only_icon_state = if *CloudPreferencesSettings::as_ref(app).settings_sync_enabled
+        let local_only_icon_state = if !cfg!(feature = "warp_lite")
+            && *CloudPreferencesSettings::as_ref(app).settings_sync_enabled
         {
             Some(LocalOnlyIconState::Visible {
                 mouse_state: self.local_only_icon_mouse_state.clone(),

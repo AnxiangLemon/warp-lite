@@ -98,6 +98,6 @@ impl BlockContext {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "block_context_tests.rs"]
 mod tests;

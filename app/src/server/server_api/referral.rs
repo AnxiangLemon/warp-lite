@@ -1,15 +1,22 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
+#[cfg(feature = "cloud_services")]
+use anyhow::anyhow;
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use cynic::{MutationBuilder, QueryBuilder};
 #[cfg(test)]
 use mockall::{automock, predicate::*};
+#[cfg(feature = "cloud_services")]
 use warp_core::channel::ChannelState;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::send_referral_invite_emails::{
     SendReferralInviteEmails, SendReferralInviteEmailsResult, SendReferralInviteEmailsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_referral_info::{GetReferralInfo, GetReferralInfoVariables};
 
 use super::ServerApi;
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
 
 /// Referral information for the logged-in user
@@ -29,12 +36,18 @@ pub struct ReferralInfo {
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 pub trait ReferralsClient: 'static + Send + Sync {
     /// Gets the user's referral information.
-    async fn get_referral_info(&self) -> Result<ReferralInfo>;
+    async fn get_referral_info(&self) -> Result<ReferralInfo> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Send one or more email invites.
-    async fn send_invite(&self, emails: Vec<String>) -> Result<Vec<String>>;
+    async fn send_invite(&self, emails: Vec<String>) -> Result<Vec<String>> {
+        let _ = emails;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 }
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl ReferralsClient for ServerApi {
@@ -90,3 +103,8 @@ impl ReferralsClient for ServerApi {
         }
     }
 }
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl ReferralsClient for ServerApi {}

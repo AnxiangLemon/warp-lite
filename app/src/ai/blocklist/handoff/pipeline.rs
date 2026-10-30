@@ -996,6 +996,6 @@ fn build_spawn_request(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "pipeline_tests.rs"]
 mod tests;

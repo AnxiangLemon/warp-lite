@@ -9,7 +9,6 @@ use lazy_static::lazy_static;
 use pathfinder_color::ColorU;
 use pathfinder_geometry::vector::vec2f;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use warp_core::features::FeatureFlag;
 use warp_core::ui::theme::color::internal_colors;
 use warp_errors::report_error;
@@ -32,7 +31,6 @@ use warpui::{
     ViewContext, ViewHandle, WeakViewHandle,
 };
 
-use super::SettingsSection;
 use super::admin_actions::AdminActions;
 use super::settings_page::{
     MatchData, PageType, SettingsPageMeta, SettingsPageViewHandle, SettingsWidget,
@@ -42,6 +40,7 @@ use super::tab_menu::Tabs;
 use super::transfer_ownership_confirmation_modal::{
     TransferOwnershipConfirmationEvent, TransferOwnershipConfirmationModal,
 };
+use super::{SettingsSection, TeamsInviteOption};
 use crate::ai::AIRequestUsageModel;
 use crate::appearance::Appearance;
 use crate::auth::auth_manager::{AuthManager, LoginGatedFeature};
@@ -313,27 +312,6 @@ struct TeamsWidgetMouseHandles {
     outgrow_upgrade_link: MouseStateHandle,
 }
 
-/// TeamsInviteOption is whether the user is looking at invite-by-link or invite-by-email.
-#[derive(Clone, PartialEq, Eq, Debug, Default, Copy, Serialize, Deserialize)]
-pub enum TeamsInviteOption {
-    #[default]
-    Link,
-    Email,
-}
-
-impl std::fmt::Display for TeamsInviteOption {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                TeamsInviteOption::Link => "Link",
-                TeamsInviteOption::Email => "Email",
-            },
-        )
-    }
-}
-
 impl Tabs for TeamsInviteOption {
     fn action_on_click(&self, selection: TeamsInviteOption) -> TeamsPageAction {
         TeamsPageAction::ChangeInviteViewOption(selection)
@@ -439,10 +417,6 @@ impl DiscoverableTeamState {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct OpenTeamsSettingsModalArgs {
-    pub invite_email: Option<String>,
-}
 #[derive(Clone)]
 enum TeamActionConfirmationTarget {
     Leave,

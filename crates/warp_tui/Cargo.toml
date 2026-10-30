@@ -33,7 +33,7 @@ name = "warp-tui-stable"
 path = "src/bin/stable.rs"
 
 [dependencies]
-ai.workspace = true
+ai = { workspace = true, features = ["runtime"] }
 anyhow.workspace = true
 async-channel.workspace = true
 async-fs.workspace = true
@@ -47,7 +47,7 @@ dirs.workspace = true
 futures.workspace = true
 futures-lite.workspace = true
 fs4.workspace = true
-http_client.workspace = true
+http_client = { workspace = true, features = ["network_transport"] }
 instant.workspace = true
 inquire = "0.9.1"
 itertools.workspace = true
@@ -83,7 +83,7 @@ warp_errors.workspace = true
 warp_editor.workspace = true
 warp_files.workspace = true
 warp_logging.workspace = true
-warp_search_core.workspace = true
+warp_search_core = { workspace = true, features = ["full_text_search"] }
 warp_terminal.workspace = true
 warp_util.workspace = true
 warpui.workspace = true

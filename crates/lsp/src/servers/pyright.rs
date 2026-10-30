@@ -135,6 +135,10 @@ impl LanguageServerCandidate for PyrightCandidate {
         metadata: LanguageServerMetadata,
         executor: &CommandBuilder,
     ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            cfg!(feature = "managed_downloads"),
+            "Managed language-server installation is disabled in this build"
+        );
         log::info!("Installing pyright version {}", metadata.version);
 
         let install_dir = warp_core::paths::data_dir().join("pyright");

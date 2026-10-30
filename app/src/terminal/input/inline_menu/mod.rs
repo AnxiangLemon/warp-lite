@@ -18,6 +18,23 @@ pub use view::{
 
 use super::{InputSuggestionsMode, UserQueryMenuAction};
 
+pub(crate) fn agent_view_is_active(
+    #[cfg(feature = "agent_runtime")] controller: &warpui::ModelHandle<
+        crate::ai::blocklist::agent_view::AgentViewController,
+    >,
+    app: &warpui::AppContext,
+) -> bool {
+    #[cfg(feature = "agent_runtime")]
+    {
+        controller.as_ref(app).is_active()
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    {
+        let _ = app;
+        false
+    }
+}
+
 /// Identifies a specific inline menu type.
 #[derive(
     Debug,

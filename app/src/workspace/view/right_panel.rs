@@ -35,7 +35,7 @@ use crate::code_review::code_review_view::{
 };
 use crate::code_review::diff_state::DiffStateModel;
 use crate::code_review::telemetry_event::CodeReviewContextDestination;
-use crate::workspace::sidebar_constants::{MAX_SIDEBAR_WIDTH_RATIO, MIN_SIDEBAR_WIDTH};
+use crate::drive::panel::{MAX_SIDEBAR_WIDTH_RATIO, MIN_SIDEBAR_WIDTH};
 use crate::pane_group::pane::view::header::PANE_HEADER_HEIGHT;
 use crate::pane_group::pane::view::header::components::HEADER_EDGE_PADDING;
 use crate::pane_group::{
@@ -1319,72 +1319,83 @@ impl RightPanelView {
         repo_path: &LocalOrRemotePath,
         ctx: &mut ViewContext<Self>,
     ) {
-        let Some(pane_group) = &self.active_pane_group else {
-            code_review_view.update(ctx, |view, ctx| {
-                view.handle_review_submission_result(ReviewSubmissionResult::Error, ctx);
-            });
-            return;
-        };
-
-        let ai_enabled = AISettings::as_ref(ctx).is_any_ai_enabled(ctx);
-        let chosen = self.find_review_terminal(pane_group, repo_path, ai_enabled, ctx);
-
-        let Some(terminal_view) = chosen else {
-            log::warn!("No available terminal found for submitting review comments");
-            code_review_view.update(ctx, |view, ctx| {
-                view.handle_review_submission_result(ReviewSubmissionResult::Error, ctx);
-            });
-            return;
-        };
-
-        let comment_count = comments.comments.len();
-        let file_count = comments
-            .comments
-            .iter()
-            .filter_map(|c| {
-                c.target
-                    .absolute_file_path()
-                    .map(LocalOrRemotePath::display_path)
-            })
-            .collect::<std::collections::HashSet<_>>()
-            .len();
-
-        let active_cli_agent = terminal_view.read(ctx, |t, ctx| t.active_cli_agent(ctx));
-
-        let (result, destination) = if active_cli_agent.is_some() {
-            let r = terminal_view.update(ctx, |terminal, ctx| {
-                terminal.send_review_to_cli_agent_or_rich_input(&comments, ctx)
-            });
-            let dest = if terminal_view.read(ctx, |t, ctx| t.is_cli_agent_rich_input_open(ctx)) {
-                CodeReviewContextDestination::RichInput
-            } else {
-                CodeReviewContextDestination::Pty
+        #[cfg(feature = "agent_runtime")]
+        {
+            let Some(pane_group) = &self.active_pane_group else {
+                code_review_view.update(ctx, |view, ctx| {
+                    view.handle_review_submission_result(ReviewSubmissionResult::Error, ctx);
+                });
+                return;
             };
-            (r, dest)
-        } else {
-            let r = terminal_view.update(ctx, |terminal, ctx| {
-                terminal.send_inline_review(comments, ctx)
-            });
-            (r, CodeReviewContextDestination::AgentReview)
-        };
 
-        if let Err(err) = &result {
-            report_error!(err);
-        }
+            let ai_enabled = AISettings::as_ref(ctx).is_any_ai_enabled(ctx);
+            let chosen = self.find_review_terminal(pane_group, repo_path, ai_enabled, ctx);
 
-        let submission_result = if result.is_ok() {
-            ReviewSubmissionResult::Success {
-                comment_count,
-                file_count,
-                destination,
+            let Some(terminal_view) = chosen else {
+                log::warn!("No available terminal found for submitting review comments");
+                code_review_view.update(ctx, |view, ctx| {
+                    view.handle_review_submission_result(ReviewSubmissionResult::Error, ctx);
+                });
+                return;
+            };
+
+            let comment_count = comments.comments.len();
+            let file_count = comments
+                .comments
+                .iter()
+                .filter_map(|c| {
+                    c.target
+                        .absolute_file_path()
+                        .map(LocalOrRemotePath::display_path)
+                })
+                .collect::<std::collections::HashSet<_>>()
+                .len();
+
+            let active_cli_agent = terminal_view.read(ctx, |t, ctx| t.active_cli_agent(ctx));
+
+            let (result, destination) = if active_cli_agent.is_some() {
+                let r = terminal_view.update(ctx, |terminal, ctx| {
+                    terminal.send_review_to_cli_agent_or_rich_input(&comments, ctx)
+                });
+                let dest = if terminal_view.read(ctx, |t, ctx| t.is_cli_agent_rich_input_open(ctx))
+                {
+                    CodeReviewContextDestination::RichInput
+                } else {
+                    CodeReviewContextDestination::Pty
+                };
+                (r, dest)
+            } else {
+                let r = terminal_view.update(ctx, |terminal, ctx| {
+                    terminal.send_inline_review(comments, ctx)
+                });
+                (r, CodeReviewContextDestination::AgentReview)
+            };
+
+            if let Err(err) = &result {
+                report_error!(err);
             }
-        } else {
-            ReviewSubmissionResult::Error
-        };
 
-        code_review_view.update(ctx, |view, ctx| {
-            view.handle_review_submission_result(submission_result, ctx);
-        });
+            let submission_result = if result.is_ok() {
+                ReviewSubmissionResult::Success {
+                    comment_count,
+                    file_count,
+                    destination,
+                }
+            } else {
+                ReviewSubmissionResult::Error
+            };
+
+            code_review_view.update(ctx, |view, ctx| {
+                view.handle_review_submission_result(submission_result, ctx);
+            });
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = (comments, repo_path);
+            code_review_view.update(ctx, |view, ctx| {
+                view.handle_review_submission_result(ReviewSubmissionResult::Error, ctx)
+            });
+        }
     }
 
     fn format_optional_path(path: Option<&Path>) -> String {

@@ -6,8 +6,6 @@ use warp_core::SessionId;
 use warpui::{App, AppContext, EntityId, SingletonEntity};
 
 use super::{UpArrowHistoryConfig, prompt_history_for_terminal_surface};
-use crate::ai::agent::AIAgentExchangeId;
-use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::blocklist::history_model::AIQueryHistoryOutputStatus;
 use crate::ai::blocklist::{BlocklistAIHistoryModel, PersistedAIInput, PersistedAIInputType};
 use crate::ai::llms::LLMId;
@@ -16,6 +14,7 @@ use crate::settings::AISettings;
 use crate::suggestions::ignored_suggestions_model::{IgnoredSuggestionsModel, SuggestionType};
 use crate::terminal::model::session::command_executor::NoOpCommandExecutor;
 use crate::terminal::model::session::{Session, SessionInfo};
+use crate::terminal::session_types::{AIAgentExchangeId, AIConversationId};
 use crate::terminal::{History, HistoryEntry, LinkedWorkflowData};
 use crate::test_util::settings::initialize_settings_for_tests;
 

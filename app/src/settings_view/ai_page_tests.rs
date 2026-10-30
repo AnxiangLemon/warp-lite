@@ -2,6 +2,23 @@ use super::{AgentAttributionToggleState, derive_agent_attribution_toggle_state};
 use crate::workspaces::workspace::AdminEnablementSetting;
 
 #[test]
+fn custom_router_deeplink_keeps_its_widget_id_without_loading_the_page() {
+    assert_eq!(
+        crate::settings_view::custom_model_routers_widget_id(),
+        <super::CustomModelRoutersWidget as crate::settings_view::settings_page::SettingsWidget>::static_widget_id(),
+    );
+}
+
+#[cfg(not(target_family = "wasm"))]
+#[test]
+fn cli_agent_deeplink_keeps_its_widget_id_without_loading_the_page() {
+    assert_eq!(
+        crate::settings_view::cli_agent_settings_widget_id(),
+        <super::CLIAgentWidget as crate::settings_view::settings_page::SettingsWidget>::static_widget_id(),
+    );
+}
+
+#[test]
 fn respect_user_setting_returns_user_pref_unlocked() {
     let state = derive_agent_attribution_toggle_state(
         &AdminEnablementSetting::RespectUserSetting,

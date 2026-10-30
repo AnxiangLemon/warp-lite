@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt::Display;
 
 use ai::agent::orchestration_config::{OrchestrationConfig, OrchestrationConfigStatus};
 use ai::document::AIDocumentId;
@@ -7,8 +6,6 @@ use ai::skills::SkillPathOrigin;
 use anyhow::Context as _;
 use chrono::{DateTime, Local, TimeZone};
 use itertools::Itertools as _;
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use vec1::{Size0Error, Vec1};
 use warp_cli::agent::Harness;
 use warp_core::command::ExitCode;
@@ -63,7 +60,7 @@ use crate::ai::blocklist::{
 use crate::ai::llms::LLMPreferences;
 use crate::ai::skills::SkillDescriptor;
 use crate::code_review::CodeReviewTelemetryEvent;
-use crate::cloud_object::NotebookId;
+use crate::notebooks::NotebookId;
 use crate::persistence::ModelEvent;
 use crate::persistence::model::{
     AgentConversationData, ContextWindowSegment, ConversationUsageMetadata, ModelTokenUsage,
@@ -4470,35 +4467,7 @@ pub enum UpdateConversationError {
     NoPendingRequest,
 }
 
-/// A globally unique ID for a conversation with an AI agent.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct AIConversationId(Uuid);
-
-impl Display for AIConversationId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl AIConversationId {
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-}
-
-impl Default for AIConversationId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl TryFrom<String> for AIConversationId {
-    type Error = anyhow::Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        Ok(Self(Uuid::try_parse(&value)?))
-    }
-}
+pub use crate::terminal::session_types::AIConversationId;
 
 /// The harness that produced an agent conversation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -4796,6 +4765,6 @@ impl ConversationStatus {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "conversation_tests.rs"]
 mod tests;

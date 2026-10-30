@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Read, Write};
 
 use super::*;
 
@@ -27,6 +27,22 @@ fn log_state(base_directory: &Path, frontend: LogFrontend, logfile_name: &str) -
         logfile_name.to_owned(),
         frontend,
     )
+}
+
+#[test]
+fn log_bundle_preserves_utf8_contents_with_deflate_compression() {
+    let tmp = tempfile::tempdir().unwrap();
+    let state = log_state(tmp.path(), LogFrontend::Gui, "warp-lite.log");
+    let contents = "terminal output\n项目目录已恢复\n".as_bytes();
+    write_bytes(&tmp.path().join("warp-lite.log"), contents);
+    let zip_path = state.create_log_bundle_zip().unwrap();
+    let mut archive = zip::ZipArchive::new(File::open(zip_path).unwrap()).unwrap();
+    assert_eq!(archive.len(), 1);
+    let mut entry = archive.by_name("warp-lite.log").unwrap();
+    assert_eq!(entry.compression(), CompressionMethod::Deflated);
+    let mut restored = Vec::new();
+    entry.read_to_end(&mut restored).unwrap();
+    assert_eq!(restored, contents);
 }
 
 #[test]

@@ -9,11 +9,15 @@ use serde::Deserialize;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "local_fs")] {
+        #[cfg(feature = "managed_downloads")]
         use flate2::read::GzDecoder;
+        #[cfg(feature = "managed_downloads")]
         use futures::io::AsyncWriteExt;
         use std::ffi::OsStr;
+        #[cfg(feature = "managed_downloads")]
         use std::io::Read;
         use std::path::{Path, PathBuf};
+        #[cfg(feature = "managed_downloads")]
         use tar::Archive;
         use command::r#async::Command;
         use semver::Version;
@@ -74,6 +78,7 @@ pub enum ArchiveType {
 struct NodeDistribution {
     os: &'static str,
     arch: &'static str,
+    #[cfg(feature = "managed_downloads")]
     archive_type: ArchiveType,
 }
 
@@ -94,6 +99,7 @@ impl NodeDistribution {
             other => bail!("Unsupported architecture: {}", other),
         };
 
+        #[cfg(feature = "managed_downloads")]
         let archive_type = match std::env::consts::OS {
             "windows" => ArchiveType::Zip,
             _ => ArchiveType::TarGz,
@@ -102,6 +108,7 @@ impl NodeDistribution {
         Ok(Self {
             os,
             arch,
+            #[cfg(feature = "managed_downloads")]
             archive_type,
         })
     }
@@ -112,6 +119,7 @@ impl NodeDistribution {
     }
 
     /// Returns the file extension for the archive.
+    #[cfg(feature = "managed_downloads")]
     fn file_extension(&self) -> &'static str {
         match self.archive_type {
             ArchiveType::TarGz => "tar.gz",
@@ -120,6 +128,7 @@ impl NodeDistribution {
     }
 
     /// Returns the download URL for the Node.js distribution.
+    #[cfg(feature = "managed_downloads")]
     fn download_url(&self, version: &str) -> String {
         let file_name = format!(
             "node-{}-{}-{}.{}",
@@ -167,7 +176,7 @@ pub fn npm_binary_path() -> Result<PathBuf> {
 /// - The current platform/architecture is not supported
 /// - Network errors occur during download
 /// - Extraction fails
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", feature = "managed_downloads"))]
 pub async fn install_npm(client: &http_client::Client) -> Result<PathBuf> {
     log::info!("Node.js runtime install_npm called");
 
@@ -242,7 +251,7 @@ pub async fn install_npm(client: &http_client::Client) -> Result<PathBuf> {
 }
 
 /// Checks if an existing Node.js installation is valid.
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", feature = "managed_downloads"))]
 async fn is_valid_installation(node_binary: &Path) -> bool {
     // Check if the binary exists
     if async_fs::metadata(node_binary).await.is_err() {
@@ -278,7 +287,7 @@ async fn is_valid_installation(node_binary: &Path) -> bool {
 /// Extracts a gzip-compressed tarball to the destination directory.
 ///
 /// This is a simple wrapper around tar::Archive that extracts all contents.
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", feature = "managed_downloads"))]
 pub fn extract_tar_gz(data: &[u8], dest_dir: &Path) -> Result<()> {
     let decoder = GzDecoder::new(data);
     let mut archive = Archive::new(decoder);
@@ -291,7 +300,7 @@ pub fn extract_tar_gz(data: &[u8], dest_dir: &Path) -> Result<()> {
 /// Extracts a single gzip-compressed file to the destination path.
 ///
 /// This decompresses a `.gz` file (not a `.tar.gz` archive) directly to a file.
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", feature = "managed_downloads"))]
 pub async fn extract_gz(data: &[u8], dest_path: &Path) -> Result<()> {
     let mut decoder = GzDecoder::new(data);
     let mut decompressed = Vec::new();
@@ -326,7 +335,7 @@ pub async fn extract_gz(data: &[u8], dest_path: &Path) -> Result<()> {
 /// Note: This function performs synchronous zip reading (which is CPU-bound) followed by
 /// async file I/O. Similar to `extract_gz`, this approach is acceptable for reasonably-sized
 /// archives since the zip reading is relatively fast.
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", feature = "managed_downloads"))]
 pub async fn extract_zip<F>(data: &[u8], dest_dir: &Path, file_filter: Option<F>) -> Result<()>
 where
     F: Fn(&str) -> bool,
@@ -503,6 +512,7 @@ pub async fn detect_system_node(path_env_var: impl AsRef<OsStr>) -> Result<()> {
 ///
 /// # Returns
 /// Returns the latest version string on success.
+#[cfg(feature = "managed_downloads")]
 pub async fn fetch_npm_package_version(
     client: &http_client::Client,
     package_name: &str,
@@ -532,4 +542,40 @@ pub async fn fetch_npm_package_version(
     info.latest_version()
         .map(|s| s.to_string())
         .with_context(|| format!("No version found for npm package {}", package_name))
+}
+
+#[cfg(all(feature = "local_fs", not(feature = "managed_downloads")))]
+pub async fn install_npm(client: &http_client::Client) -> Result<PathBuf> {
+    let _ = client;
+    bail!("Managed Node.js installation is disabled in this build")
+}
+
+#[cfg(all(feature = "local_fs", not(feature = "managed_downloads")))]
+pub fn extract_tar_gz(data: &[u8], dest_dir: &Path) -> Result<()> {
+    let _ = (data, dest_dir);
+    bail!("Managed archive extraction is disabled in this build")
+}
+
+#[cfg(all(feature = "local_fs", not(feature = "managed_downloads")))]
+pub async fn extract_gz(data: &[u8], dest_path: &Path) -> Result<()> {
+    let _ = (data, dest_path);
+    bail!("Managed archive extraction is disabled in this build")
+}
+
+#[cfg(all(feature = "local_fs", not(feature = "managed_downloads")))]
+pub async fn extract_zip<F>(data: &[u8], dest_dir: &Path, file_filter: Option<F>) -> Result<()>
+where
+    F: Fn(&str) -> bool,
+{
+    let _ = (data, dest_dir, file_filter);
+    bail!("Managed archive extraction is disabled in this build")
+}
+
+#[cfg(not(feature = "managed_downloads"))]
+pub async fn fetch_npm_package_version(
+    client: &http_client::Client,
+    package_name: &str,
+) -> Result<String> {
+    let _ = (client, package_name);
+    bail!("Managed npm package downloads are disabled in this build")
 }

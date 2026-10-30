@@ -8,12 +8,16 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["html"]
+html = ["dep:html5ever", "dep:markup5ever_rcdom"]
+
 [dependencies]
 anyhow.workspace = true
 enum-iterator.workspace = true
 itertools.workspace = true
 nom.workspace = true
-html5ever.workspace = true
-markup5ever_rcdom = "0.35.0"
+html5ever = { workspace = true, optional = true }
+markup5ever_rcdom = { version = "0.35.0", optional = true }
 serde_yaml.workspace = true
 thiserror.workspace = true

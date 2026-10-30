@@ -1,19 +1,26 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
+#[cfg(feature = "cloud_services")]
+use anyhow::anyhow;
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use cynic::{MutationBuilder, QueryBuilder};
 #[cfg(test)]
 use mockall::automock;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::delete_runner::{
     DeleteRunner, DeleteRunnerInput, DeleteRunnerResult, DeleteRunnerVariables,
 };
+use warp_graphql::mutations::upsert_runner::UpsertRunnerInput;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::upsert_runner::{
-    UpsertRunner, UpsertRunnerInput, UpsertRunnerResult, UpsertRunnerVariables,
+    UpsertRunner, UpsertRunnerResult, UpsertRunnerVariables,
 };
-use warp_graphql::queries::get_runners::{
-    GetRunners, GetRunnersResult, GetRunnersVariables, Runner, RunnerSortBy,
-};
+#[cfg(feature = "cloud_services")]
+use warp_graphql::queries::get_runners::{GetRunners, GetRunnersResult, GetRunnersVariables};
+use warp_graphql::queries::get_runners::{Runner, RunnerSortBy};
 
 use super::ServerApi;
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
 
 /// The result of upserting a runner: the resulting [`Runner`] plus whether the
@@ -32,18 +39,28 @@ pub struct UpsertedRunner {
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 pub trait FactoryClient: 'static + Send + Sync {
     /// Fetch all runners visible to the caller, optionally sorted.
-    async fn get_runners(&self, sort_by: Option<RunnerSortBy>) -> Result<Vec<Runner>>;
+    async fn get_runners(&self, sort_by: Option<RunnerSortBy>) -> Result<Vec<Runner>> {
+        let _ = sort_by;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Create or update a runner. `input.uid` is `None` for a create and
     /// `Some(_)` for an update; this single method backs both CLI commands.
     #[cfg_attr(target_family = "wasm", allow(dead_code))]
-    async fn upsert_runner(&self, input: UpsertRunnerInput) -> Result<UpsertedRunner>;
+    async fn upsert_runner(&self, input: UpsertRunnerInput) -> Result<UpsertedRunner> {
+        let _ = input;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Delete a runner by UID, returning the deleted UID on success.
     #[cfg_attr(target_family = "wasm", allow(dead_code))]
-    async fn delete_runner(&self, uid: String) -> Result<String>;
+    async fn delete_runner(&self, uid: String) -> Result<String> {
+        let _ = uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 }
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl FactoryClient for ServerApi {
@@ -97,3 +114,8 @@ impl FactoryClient for ServerApi {
         }
     }
 }
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl FactoryClient for ServerApi {}

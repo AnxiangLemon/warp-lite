@@ -46,7 +46,7 @@ impl From<TuiVoiceInputHoldKey> for Option<KeyCode> {
     }
 }
 
-define_settings_group!(TuiVoiceSettings, settings: [
+define_settings_group!(TuiVoiceSettings, schema_cfg: feature = "agent_runtime", settings: [
     voice_input_hold_key: TuiVoiceInputHoldKeySetting {
         type: TuiVoiceInputHoldKey,
         default: TuiVoiceInputHoldKey::default(),

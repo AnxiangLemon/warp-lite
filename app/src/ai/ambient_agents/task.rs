@@ -3,6 +3,7 @@
 use anyhow::anyhow;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 #[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "agent_runtime")]
 pub use cloud_object_models::HarnessModelConfig;
 pub use cloud_object_models::{AgentConfigSnapshot, HarnessAuthSecretsConfig, HarnessConfig};
 use iso8601_duration::Duration as Iso8601Duration;
@@ -593,6 +594,6 @@ pub fn cancel_task_silently<V: View>(task_id: AmbientAgentTaskId, ctx: &mut View
     );
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "task_tests.rs"]
 mod tests;

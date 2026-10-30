@@ -455,6 +455,6 @@ mod testing {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "task_store_tests.rs"]
 mod tests;

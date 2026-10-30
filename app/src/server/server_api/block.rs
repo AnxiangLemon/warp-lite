@@ -2,24 +2,30 @@ use std::convert::TryFrom;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use chrono::Utc;
+#[cfg(feature = "cloud_services")]
 use cynic::{MutationBuilder, QueryBuilder};
 #[cfg(test)]
 use mockall::automock;
+#[cfg(feature = "cloud_services")]
 use warp_core::channel::{Channel, ChannelState};
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::share_block::{
     BlockInput, ShareBlock, ShareBlockResult, ShareBlockVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::unshare_block::{
     UnshareBlock, UnshareBlockInput, UnshareBlockResult, UnshareBlockVariables,
 };
-use warp_graphql::queries::get_blocks_for_user::{
-    Block as GqlBlock, GetBlocksForUser, GetBlocksForUserVariables,
-};
+use warp_graphql::queries::get_blocks_for_user::Block as GqlBlock;
+#[cfg(feature = "cloud_services")]
+use warp_graphql::queries::get_blocks_for_user::{GetBlocksForUser, GetBlocksForUserVariables};
 
 use super::ServerApi;
 use crate::ai::generate_block_title::api::{GenerateBlockTitleRequest, GenerateBlockTitleResponse};
 use crate::server::block::{Block, DisplaySetting};
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
 
 #[cfg_attr(test, automock)]
@@ -27,7 +33,10 @@ use crate::server::graphql::{get_request_context, get_user_facing_error_message}
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 pub trait BlockClient: 'static + Send + Sync {
     /// Unshares a block identified at `block_id`.
-    async fn unshare_block(&self, block_id: String) -> Result<(), anyhow::Error>;
+    async fn unshare_block(&self, block_id: String) -> Result<(), anyhow::Error> {
+        let _ = block_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Uploads a given block to the server via the /share_block endpoint.
     async fn save_block(
@@ -36,16 +45,25 @@ pub trait BlockClient: 'static + Send + Sync {
         title: Option<String>,
         show_prompt: bool,
         display_setting: DisplaySetting,
-    ) -> Result<String, anyhow::Error>;
+    ) -> Result<String, anyhow::Error> {
+        let _ = (block, title, show_prompt, display_setting);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn blocks_owned_by_user(&self) -> Result<Vec<Block>, anyhow::Error>;
+    async fn blocks_owned_by_user(&self) -> Result<Vec<Block>, anyhow::Error> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn generate_shared_block_title(
         &self,
         request: GenerateBlockTitleRequest,
-    ) -> Result<GenerateBlockTitleResponse, anyhow::Error>;
+    ) -> Result<GenerateBlockTitleResponse, anyhow::Error> {
+        let _ = request;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 }
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl BlockClient for ServerApi {
@@ -187,3 +205,8 @@ impl TryFrom<GqlBlock> for Block {
         }
     }
 }
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl BlockClient for ServerApi {}

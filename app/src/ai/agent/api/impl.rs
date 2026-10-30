@@ -312,6 +312,6 @@ fn get_supported_cli_agent_tools(params: &RequestParams) -> Vec<api::ToolType> {
     supported_cli_agent_tools
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "impl_tests.rs"]
 mod tests;

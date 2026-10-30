@@ -6,18 +6,26 @@ authors = ["Warp Team <dev@warp.dev>"]
 publish.workspace = true
 license.workspace = true
 
+[features]
+default = ["runtime"]
+tree_sitter_types = ["dep:arborium"]
+runtime = [
+    "tree_sitter_types", "dep:futures", "dep:futures-lite", "dep:parking_lot", "dep:log",
+    "dep:streaming-iterator", "languages/parsing",
+]
+
 [dependencies]
 rangemap.workspace = true
-arborium.workspace = true
+arborium = { workspace = true, optional = true }
 warpui_core.workspace = true
-warp_editor.workspace = true
-languages.workspace = true
-futures.workspace = true
-futures-lite.workspace = true
-parking_lot.workspace = true
-log.workspace = true
+warp_editor = { workspace = true, default-features = false }
+languages = { workspace = true, default-features = false }
+futures = { workspace = true, optional = true }
+futures-lite = { workspace = true, optional = true }
+parking_lot = { workspace = true, optional = true }
+log = { workspace = true, optional = true }
 string-offset.workspace = true
-streaming-iterator = "0.1.9"
+streaming-iterator = { version = "0.1.9", optional = true }
 warp_util.workspace = true
 
 [dev-dependencies]

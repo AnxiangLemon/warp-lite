@@ -399,6 +399,6 @@ impl Entity for SlashCommandModel {
     type Event = UpdatedSlashCommandModel;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "slash_command_model_tests.rs"]
 mod tests;

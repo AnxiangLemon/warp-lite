@@ -48,7 +48,9 @@ pub enum SecretOwner {
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 pub trait ManagedSecretsClient: 'static + Send + Sync {
-    async fn get_managed_secret_configs(&self) -> Result<ManagedSecretConfigs>;
+    async fn get_managed_secret_configs(&self) -> Result<ManagedSecretConfigs> {
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn create_managed_secret(
         &self,
@@ -57,9 +59,15 @@ pub trait ManagedSecretsClient: 'static + Send + Sync {
         secret_type: ManagedSecretType,
         encrypted_value: String,
         description: Option<String>,
-    ) -> Result<ManagedSecret>;
+    ) -> Result<ManagedSecret> {
+        let _ = (owner, name, secret_type, encrypted_value, description);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn delete_managed_secret(&self, owner: SecretOwner, name: String) -> Result<()>;
+    async fn delete_managed_secret(&self, owner: SecretOwner, name: String) -> Result<()> {
+        let _ = (owner, name);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn update_managed_secret(
         &self,
@@ -67,22 +75,33 @@ pub trait ManagedSecretsClient: 'static + Send + Sync {
         name: String,
         encrypted_value: Option<String>,
         description: Option<String>,
-    ) -> Result<ManagedSecret>;
+    ) -> Result<ManagedSecret> {
+        let _ = (owner, name, encrypted_value, description);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn list_secrets(&self) -> Result<Vec<ManagedSecret>>;
+    async fn list_secrets(&self) -> Result<Vec<ManagedSecret>> {
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// List managed secrets that authenticate the given harness.
     /// Returns an empty list for harnesses that do not use auth secrets (e.g. Oz).
     async fn list_harness_auth_secrets(
         &self,
         harness: warp_graphql::ai::AgentHarness,
-    ) -> Result<Vec<ManagedSecret>>;
+    ) -> Result<Vec<ManagedSecret>> {
+        let _ = harness;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn get_task_secrets(
         &self,
         task_id: String,
         workload_token: String,
-    ) -> Result<HashMap<String, ManagedSecretValue>>;
+    ) -> Result<HashMap<String, ManagedSecretValue>> {
+        let _ = (task_id, workload_token);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// Issue a short-lived OIDC identity token for the current task.
     ///
@@ -92,5 +111,8 @@ pub trait ManagedSecretsClient: 'static + Send + Sync {
     async fn issue_task_identity_token(
         &self,
         options: IdentityTokenOptions,
-    ) -> Result<TaskIdentityToken>;
+    ) -> Result<TaskIdentityToken> {
+        let _ = options;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 }

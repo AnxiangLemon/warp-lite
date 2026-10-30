@@ -228,6 +228,6 @@ pub fn merge_mcp_servers(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "config_file_tests.rs"]
 mod tests;

@@ -15,32 +15,24 @@ pub mod command_parser;
 pub mod export_workflow;
 pub mod info_box;
 pub mod local_workflows;
-#[cfg(not(feature = "warp_lite"))]
-#[path = "manager.rs"]
-pub mod manager;
-#[cfg(feature = "warp_lite")]
-#[path = "manager_lite.rs"]
 pub mod manager;
 pub mod workflow;
 pub mod workflow_enum;
-#[cfg(not(feature = "warp_lite"))]
 pub mod workflow_view;
 
 use async_trait::async_trait;
 pub use categories::{CategoriesView, CategoriesViewEvent, WorkflowsViewAction};
 
-#[cfg(not(feature = "warp_lite"))]
 use crate::appearance::Appearance;
 use crate::cloud_object::model::view::CloudViewModel;
 use crate::cloud_object::{
-    CloudModelType, CloudObjectEventEntrypoint, CloudObjectTypeAndId, CloudObjectUpsertParams,
-    CreateCloudObjectResult, CreateObjectRequest, GenericServerObject, NotebookId,
-    NotebookLocation, ObjectType, Revision, UpdateCloudObjectResult,
+    CloudModelType, CloudObjectEventEntrypoint, CloudObjectUpsertParams, CreateCloudObjectResult,
+    CreateObjectRequest, GenericServerObject, ObjectType, Revision, UpdateCloudObjectResult,
 };
-#[cfg(not(feature = "warp_lite"))]
+use crate::drive::CloudObjectTypeAndId;
 use crate::drive::items::WarpDriveItem;
-#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::workflow::WarpDriveWorkflow;
+use crate::notebooks::{NotebookId, NotebookLocation};
 use crate::persistence::ModelEvent;
 use crate::server::cloud_objects::update_manager::InitiatedBy;
 use crate::server::ids::{ServerId, SyncId};
@@ -49,7 +41,6 @@ use crate::server::sync_queue::{QueueItem, SerializedModel};
 
 pub fn init(app: &mut AppContext) {
     categories::init(app);
-    #[cfg(not(feature = "warp_lite"))]
     self::workflow_view::init(app);
 }
 
@@ -325,12 +316,10 @@ impl CloudModelType for CloudWorkflowModel {
             .await
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool {
         true
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn to_warp_drive_item(
         &self,
         id: SyncId,

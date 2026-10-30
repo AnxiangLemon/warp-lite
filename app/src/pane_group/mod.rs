@@ -1,8 +1,12 @@
 use std::any::Any;
+#[cfg(feature = "agent_runtime")]
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+#[cfg(feature = "agent_runtime")]
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::path::PathBuf;
+#[cfg(feature = "agent_runtime")]
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::mpsc::SyncSender;
@@ -14,14 +18,17 @@ use parking_lot::FairMutex;
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::{Vector2F, vec2f};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "agent_runtime")]
 use session_sharing_protocol::common::{
     ParticipantId, Role, RoleRequestId, RoleRequestRejectedReason, RoleRequestResponse, SessionId,
 };
 use settings::Setting as _;
+#[cfg(feature = "agent_runtime")]
 use tree::DEFAULT_FLEX_VALUE;
 use typed_path::TypedPath;
 use url::Url;
 use uuid::Uuid;
+#[cfg(feature = "agent_runtime")]
 use warp_cli::agent::Harness;
 use warp_core::command::ExitCode;
 use warp_core::context_flag::ContextFlag;
@@ -32,9 +39,11 @@ use warp_util::path::LineAndColumnArg;
 use warp_util::path::convert_wsl_to_windows_host_path;
 use warp_util::remote_path::RemotePath;
 use warpui::elements::{
-    ChildView, Clipped, CrossAxisAlignment, DispatchEventResult, Element, EventHandler, Flex,
-    MainAxisSize, ParentElement, Shrinkable, Stack,
+    ChildView, CrossAxisAlignment, DispatchEventResult, Element, EventHandler, Flex, MainAxisSize,
+    ParentElement, Shrinkable,
 };
+#[cfg(feature = "agent_runtime")]
+use warpui::elements::{Clipped, Stack};
 use warpui::keymap::{Context, EditableBinding, FixedBinding};
 use warpui::notification::NotificationSendError;
 use warpui::windowing::WindowManager;
@@ -43,69 +52,86 @@ use warpui::{
     ViewHandle, WeakViewHandle, WindowId,
 };
 
+#[cfg(feature = "agent_runtime")]
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
-use crate::ai::agent::conversation::{AIAgentHarness, AIConversation, AIConversationId};
+#[cfg(feature = "agent_runtime")]
+use crate::ai::agent::conversation::{AIAgentHarness, AIConversation};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_conversations_model::{
     AgentConversationEntryId, AgentConversationNavigationSubject, AgentConversationsModel,
     AgentConversationsModelEvent,
 };
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ai_document_view::AIDocumentView;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 #[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::BlocklistAIHistoryEvent;
+#[cfg(feature = "agent_runtime")]
+use crate::ai::blocklist::BlocklistAIHistoryModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::history_model::CloudConversationData;
 use crate::ai::blocklist::inline_action::code_diff_view::CodeDiffView;
 use crate::ai::blocklist::suggested_agent_mode_workflow_modal::SuggestedAgentModeWorkflowAndId;
 use crate::ai::blocklist::suggested_rule_modal::SuggestedRuleAndId;
-use crate::ai::blocklist::{BlocklistAIHistoryModel, InputConfig, SerializedBlockListItem};
-use ai::document::{AIDocumentId, AIDocumentVersion};
-#[cfg(not(feature = "warp_lite"))]
-use crate::ai::document::ai_document_model::{AIDocumentModel};
+use crate::ai::document::ai_document_model::AIDocumentId;
+#[cfg(feature = "agent_runtime")]
+use crate::ai::document::ai_document_model::{AIDocumentModel, AIDocumentVersion};
 use crate::ai::execution_profiles::ExecutionProfileId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::llms::LLMId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::restored_conversations::RestoredAgentConversations;
 use crate::ai_assistant::AskAIType;
 #[cfg(feature = "local_fs")]
+#[cfg(feature = "agent_runtime")]
 use crate::app_state::CodePaneSnapShot;
-use crate::app_state::{
-    self, BranchSnapshot, LeafContents, LeafSnapshot, PaneNodeSnapshot, PaneUuid,
-    SettingsPaneSnapshot, TerminalPaneSnapshot,
-};
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use crate::app_state::{
     AIFactPaneSnapshot, EnvVarCollectionPaneSnapshot, NotebookPaneSnapshot, WorkflowPaneSnapshot,
 };
+use crate::app_state::{
+    BranchSnapshot, LeafContents, LeafSnapshot, PaneNodeSnapshot, PaneUuid, SettingsPaneSnapshot,
+    TerminalPaneSnapshot,
+};
 use crate::appearance::Appearance;
+#[cfg(feature = "agent_runtime")]
 use crate::auth::AuthStateProvider;
+#[cfg(feature = "agent_runtime")]
 use crate::auth::auth_manager::AuthManager;
-use crate::auth::AuthViewVariant;
+#[cfg(feature = "agent_runtime")]
+use crate::auth::auth_view_modal::AuthViewVariant;
 use crate::banner::{Banner, BannerEvent, BannerState, BannerTextContent, DismissalType};
 use crate::channel::{Channel, ChannelState};
 use crate::cloud_object::Space;
+#[cfg(feature = "agent_runtime")]
 use crate::code::active_file::ActiveFileModel;
 use crate::code::buffer_location::LocalOrRemotePath;
 #[cfg(feature = "local_fs")]
 use crate::code::editor_management::CodeSource;
+#[cfg(feature = "agent_runtime")]
 use crate::code::view::{CodeView, CodeViewAction};
 use crate::code_review::comments::{AttachedReviewComment, PendingImportedReviewComment};
 use crate::code_review::diff_state::DiffMode;
-use crate::cloud_object::{CloudObjectTypeAndId, OpenWarpDriveObjectArgs};
-#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::WarpDriveItemId;
-#[cfg(not(feature = "warp_lite"))]
+use crate::drive::{CloudObjectTypeAndId, OpenWarpDriveObjectArgs};
 use crate::env_vars::EnvVarCollectionType;
 use crate::features::FeatureFlag;
-use crate::launch_configs::launch_config::{self, PaneMode, PaneTemplateType};
-#[cfg(not(feature = "warp_lite"))]
+use crate::launch_configs::launch_config;
+use crate::launch_configs::launch_config::{PaneMode, PaneTemplateType};
+use crate::lite_i18n::choose;
+#[cfg(feature = "agent_runtime")]
 use crate::notebooks::file::FileNotebookView;
 use crate::palette::PaletteMode;
 use crate::pane_group::focus_state::PaneGroupFocusEvent;
 use crate::pane_group::pane::ActionOrigin;
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::pane::get_started_pane::GetStartedPane;
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), feature = "agent_runtime"))]
 use crate::pane_group::pane::terminal_pane::{
     host_terminal_shared_session_source_type, inherit_share_for_local_child,
 };
@@ -117,14 +143,16 @@ use crate::resource_center::{
 #[cfg(target_family = "wasm")]
 use crate::server::cloud_objects::update_manager::UpdateManager;
 use crate::server::ids::{ObjectUid, SyncId};
-use crate::server::server_api::{ServerApi, ServerApiProvider};
+use crate::server::server_api::ServerApi;
+#[cfg(feature = "agent_runtime")]
+use crate::server::server_api::ServerApiProvider;
 use crate::server::telemetry::{
     AnonymousUserSignupEntrypoint, PaletteSource, SharingDialogSource, TelemetryEvent,
 };
 use crate::session_management::SessionNavigationData;
 use crate::settings::{AISettings, DefaultSessionMode, PaneSettings};
 use crate::settings_view::SettingsSection;
-#[cfg(feature = "mcp_client")]
+#[cfg(feature = "agent_runtime")]
 use crate::settings_view::mcp_servers_page::MCPServersSettingsPage;
 use crate::shell_indicator::ShellIndicatorType;
 use crate::terminal::available_shells::{AvailableShell, AvailableShells};
@@ -138,22 +166,29 @@ use crate::terminal::local_tty::TerminalManager as LocalTtyTerminalManager;
 use crate::terminal::local_tty::{
     TerminalViewSurfaceConfig, create_terminal_view_surface, terminal_view_restored_blocks,
 };
+use crate::terminal::model::block::SerializedBlockListItem;
 use crate::terminal::model::session::Session;
 use crate::terminal::model::terminal_model::ConversationTranscriptViewerStatus;
 #[cfg(feature = "remote_tty")]
 use crate::terminal::remote_tty::TerminalManager as RemoteTtyTerminalManager;
 use crate::terminal::session_settings::{NewSessionSource, SessionSettings};
+use crate::terminal::session_types::{AIConversationId, InputConfig};
+use crate::terminal::shared_session::IsSharedSessionCreator;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::render_util::ParticipantAvatarParams;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::role_change_modal::{
     RoleChangeCloseSource, RoleChangeModal, RoleChangeModalEvent,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::share_modal::{ShareSessionModal, ShareSessionModalEvent};
-use crate::terminal::shared_session::{
-    self, IsSharedSessionCreator, SharedSessionActionSource, SharedSessionSource,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::shared_session::{self, SharedSessionActionSource, SharedSessionSource};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::inline_banner::{
     ZeroStatePromptSuggestionTriggeredFrom, ZeroStatePromptSuggestionType,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::load_ai_conversation::{
     RestoreConversationEntryBehavior, RestoredAIConversation,
 };
@@ -163,9 +198,11 @@ use crate::terminal::view::{
     LeftPanelTargetView, SyncEvent, TerminalViewState,
 };
 use crate::terminal::{
-    MockTerminalManager, ShareBlockModal, ShareBlockModalEvent, ShellLaunchData, ShellLaunchState,
-    TerminalManager, TerminalModel, TerminalView,
+    MockTerminalManager, ShellLaunchData, ShellLaunchState, TerminalManager, TerminalModel,
+    TerminalView,
 };
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::{ShareBlockModal, ShareBlockModalEvent};
 use crate::undo_close::{UndoCloseStack, UndoCloseStackEvent};
 #[cfg(target_family = "wasm")]
 use crate::uri::browser_url_handler::update_browser_url;
@@ -175,18 +212,21 @@ use crate::util::openable_file_type::FileTarget;
 use crate::view_components::ToastFlavor;
 use crate::workflows::workflow::Workflow;
 use crate::workflows::{WorkflowSelectionSource, WorkflowSource, WorkflowType};
+#[cfg(feature = "agent_runtime")]
+use crate::workspace::WorkspaceAction;
 use crate::workspace::tab_group::TabGroupId;
-use crate::workspace::{
-    self, CommandSearchOptions, PaneViewLocator, TabBarLocation, WorkspaceAction,
-};
-use crate::{cmd_or_ctrl_shift, send_telemetry_from_ctx};
+use crate::workspace::{CommandSearchOptions, PaneViewLocator, TabBarLocation};
+use crate::{app_state, cmd_or_ctrl_shift, send_telemetry_from_ctx, workspace};
 
+#[cfg(feature = "agent_runtime")]
 mod ambient_pane_restoration;
+#[cfg(feature = "agent_runtime")]
 mod child_agent;
 pub mod focus_state;
 pub mod pane;
 pub mod tree;
 pub mod working_directories;
+#[cfg(feature = "agent_runtime")]
 use ambient_pane_restoration::AmbientRestoreKind;
 use focus_state::PaneGroupFocusState;
 
@@ -194,26 +234,31 @@ use focus_state::PaneGroupFocusState;
 #[path = "mod_tests.rs"]
 mod tests;
 
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub use pane::ai_document_pane::AIDocumentPane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub use pane::ai_fact_pane::AIFactPane;
+#[cfg(feature = "agent_runtime")]
 pub use pane::code_diff_pane::CodeDiffPane;
+#[cfg(feature = "agent_runtime")]
 pub use pane::code_pane::CodePane;
+#[cfg(feature = "agent_runtime")]
 pub use pane::custom_router_editor_pane::CustomRouterEditorPane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub use pane::env_var_collection_pane::EnvVarCollectionPane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub use pane::environment_management_pane::EnvironmentManagementPane;
+#[cfg(feature = "agent_runtime")]
 pub use pane::execution_profile_editor_pane::ExecutionProfileEditorPane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub use pane::file_pane::FilePane;
+#[cfg(feature = "agent_runtime")]
 pub use pane::network_log_pane::NetworkLogPane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub use pane::notebook_pane::NotebookPane;
 pub use pane::settings_pane::SettingsPane;
 pub use pane::terminal_pane::TerminalPane;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub use pane::workflow_pane::WorkflowPane;
 pub use pane::{
     AnyPaneContent, BackingView, PaneConfiguration, PaneConfigurationEvent, PaneContent, PaneEvent,
@@ -378,14 +423,14 @@ pub fn init(app: &mut AppContext) {
     app.register_editable_bindings([
         EditableBinding::new(
             "pane_group:close_current_session",
-            "Close Current Session",
+            choose("Close Current Session", "关闭当前会话"),
             PaneGroupAction::RemoveActive,
         )
         .with_custom_action(CustomAction::CloseCurrentSession)
         .with_context_predicate(id!("PaneGroup")),
         EditableBinding::new(
             "pane_group:add_left",
-            "Split pane left",
+            choose("Split pane left", "向左分屏"),
             PaneGroupAction::Add(Direction::Left),
         )
         .with_context_predicate(id!("PaneGroup") & !id!("PaneGroup_PaneDragging"))
@@ -393,7 +438,7 @@ pub fn init(app: &mut AppContext) {
         .with_enabled(|| ContextFlag::CreateNewSession.is_enabled()),
         EditableBinding::new(
             "pane_group:add_up",
-            "Split pane up",
+            choose("Split pane up", "向上分屏"),
             PaneGroupAction::Add(Direction::Up),
         )
         .with_context_predicate(id!("PaneGroup") & !id!("PaneGroup_PaneDragging"))
@@ -401,7 +446,7 @@ pub fn init(app: &mut AppContext) {
         .with_enabled(|| ContextFlag::CreateNewSession.is_enabled()),
         EditableBinding::new(
             "pane_group:navigate_left",
-            "Switch panes left",
+            choose("Switch panes left", "切换到左侧面板"),
             PaneGroupAction::NavigateLeft,
         )
         .with_context_predicate(
@@ -410,7 +455,7 @@ pub fn init(app: &mut AppContext) {
         .with_key_binding("cmdorctrl-alt-left"),
         EditableBinding::new(
             "pane_group:navigate_right",
-            "Switch panes right",
+            choose("Switch panes right", "切换到右侧面板"),
             PaneGroupAction::NavigateRight,
         )
         .with_context_predicate(
@@ -419,7 +464,7 @@ pub fn init(app: &mut AppContext) {
         .with_key_binding("cmdorctrl-alt-right"),
         EditableBinding::new(
             "pane_group:navigate_up",
-            "Switch panes up",
+            choose("Switch panes up", "切换到上方面板"),
             PaneGroupAction::NavigateUp,
         )
         .with_context_predicate(
@@ -428,7 +473,7 @@ pub fn init(app: &mut AppContext) {
         .with_key_binding("cmdorctrl-alt-up"),
         EditableBinding::new(
             "pane_group:navigate_down",
-            "Switch panes down",
+            choose("Switch panes down", "切换到下方面板"),
             PaneGroupAction::NavigateDown,
         )
         .with_context_predicate(
@@ -443,7 +488,10 @@ pub fn init(app: &mut AppContext) {
     app.register_editable_bindings([
         EditableBinding::new(
             "pane_group:resize_left",
-            "Resize pane > Move divider left",
+            choose(
+                "Resize pane > Move divider left",
+                "调整分屏大小 > 分隔线向左",
+            ),
             PaneGroupAction::ResizeLeft,
         )
         .with_context_predicate(
@@ -452,7 +500,10 @@ pub fn init(app: &mut AppContext) {
         .with_mac_key_binding("cmd-ctrl-left"),
         EditableBinding::new(
             "pane_group:resize_right",
-            "Resize pane > Move divider right",
+            choose(
+                "Resize pane > Move divider right",
+                "调整分屏大小 > 分隔线向右",
+            ),
             PaneGroupAction::ResizeRight,
         )
         .with_context_predicate(
@@ -461,7 +512,7 @@ pub fn init(app: &mut AppContext) {
         .with_mac_key_binding("cmd-ctrl-right"),
         EditableBinding::new(
             "pane_group:resize_up",
-            "Resize pane > Move divider up",
+            choose("Resize pane > Move divider up", "调整分屏大小 > 分隔线向上"),
             PaneGroupAction::ResizeUp,
         )
         .with_context_predicate(
@@ -470,7 +521,10 @@ pub fn init(app: &mut AppContext) {
         .with_mac_key_binding("cmd-ctrl-up"),
         EditableBinding::new(
             "pane_group:resize_down",
-            "Resize pane > Move divider down",
+            choose(
+                "Resize pane > Move divider down",
+                "调整分屏大小 > 分隔线向下",
+            ),
             PaneGroupAction::ResizeDown,
         )
         .with_context_predicate(
@@ -482,7 +536,7 @@ pub fn init(app: &mut AppContext) {
     app.register_editable_bindings([
         EditableBinding::new(
             "pane_group:add_down",
-            "Split pane down",
+            choose("Split pane down", "向下分屏"),
             PaneGroupAction::Add(Direction::Down),
         )
         .with_context_predicate(id!("PaneGroup") & !id!("PaneGroup_PaneDragging"))
@@ -490,7 +544,7 @@ pub fn init(app: &mut AppContext) {
         .with_enabled(|| ContextFlag::CreateNewSession.is_enabled()),
         EditableBinding::new(
             "pane_group:add_right",
-            "Split pane right",
+            choose("Split pane right", "向右分屏"),
             PaneGroupAction::Add(Direction::Right),
         )
         .with_context_predicate(id!("PaneGroup") & !id!("PaneGroup_PaneDragging"))
@@ -498,7 +552,7 @@ pub fn init(app: &mut AppContext) {
         .with_enabled(|| ContextFlag::CreateNewSession.is_enabled()),
         EditableBinding::new(
             TOGGLE_MAXIMIZE_PANE_BINDING_NAME,
-            "Toggle Maximize Active Pane",
+            choose("Toggle Maximize Active Pane", "切换当前面板最大化"),
             PaneGroupAction::ToggleMaximizePane,
         )
         .with_context_predicate(id!("PaneGroup") & !id!("PaneGroup_PaneDragging"))
@@ -596,7 +650,6 @@ pub enum Event {
         argument_override: Option<HashMap<String, String>>,
     },
     /// Invoke env var from pane
-    #[cfg(not(feature = "warp_lite"))]
     InvokeEnvVarCollection {
         env_var_collection: Arc<EnvVarCollectionType>,
         in_subshell: bool,
@@ -619,7 +672,6 @@ pub enum Event {
     FocusPaneInWorkspace {
         locator: PaneViewLocator,
     },
-    #[cfg(not(feature = "warp_lite"))]
     ViewInWarpDrive(WarpDriveItemId),
     MoveToSpace {
         cloud_object_type_and_id: CloudObjectTypeAndId,
@@ -710,7 +762,7 @@ pub enum Event {
     OpenThemeChooser,
     InvalidatedActiveConversation,
     OpenConversationHistory,
-    #[cfg(feature = "mcp_client")]
+    #[cfg(feature = "agent_runtime")]
     OpenMCPSettingsPage {
         page: Option<MCPServersSettingsPage>,
     },
@@ -884,6 +936,7 @@ pub enum PanesLayout {
     SingleTerminal(Box<NewTerminalOptions>),
     Snapshot(Box<PaneNodeSnapshot>),
     Template(PaneTemplateType),
+    #[cfg(feature = "agent_runtime")]
     AmbientAgent,
 }
 
@@ -916,36 +969,47 @@ pub struct PaneGroup {
     server_api: Arc<ServerApi>,
 
     /// The terminal session with an open share block modal. Only terminal panes use the share block modal.
+    #[cfg(feature = "agent_runtime")]
     terminal_with_open_share_block_modal: Option<TerminalPaneId>,
 
     // We are only holding one instance of share modal view in the pane group and
     // update it with the correct terminal model and size info when triggered by
     // the context menu event.
+    #[cfg(feature = "agent_runtime")]
     share_block_modal: ViewHandle<ShareBlockModal>,
     dragged_border: Option<DraggedBorder>,
     user_default_shell_changed_banner: ViewHandle<Banner<PaneGroupAction>>,
 
     /// If there is an open share session modal, the pane ID of its terminal. Only terminal panes
     /// use the share session modal. `None` if no share session modal is open.
+    #[cfg(feature = "agent_runtime")]
     terminal_with_open_share_session_modal: Option<TerminalPaneId>,
+    #[cfg(feature = "agent_runtime")]
     share_session_modal: ViewHandle<ShareSessionModal>,
 
     /// If there is a shared session role change modal open, this is the `TerminalPaneId` of the relevant session. Modal is opened whenever a shared session participant attempts to change a
     /// role. For a viewer when they request a role. For a sharer when they receive a role request,
     /// or when they attempt to grant a role.
+    #[cfg(feature = "agent_runtime")]
     terminal_with_shared_session_role_change_modal_open: Option<TerminalPaneId>,
     /// Parent modal that holds views to role request/response and role grant modals.
+    #[cfg(feature = "agent_runtime")]
     shared_session_role_change_modal: ViewHandle<RoleChangeModal>,
     /// Model that tracks the currently active file.
+    #[cfg(feature = "agent_runtime")]
     active_file_model: ModelHandle<ActiveFileModel>,
     /// If there is an open summarization cancel dialog, the terminal pane ID where summarization is active.
+    #[cfg(feature = "agent_runtime")]
     terminal_with_open_summarization_dialog: Option<TerminalPaneId>,
 
     /// Pane with an open environment setup mode selector modal (rendered at tab level).
+    #[cfg(feature = "agent_runtime")]
     pane_with_open_environment_setup_mode_selector: Option<PaneId>,
     /// Pane with an open auth-secret delete confirmation dialog (rendered at tab level).
+    #[cfg(feature = "agent_runtime")]
     pane_with_open_auth_secret_delete_confirmation_dialog: Option<PaneId>,
     /// Pane with an open agent-assisted environment modal (rendered at tab level).
+    #[cfg(feature = "agent_runtime")]
     pane_with_open_agent_assisted_environment_modal: Option<PaneId>,
 
     /// If the left panel is open for this pane group
@@ -957,6 +1021,7 @@ pub struct PaneGroup {
 
     /// Ambient agent panes whose task data was not yet cached at restoration time.
     /// Entries are removed as each task's data arrives and the pane is replaced.
+    #[cfg(feature = "agent_runtime")]
     pending_ambient_agent_conversation_restorations: HashMap<AmbientAgentTaskId, PaneId>,
 
     /// Hidden remote-child placeholders waiting on task data, keyed by
@@ -964,24 +1029,29 @@ pub struct PaneGroup {
     /// `child_agent_panes` key. Kept separate from
     /// `pending_ambient_agent_conversation_restorations` so the
     /// visible-tree `replace_pane` flow doesn't swap a hidden child pane.
+    #[cfg(feature = "agent_runtime")]
     pending_remote_child_hydrations: HashMap<AmbientAgentTaskId, AIConversationId>,
 
     /// Whether `ensure_pending_ambient_restoration_subscription` has been
     /// called; the subscription is shared by both pending maps.
+    #[cfg(feature = "agent_runtime")]
     pending_ambient_restoration_subscription_installed: bool,
 
     /// Maps child agent conversation IDs to their hidden pane IDs, so they can
     /// be revealed from the parent's status card.
+    #[cfg(feature = "agent_runtime")]
     child_agent_panes: HashMap<AIConversationId, PaneId>,
 
     /// Host pane id → child pane ids whose share was auto-created by
     /// `inherit_share_for_local_child`. Used by `StopSharingCurrentSession`
     /// so transitively-shared children don't outlive the host's share.
     /// Excludes cloud-SDK-managed shares (`AmbientAgent` host path).
+    #[cfg(feature = "agent_runtime")]
     transitively_shared_child_panes: HashMap<PaneId, HashSet<PaneId>>,
 
     /// Set when this pane group hosts a split-off child agent pane that
     /// should be re-adopted by its source group on tab close.
+    #[cfg(feature = "agent_runtime")]
     child_agent_origin: Option<ChildAgentOrigin>,
 
     /// Tab-level custom title set via the rename-tab flow.
@@ -1110,7 +1180,6 @@ type InitialLayoutCallback = Box<
     ) -> (PaneData, InitialFocus),
 >;
 
-#[cfg(not(feature = "warp_lite"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AIDocumentPaneVisibilityAction {
     /// Ensure the requested AI document pane is visible.
@@ -1140,6 +1209,7 @@ impl PaneGroup {
 
     /// Executes the provided callback for each CodeView contained within
     /// this pane group.
+    #[cfg(feature = "agent_runtime")]
     pub fn for_all_code_panes(
         &mut self,
         mut callback: impl FnMut(&mut CodeView, &mut ViewContext<CodeView>),
@@ -1176,6 +1246,7 @@ impl PaneGroup {
             .any(|pane_id| pane_id.is_code_pane())
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn active_file_model(&self) -> &ModelHandle<ActiveFileModel> {
         &self.active_file_model
     }
@@ -1327,6 +1398,24 @@ impl PaneGroup {
         view_size: Vector2F,
         model_event_sender: Option<SyncSender<ModelEvent>>,
     ) -> (PaneData, InitialFocus) {
+        #[cfg(not(feature = "agent_runtime"))]
+        let root = match native_terminal_template(root) {
+            Some(root) => root,
+            None => {
+                log::warn!("Launch configuration has no supported terminal panes");
+                return Self::initial_single_terminal_pane(
+                    NewTerminalOptions::default(),
+                    resources,
+                    user_default_shell_unsupported_banner_model_handle,
+                    RectF::new(vec2f(0., 0.), view_size),
+                    model_event_sender,
+                    pane_contents,
+                    &mut Vec::new(),
+                    ctx,
+                );
+            }
+        };
+
         let (leftmost_pane_id, pane_data, initial_focus) =
             PaneGroup::pane_tree_from_template_recursive(
                 root,
@@ -1384,9 +1473,14 @@ impl PaneGroup {
                 };
 
                 let (view, terminal_manager) = match pane_mode {
+                    #[cfg(feature = "agent_runtime")]
                     PaneMode::Cloud => {
                         Self::create_ambient_agent_terminal(resources, view_size, ctx)
                     }
+                    #[cfg(not(feature = "agent_runtime"))]
+                    PaneMode::Cloud => unreachable!(
+                        "Cloud panes were rejected before terminal layout construction"
+                    ),
                     PaneMode::Terminal | PaneMode::Agent => PaneGroup::create_session(
                         // Use cwd from the template iff such path exists, otherwise None
                         // TODO(CORE-3187): On Windows, support WSL directory restoration.
@@ -1419,6 +1513,7 @@ impl PaneGroup {
                 // Agent mode: enter the agent view. When setup commands are
                 // pending (e.g. worktree creation), defer entry until they
                 // complete so they run in terminal mode.
+                #[cfg(feature = "agent_runtime")]
                 if matches!(pane_mode, PaneMode::Agent) {
                     if !has_commands {
                         view.update(ctx, |terminal_view, ctx| {
@@ -1608,9 +1703,28 @@ impl PaneGroup {
         deferred_panes: &mut Vec<(PaneId, LeafSnapshot)>,
         pending_ambient_restorations: &mut Vec<(AmbientAgentTaskId, PaneId)>,
     ) -> anyhow::Result<(PaneData, InitialFocus)> {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&deferred_panes, &pending_ambient_restorations);
+
         let custom_vertical_tabs_title = leaf.custom_vertical_tabs_title.clone();
         let result = match leaf.contents {
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(not(feature = "agent_runtime"))]
+            LeafContents::AIDocument(_)
+            | LeafContents::Notebook(_)
+            | LeafContents::Code(_)
+            | LeafContents::EnvVarCollection(_)
+            | LeafContents::Workflow(_)
+            | LeafContents::AIFact(_)
+            | LeafContents::AmbientAgent(_)
+            | LeafContents::CodeReview(_)
+            | LeafContents::ExecutionProfileEditor
+            | LeafContents::CustomRouterEditor
+            | LeafContents::NetworkLog
+            | LeafContents::GetStarted
+            | LeafContents::EnvironmentManagement(_) => Err(anyhow::anyhow!(
+                "This pane type is unavailable in the native terminal build"
+            )),
+            #[cfg(feature = "agent_runtime")]
             LeafContents::AIDocument(_) => {
                 // Defer AI document pane restoration until after terminal panes are restored.
                 // We do this because the terminal view seeds the AIDocumentModel as part of
@@ -1656,6 +1770,7 @@ impl PaneGroup {
                 // and are not entirely passive (ignored suggestions).
                 // This prevents showing the "Previous session" banner when there's nothing to restore
                 // and avoids restoring passive code diffs that the user never acted on.
+                #[cfg(feature = "agent_runtime")]
                 let filtered_conversation_ids: Vec<AIConversationId> = terminal_snapshot
                     .conversation_ids_to_restore
                     .iter()
@@ -1677,6 +1792,7 @@ impl PaneGroup {
                     .copied()
                     .collect();
 
+                #[cfg(feature = "agent_runtime")]
                 let conversation_restoration = {
                     let conversations = RestoredAgentConversations::handle(ctx)
                         .update(ctx, |store, _| {
@@ -1698,7 +1814,10 @@ impl PaneGroup {
                     IsSharedSessionCreator::No,
                     resources,
                     block_list,
+                    #[cfg(feature = "agent_runtime")]
                     conversation_restoration,
+                    #[cfg(not(feature = "agent_runtime"))]
+                    None,
                     user_default_shell_unsupported_banner_model_handle,
                     view_size,
                     model_event_sender.clone(),
@@ -1707,6 +1826,7 @@ impl PaneGroup {
                     ctx,
                 );
 
+                #[cfg(feature = "agent_runtime")]
                 let terminal_view_id = terminal_view.id();
 
                 let pane_data = TerminalPane::new(
@@ -1721,6 +1841,7 @@ impl PaneGroup {
                 let pane_id = terminal_pane_id.into();
                 pane_contents.insert(pane_id, Box::new(pane_data));
 
+                #[cfg(feature = "agent_runtime")]
                 if let Some(llm_override) = &terminal_snapshot.llm_model_override
                     && let Ok(llm_id) = serde_json::from_str::<LLMId>(llm_override)
                 {
@@ -1730,6 +1851,7 @@ impl PaneGroup {
                     });
                 }
 
+                #[cfg(feature = "agent_runtime")]
                 if let Some(active_profile_sync_id) = &terminal_snapshot.active_profile_id {
                     log::info!(
                         "Attempting to restore active_profile '{active_profile_sync_id}' for terminal {terminal_view_id:?}"
@@ -1764,7 +1886,7 @@ impl PaneGroup {
 
                 Ok((PaneData::new(pane_id), focus))
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             LeafContents::Notebook(snapshot) => {
                 let pane: Box<dyn AnyPaneContent + 'static> = match snapshot {
                     NotebookPaneSnapshot::CloudNotebook {
@@ -1790,6 +1912,7 @@ impl PaneGroup {
                 Ok((PaneData::new(pane_id), focus))
             }
             #[cfg(feature = "local_fs")]
+            #[cfg(feature = "agent_runtime")]
             LeafContents::Code(snapshot) => {
                 let CodePaneSnapShot::Local {
                     tabs,
@@ -1816,10 +1939,11 @@ impl PaneGroup {
                 Ok((PaneData::new(pane_id), focus))
             }
             #[cfg(not(feature = "local_fs"))]
+            #[cfg(feature = "agent_runtime")]
             LeafContents::Code(_) => Err(anyhow::anyhow!(
                 "Code pane restoration not supported on this platform"
             )),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             LeafContents::EnvVarCollection(snapshot) => {
                 let pane: Box<dyn AnyPaneContent + 'static> = match snapshot {
                     EnvVarCollectionPaneSnapshot::CloudEnvVarCollection {
@@ -1836,7 +1960,7 @@ impl PaneGroup {
 
                 Ok((PaneData::new(pane_id), focus))
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             LeafContents::Workflow(snapshot) => {
                 let pane: Box<dyn AnyPaneContent + 'static> = match snapshot {
                     WorkflowPaneSnapshot::CloudWorkflow {
@@ -1875,7 +1999,7 @@ impl PaneGroup {
                 };
                 Ok((PaneData::new(pane_id), focus))
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             LeafContents::AIFact(snapshot) => {
                 if !FeatureFlag::AIRules.is_enabled() {
                     return Err(anyhow::anyhow!("AI fact pane not enabled"));
@@ -1891,6 +2015,7 @@ impl PaneGroup {
                 };
                 Ok((PaneData::new(pane_id), focus))
             }
+            #[cfg(feature = "agent_runtime")]
             LeafContents::AmbientAgent(snapshot) => {
                 let task_data = snapshot.task_id.map(|task_id| {
                     let task = AgentConversationsModel::handle(ctx).update(ctx, |model, ctx| {
@@ -1908,7 +2033,6 @@ impl PaneGroup {
                             None,
                             ctx,
                         ) {
-                            #[cfg(not(feature = "warp_lite"))]
                             Some(WorkspaceAction::OpenOrAttachAmbientAgentConversation {
                                 session_id,
                                 ..
@@ -1977,13 +2101,16 @@ impl PaneGroup {
                 };
                 Ok((PaneData::new(pane_id), focus))
             }
+            #[cfg(feature = "agent_runtime")]
             LeafContents::CodeReview(_) => {
                 Err(anyhow::anyhow!("Code review panes are no longer supported"))
             }
+            #[cfg(feature = "agent_runtime")]
             LeafContents::ExecutionProfileEditor | LeafContents::CustomRouterEditor => {
                 // Editor panes are not restored from persistence.
                 Err(anyhow::anyhow!("Can't restore editor panes"))
             }
+            #[cfg(feature = "agent_runtime")]
             LeafContents::NetworkLog => {
                 // Network log panes are intentionally not restored. Two
                 // reasons:
@@ -2004,6 +2131,7 @@ impl PaneGroup {
                     "Network log pane should not have been persisted, as it cannot be restored"
                 ))
             }
+            #[cfg(feature = "agent_runtime")]
             LeafContents::GetStarted => {
                 if !FeatureFlag::GetStartedTab.is_enabled() {
                     Err(anyhow::anyhow!("GetStarted pane not supported"))
@@ -2019,7 +2147,7 @@ impl PaneGroup {
                     Ok((PaneData::new(pane_id), focus))
                 }
             }
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             LeafContents::EnvironmentManagement(_) => {
                 // Environment management panes are not restored from persistence.
                 // They are opened on-demand via workspace actions.
@@ -2044,6 +2172,7 @@ impl PaneGroup {
     }
 
     #[cfg_attr(not(feature = "local_fs"), allow(unused_variables, unused_mut))]
+    #[cfg(feature = "agent_runtime")]
     fn process_deferred_panes(
         deferred_panes: Vec<(PaneId, LeafSnapshot)>,
         mut result: (PaneData, InitialFocus),
@@ -2053,7 +2182,6 @@ impl PaneGroup {
         for (placeholder_id, leaf) in deferred_panes {
             let custom_vertical_tabs_title = leaf.custom_vertical_tabs_title.clone();
             match leaf.contents {
-                #[cfg(not(feature = "warp_lite"))]
                 LeafContents::AIDocument(aidocument_snapshot) => {
                     match aidocument_snapshot {
                         crate::app_state::AIDocumentPaneSnapshot::Local {
@@ -2269,6 +2397,7 @@ impl PaneGroup {
     }
 
     /// Iterate over the code editors in this pane group.
+    #[cfg(feature = "agent_runtime")]
     pub fn code_panes<'a>(
         &'a self,
         app: &'a AppContext,
@@ -2277,7 +2406,7 @@ impl PaneGroup {
             .map(move |pane| (pane.id(), pane.file_view(app)))
     }
     /// Iterate over the file notebook panes in this pane group.
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn file_notebook_panes<'a>(
         &'a self,
         app: &'a AppContext,
@@ -2286,12 +2415,12 @@ impl PaneGroup {
             .map(move |pane| (pane.id(), pane.file_view(app)))
     }
 
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn ai_document_panes(&self) -> impl Iterator<Item = PaneId> + '_ {
         self.panes_of::<AIDocumentPane>().map(|pane| pane.id())
     }
 
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     fn visible_ai_document_panes(&self, ctx: &AppContext) -> Vec<(PaneId, AIDocumentId)> {
         self.panes_of::<AIDocumentPane>()
             .filter(|pane| !self.is_pane_hidden_for_close(pane.id()))
@@ -2309,7 +2438,7 @@ impl PaneGroup {
     }
 
     /// Checks if this pane group contains a visible AI document pane with the given document ID.
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn contains_ai_document(&self, document_id: &AIDocumentId, ctx: &AppContext) -> bool {
         self.panes_of::<AIDocumentPane>()
             .filter(|pane| !self.is_pane_hidden_for_close(pane.id()))
@@ -2318,7 +2447,9 @@ impl PaneGroup {
 
     /// Closes all visible AI document panes that are *not* for `document_id`, then applies the
     /// requested `action` to the pane for `document_id`.
-    #[cfg(not(feature = "warp_lite"))]
+    ///
+    /// This enforces the UI invariant that only one AI document pane should be visible at a time.
+    #[cfg(feature = "agent_runtime")]
     fn set_ai_document_pane_visibility(
         &mut self,
         conversation_id: AIConversationId,
@@ -2405,7 +2536,7 @@ impl PaneGroup {
     }
 
     /// Closes any other ai document panes, and opens the specified document_id.
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn open_ai_document_pane(
         &mut self,
         conversation_id: AIConversationId,
@@ -2422,7 +2553,7 @@ impl PaneGroup {
         );
     }
 
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn close_all_ai_document_panes(&mut self, ctx: &mut ViewContext<Self>) {
         let pane_ids: Vec<_> = self
             .visible_ai_document_panes(ctx)
@@ -2432,7 +2563,7 @@ impl PaneGroup {
         self.close_panes(pane_ids, ctx);
     }
 
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn toggle_ai_document_pane(
         &mut self,
         conversation_id: AIConversationId,
@@ -2454,67 +2585,80 @@ impl PaneGroup {
     /// persist are excluded, but unsaveable changes (untitled buffers,
     /// disconnected remotes) still count.
     pub fn has_active_code_pane_with_unsaved_indicator(&self, ctx: &AppContext) -> bool {
-        self.focused_pane_id(ctx).is_code_pane()
-            && self
-                .pane_contents
-                .get(&self.focused_pane_id(ctx))
-                .and_then(|content| content.as_any().downcast_ref::<CodePane>())
-                .map(|pane| {
-                    pane.file_view(ctx)
-                        .as_ref(ctx)
-                        .active_tab_shows_unsaved_indicator(ctx)
-                })
-                .unwrap_or(false)
+        #[cfg(feature = "agent_runtime")]
+        {
+            self.focused_pane_id(ctx).is_code_pane()
+                && self
+                    .pane_contents
+                    .get(&self.focused_pane_id(ctx))
+                    .and_then(|content| content.as_any().downcast_ref::<CodePane>())
+                    .map(|pane| {
+                        pane.file_view(ctx)
+                            .as_ref(ctx)
+                            .active_tab_shows_unsaved_indicator(ctx)
+                    })
+                    .unwrap_or(false)
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = ctx;
+            false
+        }
     }
 
     /// Returns the selected text from the focused pane, or `None` if there is no selection or the selection is empty.
     pub fn selected_text_from_focused_pane(&self, ctx: &AppContext) -> Option<String> {
-        let focused_pane_id = self.focused_pane_id(ctx);
-
-        #[cfg(feature = "local_fs")]
+        #[cfg(feature = "agent_runtime")]
         {
-            // If the focused pane is a code pane, return the selected text from the code view.
-            if focused_pane_id.is_code_pane() {
-                let text = self
-                    .downcast_pane_by_id::<CodePane>(focused_pane_id)
-                    .and_then(|pane| pane.file_view(ctx).as_ref(ctx).selected_text(ctx));
-                // If the text is not empty and does not contain a newline, return early.
-                if text.as_ref().is_some_and(|t| !t.is_empty()) {
-                    return text;
+            let focused_pane_id = self.focused_pane_id(ctx);
+
+            #[cfg(feature = "local_fs")]
+            {
+                // If the focused pane is a code pane, return the selected text from the code view.
+                if focused_pane_id.is_code_pane() {
+                    let text = self
+                        .downcast_pane_by_id::<CodePane>(focused_pane_id)
+                        .and_then(|pane| pane.file_view(ctx).as_ref(ctx).selected_text(ctx));
+                    // If the text is not empty and does not contain a newline, return early.
+                    if text.as_ref().is_some_and(|t| !t.is_empty()) {
+                        return text;
+                    }
                 }
             }
-        }
 
-        // Finds the active pane type outof (NotebookPane, AIDocumentPane, TerminalPane)
-        // and extracts selected text from it.
-        let text = {
-            #[cfg(not(feature = "warp_lite"))]
+            // Finds the active pane type outof (NotebookPane, AIDocumentPane, TerminalPane)
+            // and extracts selected text from it.
+            let text = if let Some(pane) = self.downcast_pane_by_id::<NotebookPane>(focused_pane_id)
             {
-                if let Some(pane) = self.downcast_pane_by_id::<NotebookPane>(focused_pane_id) {
-                    pane.notebook_view(ctx).as_ref(ctx).selected_text(ctx)
-                } else if let Some(pane) = self.downcast_pane_by_id::<AIDocumentPane>(focused_pane_id)
-                {
-                    pane.document_view(ctx).as_ref(ctx).selected_text(ctx)
-                } else {
-                    None
+                pane.notebook_view(ctx).as_ref(ctx).selected_text(ctx)
+            } else if let Some(pane) = self.downcast_pane_by_id::<AIDocumentPane>(focused_pane_id) {
+                pane.document_view(ctx).as_ref(ctx).selected_text(ctx)
+            } else {
+                match self.terminal_view_from_pane_id(focused_pane_id, ctx) {
+                    Some(terminal_view) => {
+                        // NOTE: We currently don't have a way to track recency of selection events.
+                        // In lieu of this, we prefer selections to the input editor over the terminal view.
+                        // TODO(vkodithala): Once we have a way to track recency of selection events, we should use that instead.
+                        terminal_view
+                            .as_ref(ctx)
+                            .selected_text_from_input(ctx)
+                            .or_else(|| terminal_view.as_ref(ctx).selected_text(ctx))
+                    }
+                    _ => None,
                 }
-            }
-            #[cfg(feature = "warp_lite")]
-            {
-                None
-            }
-        }
-        .or_else(|| {
-            match self.terminal_view_from_pane_id(focused_pane_id, ctx) {
-                Some(terminal_view) => terminal_view
-                    .as_ref(ctx)
-                    .selected_text_from_input(ctx)
-                    .or_else(|| terminal_view.as_ref(ctx).selected_text(ctx)),
-                _ => None,
-            }
-        });
+            };
 
-        text.filter(|text: &String| !text.is_empty())
+            text.filter(|text: &String| !text.is_empty())
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let terminal = self.focused_session_view(ctx)?;
+            let terminal = terminal.as_ref(ctx);
+            terminal
+                .selected_text_from_input(ctx)
+                .or_else(|| terminal.selected_text(ctx))
+                .filter(|text| !text.is_empty())
+        }
     }
 
     /// Returns the path to copy for the currently focused pane: the open file's display path
@@ -2523,9 +2667,10 @@ impl PaneGroup {
     /// falling back to the user-friendly display form). `None` if the focused pane is none of
     /// those, or yields no path.
     pub fn path_from_focused_pane(&self, ctx: &AppContext) -> Option<String> {
+        #[cfg(feature = "agent_runtime")]
         let focused_pane_id = self.focused_pane_id(ctx);
 
-        #[cfg(not(feature = "warp_lite"))]
+        #[cfg(feature = "agent_runtime")]
         if let Some(file_pane) = self.downcast_pane_by_id::<FilePane>(focused_pane_id) {
             return file_pane
                 .file_view(ctx)
@@ -2534,6 +2679,7 @@ impl PaneGroup {
                 .map(|path| path.display_path());
         }
 
+        #[cfg(feature = "agent_runtime")]
         if let Some(code_pane) = self.downcast_pane_by_id::<CodePane>(focused_pane_id) {
             let code_view = code_pane.file_view(ctx);
             let code_view = code_view.as_ref(ctx);
@@ -2624,6 +2770,7 @@ impl PaneGroup {
         most_recent_state
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn open_share_session_modal(
         &mut self,
         terminal_pane_id: TerminalPaneId,
@@ -2663,6 +2810,7 @@ impl PaneGroup {
         ctx.notify();
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn open_share_session_denied_modal(
         &mut self,
         terminal_pane_id: TerminalPaneId,
@@ -2678,6 +2826,7 @@ impl PaneGroup {
 
     /// Closes the share session modal if it is open. Does nothing otherwise. Does not change
     /// which element is focused.
+    #[cfg(feature = "agent_runtime")]
     fn close_share_session_modal(&mut self, ctx: &mut ViewContext<Self>) {
         let Some(terminal_pane_id) = self.terminal_with_open_share_session_modal.take() else {
             return;
@@ -2691,6 +2840,7 @@ impl PaneGroup {
         ctx.notify();
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn handle_share_session_modal_event(
         &mut self,
         event: &ShareSessionModalEvent,
@@ -2754,6 +2904,7 @@ impl PaneGroup {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn open_shared_session_viewer_request_modal(
         &mut self,
         terminal_pane_id: TerminalPaneId,
@@ -2789,6 +2940,7 @@ impl PaneGroup {
     }
 
     /// If modal is already open, we update it with the new role request
+    #[cfg(feature = "agent_runtime")]
     fn open_shared_session_sharer_response_modal(
         &mut self,
         terminal_pane_id: TerminalPaneId,
@@ -2834,6 +2986,7 @@ impl PaneGroup {
         ctx.notify();
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn open_shared_session_sharer_grant_modal(
         &mut self,
         terminal_pane_id: TerminalPaneId,
@@ -2850,6 +3003,7 @@ impl PaneGroup {
     }
 
     /// Closes the parent shared session role change modal if it is open. Does nothing otherwise.
+    #[cfg(feature = "agent_runtime")]
     fn close_shared_session_role_change_modal(
         &mut self,
         source: RoleChangeCloseSource,
@@ -2887,6 +3041,7 @@ impl PaneGroup {
         ctx.notify();
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn remove_shared_session_role_request(
         &mut self,
         role_request_id: RoleRequestId,
@@ -2898,6 +3053,7 @@ impl PaneGroup {
             });
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn set_shared_session_role_change_modal_request_id(
         &mut self,
         role_request_id: RoleRequestId,
@@ -2909,6 +3065,7 @@ impl PaneGroup {
             });
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn handle_shared_session_role_change_modal_event(
         &mut self,
         event: &RoleChangeModalEvent,
@@ -3101,9 +3258,12 @@ impl PaneGroup {
             me.handle_focus_state_event(event, ctx);
         });
 
+        #[cfg(feature = "agent_runtime")]
         let block_client = ServerApiProvider::as_ref(ctx).get_block_client();
+        #[cfg(feature = "agent_runtime")]
         let share_modal =
             ctx.add_typed_action_view(|ctx| ShareBlockModal::new(None, block_client, ctx));
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_view(&share_modal, move |me, _, event, ctx| {
             me.handle_share_block_modal_event(event, ctx);
         });
@@ -3118,7 +3278,10 @@ impl PaneGroup {
                     FormattedTextFragment::plain_text(
                         "Warp doesn't currently support your default shell, falling back to zsh.  ",
                     ),
-                    FormattedTextFragment::hyperlink("Learn more", WARP_SHELL_COMPATIBILITY_DOCS),
+                    FormattedTextFragment::hyperlink(
+                        choose("Learn more", "了解更多"),
+                        WARP_SHELL_COMPATIBILITY_DOCS,
+                    ),
                 ]),
             )
         });
@@ -3147,12 +3310,16 @@ impl PaneGroup {
             },
         );
 
+        #[cfg(feature = "agent_runtime")]
         let share_session_modal = ctx.add_typed_action_view(ShareSessionModal::new);
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_view(&share_session_modal, |me, _, event, ctx| {
             me.handle_share_session_modal_event(event, ctx);
         });
 
+        #[cfg(feature = "agent_runtime")]
         let shared_session_role_change_modal = ctx.add_view(RoleChangeModal::new);
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_view(&shared_session_role_change_modal, |me, _, event, ctx| {
             me.handle_shared_session_role_change_modal_event(event, ctx);
         });
@@ -3166,6 +3333,7 @@ impl PaneGroup {
         // started sharing — `inherit_share_for_local_child` only fires at
         // child-pane creation time.
         #[cfg(not(target_family = "wasm"))]
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(
             &BlocklistAIHistoryModel::handle(ctx),
             |me, _, event, ctx| {
@@ -3179,6 +3347,7 @@ impl PaneGroup {
             },
         );
 
+        #[cfg(feature = "agent_runtime")]
         let active_file_model = ctx.add_model(|_| ActiveFileModel::new());
 
         let mut pane_group = Self {
@@ -3190,27 +3359,44 @@ impl PaneGroup {
             pane_history,
             pane_contents,
             server_api,
+            #[cfg(feature = "agent_runtime")]
             terminal_with_open_share_block_modal: None,
+            #[cfg(feature = "agent_runtime")]
             share_block_modal: share_modal,
             dragged_border: None,
             user_default_shell_changed_banner,
+            #[cfg(feature = "agent_runtime")]
             terminal_with_open_share_session_modal: None,
+            #[cfg(feature = "agent_runtime")]
             share_session_modal,
+            #[cfg(feature = "agent_runtime")]
             terminal_with_shared_session_role_change_modal_open: None,
+            #[cfg(feature = "agent_runtime")]
             shared_session_role_change_modal,
+            #[cfg(feature = "agent_runtime")]
             active_file_model,
+            #[cfg(feature = "agent_runtime")]
             terminal_with_open_summarization_dialog: None,
+            #[cfg(feature = "agent_runtime")]
             pane_with_open_environment_setup_mode_selector: None,
+            #[cfg(feature = "agent_runtime")]
             pane_with_open_auth_secret_delete_confirmation_dialog: None,
+            #[cfg(feature = "agent_runtime")]
             pane_with_open_agent_assisted_environment_modal: None,
             right_panel_open: false,
             left_panel_open: false,
             is_right_panel_maximized: false,
+            #[cfg(feature = "agent_runtime")]
             pending_ambient_agent_conversation_restorations: HashMap::new(),
+            #[cfg(feature = "agent_runtime")]
             pending_remote_child_hydrations: HashMap::new(),
+            #[cfg(feature = "agent_runtime")]
             pending_ambient_restoration_subscription_installed: false,
+            #[cfg(feature = "agent_runtime")]
             child_agent_panes: HashMap::new(),
+            #[cfg(feature = "agent_runtime")]
             transitively_shared_child_panes: HashMap::new(),
+            #[cfg(feature = "agent_runtime")]
             child_agent_origin: None,
             custom_title: None,
         };
@@ -3227,6 +3413,7 @@ impl PaneGroup {
 
     /// Returns the terminal view currently owning `conversation_id`, even if
     /// that owner lives outside this pane group.
+    #[cfg(feature = "agent_runtime")]
     fn terminal_view_id_for_owned_conversation(
         &self,
         conversation_id: AIConversationId,
@@ -3235,6 +3422,7 @@ impl PaneGroup {
         BlocklistAIHistoryModel::as_ref(ctx).terminal_surface_id_for_conversation(&conversation_id)
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn pane_id_for_owned_conversation(
         &self,
         conversation_id: AIConversationId,
@@ -3243,6 +3431,7 @@ impl PaneGroup {
         self.terminal_view_id_for_owned_conversation(conversation_id, ctx)
             .and_then(|terminal_view_id| self.find_pane_id_for_terminal_view(terminal_view_id, ctx))
     }
+    #[cfg(feature = "agent_runtime")]
     fn is_conversation_owned_outside_pane(
         &self,
         conversation_id: AIConversationId,
@@ -3281,6 +3470,7 @@ impl PaneGroup {
         (PaneData::new(pane_id), focus)
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn create_cloud_mode_terminal(
         resources: TerminalViewResources,
         view_bounds_size: Vector2F,
@@ -3301,6 +3491,7 @@ impl PaneGroup {
     }
 
     /// Helper to create the terminal manager and view for an ambient agent pane.
+    #[cfg(feature = "agent_runtime")]
     fn create_ambient_agent_terminal(
         resources: TerminalViewResources,
         view_bounds_size: Vector2F,
@@ -3323,6 +3514,7 @@ impl PaneGroup {
     /// both `pending_ambient_agent_conversation_restorations` and
     /// `pending_remote_child_hydrations` if it has not been installed yet.
     /// Idempotent across multiple callers.
+    #[cfg(feature = "agent_runtime")]
     fn ensure_pending_ambient_restoration_subscription(&mut self, ctx: &mut ViewContext<Self>) {
         if self.pending_ambient_restoration_subscription_installed {
             return;
@@ -3336,6 +3528,7 @@ impl PaneGroup {
 
     /// Subscription handler that processes pending ambient agent pane restorations
     /// whenever task data is updated or conversations finish loading.
+    #[cfg(feature = "agent_runtime")]
     fn handle_pending_ambient_restoration_event(
         &mut self,
         event: &AgentConversationsModelEvent,
@@ -3354,6 +3547,7 @@ impl PaneGroup {
     }
 
     /// Initial layout for a [`PaneGroup`] with a single ambient agent pane.
+    #[cfg(feature = "agent_runtime")]
     fn initial_ambient_agent_pane(
         resources: TerminalViewResources,
         view_bounds: RectF,
@@ -3443,7 +3637,9 @@ impl PaneGroup {
 
         // Shared container so pending ambient restorations collected inside the
         // layout closure can be accessed after `new_internal` returns.
+        #[cfg(feature = "agent_runtime")]
         let pending_ambient = Rc::new(RefCell::new(Vec::new()));
+        #[cfg(feature = "agent_runtime")]
         let pending_ambient_for_closure = pending_ambient.clone();
 
         let initial_layout = move |resources,
@@ -3491,9 +3687,22 @@ impl PaneGroup {
                         )
                     });
 
-                    *pending_ambient_for_closure.borrow_mut() = pending_restorations;
+                    #[cfg(feature = "agent_runtime")]
+                    {
+                        *pending_ambient_for_closure.borrow_mut() = pending_restorations;
+                    }
 
-                    Self::process_deferred_panes(deferred_panes, result, pane_contents, ctx)
+                    {
+                        #[cfg(feature = "agent_runtime")]
+                        {
+                            Self::process_deferred_panes(deferred_panes, result, pane_contents, ctx)
+                        }
+                        #[cfg(not(feature = "agent_runtime"))]
+                        {
+                            let _ = deferred_panes;
+                            result
+                        }
+                    }
                 }
                 PanesLayout::SingleTerminal(options) => Self::initial_single_terminal_pane(
                     *options,
@@ -3505,6 +3714,7 @@ impl PaneGroup {
                     pane_history,
                     ctx,
                 ),
+                #[cfg(feature = "agent_runtime")]
                 PanesLayout::AmbientAgent => Self::initial_ambient_agent_pane(
                     resources,
                     view_bounds,
@@ -3516,7 +3726,7 @@ impl PaneGroup {
             }
         };
 
-        let mut pane_group = Self::new_internal(
+        let pane_group = Self::new_internal(
             tips_completed,
             user_default_shell_unsupported_banner_model_handle,
             server_api,
@@ -3524,10 +3734,14 @@ impl PaneGroup {
             Box::new(initial_layout),
             ctx,
         );
+        #[cfg(feature = "agent_runtime")]
+        let mut pane_group = pane_group;
 
         // The closure has now run — register any pending ambient restorations
         // that need to wait for task data from the server.
+        #[cfg(feature = "agent_runtime")]
         let pending = pending_ambient.take();
+        #[cfg(feature = "agent_runtime")]
         if !pending.is_empty() {
             pane_group.register_pending_ambient_restorations(pending, ctx);
         }
@@ -3568,6 +3782,7 @@ impl PaneGroup {
         )
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn new_for_shared_session_viewer(
         session_id: SessionId,
         tips_completed: ModelHandle<TipsCompleted>,
@@ -3617,6 +3832,7 @@ impl PaneGroup {
     }
 
     /// Create a new pane group for a view-only cloud conversation.
+    #[cfg(feature = "agent_runtime")]
     pub fn new_for_conversation_transcript_viewer(
         conversation: AIConversation,
         ambient_agent_task_id: Option<AmbientAgentTaskId>,
@@ -3662,6 +3878,7 @@ impl PaneGroup {
 
     /// Create a new pane group with a loading state for a conversation viewer.
     /// The actual conversation data will be loaded asynchronously.
+    #[cfg(feature = "agent_runtime")]
     pub fn new_for_conversation_transcript_viewer_loading(
         tips_completed: ModelHandle<TipsCompleted>,
         user_default_shell_unsupported_banner_model_handle: ModelHandle<BannerState>,
@@ -3709,6 +3926,7 @@ impl PaneGroup {
 
     /// Load conversation data into a conversation viewer that was created with a loading state.
     /// Uses the active session view as the target.
+    #[cfg(feature = "agent_runtime")]
     pub fn load_data_into_conversation_transcript_viewer(
         &mut self,
         conversation: CloudConversationData,
@@ -3729,6 +3947,7 @@ impl PaneGroup {
     }
 
     /// Load conversation data into a specific transcript viewer terminal view.
+    #[cfg(feature = "agent_runtime")]
     fn load_data_into_transcript_viewer(
         &mut self,
         terminal_view: ViewHandle<TerminalView>,
@@ -3897,6 +4116,7 @@ impl PaneGroup {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn handle_share_block_modal_event(
         &mut self,
         event: &ShareBlockModalEvent,
@@ -3988,6 +4208,7 @@ impl PaneGroup {
     /// When `is_shared_session_creator` is `Yes`, the new pane is recorded
     /// in `transitively_shared_child_panes` keyed by `base_pane_id` so the
     /// host's `StopSharingCurrentSession` cleans it up.
+    #[cfg(feature = "agent_runtime")]
     fn insert_terminal_pane_hidden_for_child_agent(
         &mut self,
         base_pane_id: PaneId,
@@ -4027,6 +4248,7 @@ impl PaneGroup {
     /// `terminal_pane::inherit_share_for_local_child` for children that
     /// existed before the host started sharing.
     #[cfg(not(target_family = "wasm"))]
+    #[cfg(feature = "agent_runtime")]
     fn transitively_share_existing_local_children(
         &mut self,
         host_conversation_id: AIConversationId,
@@ -4115,6 +4337,7 @@ impl PaneGroup {
     /// (`Event::StopSharingCurrentSession`), so the definition mirrors that
     /// cfg gate to keep wasm builds warning-clean.
     #[cfg(not(target_family = "wasm"))]
+    #[cfg(feature = "agent_runtime")]
     fn stop_transitively_shared_child_shares(
         &mut self,
         host_pane_id: PaneId,
@@ -4144,6 +4367,7 @@ impl PaneGroup {
     }
 
     /// Removes `pane_id` from the transitive-share tracking map.
+    #[cfg(feature = "agent_runtime")]
     fn forget_transitively_shared_pane(&mut self, pane_id: PaneId) {
         // The pane may be a host (key) or a transitively-shared child (value).
         self.transitively_shared_child_panes.remove(&pane_id);
@@ -4158,6 +4382,7 @@ impl PaneGroup {
     /// Unlike `create_ambient_agent_pane`, this leaves the new terminal view
     /// uninitialized so callers can create and select the child conversation
     /// explicitly before the deferred shared-session viewer binds to it.
+    #[cfg(feature = "agent_runtime")]
     fn insert_ambient_agent_pane_hidden_for_child_agent(
         &mut self,
         _base_pane_id: PaneId,
@@ -4261,6 +4486,7 @@ impl PaneGroup {
 
     /// Get the notebook view within the pane at `pane_index`.
     #[cfg(any(test, feature = "integration_tests"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn notebook_view_at_pane_index(
         &self,
         pane_index: usize,
@@ -4273,6 +4499,7 @@ impl PaneGroup {
 
     /// Get the notebook view within the pane at `pane_index`.
     #[cfg(any(test, feature = "integration_tests"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn workflow_view_at_pane_index(
         &self,
         pane_index: usize,
@@ -4405,12 +4632,12 @@ impl PaneGroup {
         pane_content
     }
 
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn notebook_pane_by_pane_id(&self, pane_id: Option<PaneId>) -> Option<&NotebookPane> {
         self.downcast_pane_by_id(pane_id?)
     }
 
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn env_var_collection_pane_by_pane_id(
         &self,
         pane_id: Option<PaneId>,
@@ -4418,22 +4645,24 @@ impl PaneGroup {
         self.downcast_pane_by_id(pane_id?)
     }
 
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn workflow_pane_by_pane_id(&self, pane_id: Option<PaneId>) -> Option<&WorkflowPane> {
         self.downcast_pane_by_id(pane_id?)
     }
 
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn ai_fact_pane_by_pane_id(&self, pane_id: Option<PaneId>) -> Option<&AIFactPane> {
         self.downcast_pane_by_id(pane_id?)
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn code_pane_by_id(&self, pane_id: PaneId) -> Option<&CodePane> {
         self.downcast_pane_by_id(pane_id)
     }
 
     /// Removes an editor tab from a code pane for moving to another location.
     /// Returns the removed tab as a CodePane if the operation succeeds.
+    #[cfg(feature = "agent_runtime")]
     pub fn remove_editor_tab_for_move(
         &mut self,
         pane_id: PaneId,
@@ -4473,6 +4702,17 @@ impl PaneGroup {
     /// Emits an event for the workspace to show a confirmation dialog if necessary, or closes immediately if not.
     /// If a dialog is opened, the workspace may call back into pane group to close the pane after the user confirms.
     pub fn close_pane_with_confirmation(&mut self, pane_id: PaneId, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "warp_lite") {
+            if !self.pane_contents.contains_key(&pane_id) {
+                return;
+            }
+            if self.panes.visible_pane_count() == 1 {
+                self.close_pane(pane_id, ctx);
+            } else {
+                ctx.emit(Event::CloseSharedSessionPaneRequested { pane_id });
+            }
+            return;
+        }
         // Child agent panes are just hidden when closed, so skip the
         // "process running" warning—it doesn't apply.
         if self.is_child_agent_pane(pane_id) {
@@ -4537,10 +4777,12 @@ impl PaneGroup {
     fn discard_pane(&mut self, pane_id: PaneId, ctx: &mut ViewContext<Self>) {
         // Skip ownership transfer for child agent panes (their view
         // canonically owns the conversation).
+        #[cfg(feature = "agent_runtime")]
         if !self.is_child_agent_pane(pane_id) {
             self.transfer_child_agent_conversations_to_parents_on_close(pane_id, ctx);
         }
 
+        #[cfg(feature = "agent_runtime")]
         if let Some(terminal_view) = self.terminal_view_from_pane_id(pane_id, ctx) {
             let terminal_view_id = terminal_view.id();
 
@@ -4560,6 +4802,7 @@ impl PaneGroup {
     /// closing view to the pane that owns its parent. Defensive plumbing
     /// for paths where the parent's view actually contains the child;
     /// no-ops otherwise.
+    #[cfg(feature = "agent_runtime")]
     fn transfer_child_agent_conversations_to_parents_on_close(
         &mut self,
         pane_id: PaneId,
@@ -4634,12 +4877,19 @@ impl PaneGroup {
     }
 
     /// Returns true if the given pane is a child agent pane tracked in `child_agent_panes`.
+    #[cfg(feature = "agent_runtime")]
     fn is_child_agent_pane(&self, pane_id: PaneId) -> bool {
         self.child_agent_panes.values().any(|&id| id == pane_id)
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    fn is_child_agent_pane(&self, pane_id: PaneId) -> bool {
+        let _ = pane_id;
+        false
     }
 
     /// Collects the child agent pane IDs whose conversations are parented by
     /// a conversation on the given terminal view.
+    #[cfg(feature = "agent_runtime")]
     fn child_pane_ids_for_parent(
         &self,
         parent_terminal_view_id: EntityId,
@@ -4665,6 +4915,7 @@ impl PaneGroup {
     /// lives on the given terminal view.  Used by both `close_pane` and
     /// `discard_pane` to ensure children are cleaned up regardless of which
     /// path removes the parent.
+    #[cfg(feature = "agent_runtime")]
     fn remove_child_agent_panes(
         &mut self,
         parent_terminal_view_id: EntityId,
@@ -4679,6 +4930,7 @@ impl PaneGroup {
     }
 
     /// Permanently discards the pane backing a child agent conversation.
+    #[cfg(feature = "agent_runtime")]
     pub fn discard_child_agent_pane_for_conversation(
         &mut self,
         conversation_id: AIConversationId,
@@ -4756,6 +5008,7 @@ impl PaneGroup {
         // destroyed; future pill clicks re-host the same view. The view
         // keeps ownership of its conversation, so we skip the
         // transfer-on-close step below.
+        #[cfg(feature = "agent_runtime")]
         if self.is_child_agent_pane(pane_id) {
             // Revert the swap if the child is currently swapped in.
             if self.panes.original_pane_for_replacement(pane_id).is_some() {
@@ -4791,9 +5044,11 @@ impl PaneGroup {
         // Best-effort: re-bind any child conversations on this view back
         // to the pane that owns their parent so the pill bar keeps
         // working after this pane closes.
+        #[cfg(feature = "agent_runtime")]
         self.transfer_child_agent_conversations_to_parents_on_close(pane_id, ctx);
 
         // If this is a parent with child agents, discard the children first.
+        #[cfg(feature = "agent_runtime")]
         if let Some(terminal_view) = self.terminal_view_from_pane_id(pane_id, ctx) {
             self.remove_child_agent_panes(terminal_view.id(), ctx);
         }
@@ -4828,16 +5083,20 @@ impl PaneGroup {
             }
 
             // Remove opened share modal associated with the closing session.
+            #[cfg(feature = "agent_runtime")]
             if Some(pane_id) == self.terminal_with_open_share_block_modal.map(Into::into) {
                 self.terminal_with_open_share_block_modal = None;
             }
 
+            #[cfg(feature = "agent_runtime")]
             if self.pane_with_open_environment_setup_mode_selector == Some(pane_id) {
                 self.pane_with_open_environment_setup_mode_selector = None;
             }
+            #[cfg(feature = "agent_runtime")]
             if self.pane_with_open_auth_secret_delete_confirmation_dialog == Some(pane_id) {
                 self.pane_with_open_auth_secret_delete_confirmation_dialog = None;
             }
+            #[cfg(feature = "agent_runtime")]
             if self.pane_with_open_agent_assisted_environment_modal == Some(pane_id) {
                 self.pane_with_open_agent_assisted_environment_modal = None;
             }
@@ -4863,13 +5122,16 @@ impl PaneGroup {
             self.clean_up_pane(pane_id, ctx);
 
             // Remove opened share modal associated with the closing session.
+            #[cfg(feature = "agent_runtime")]
             if Some(pane_id) == self.terminal_with_open_share_block_modal.map(Into::into) {
                 self.terminal_with_open_share_block_modal = None;
             }
 
+            #[cfg(feature = "agent_runtime")]
             if self.pane_with_open_environment_setup_mode_selector == Some(pane_id) {
                 self.pane_with_open_environment_setup_mode_selector = None;
             }
+            #[cfg(feature = "agent_runtime")]
             if self.pane_with_open_agent_assisted_environment_modal == Some(pane_id) {
                 self.pane_with_open_agent_assisted_environment_modal = None;
             }
@@ -4890,6 +5152,7 @@ impl PaneGroup {
 
             // Mirror cleanup_closed_pane's transitive-share map cleanup so
             // the non-undo close path doesn't leak stale entries.
+            #[cfg(feature = "agent_runtime")]
             self.forget_transitively_shared_pane(pane_id);
         }
 
@@ -4958,6 +5221,7 @@ impl PaneGroup {
             self.handle_pane_count_change(ctx);
             // The visible content of this slot changed; refresh agent-view
             // back-button labels on both sides.
+            #[cfg(feature = "agent_runtime")]
             for refresh_pane_id in [pane_id, replacement_id] {
                 if let Some(terminal_view) = self.terminal_view_from_pane_id(refresh_pane_id, ctx) {
                     terminal_view.update(ctx, |view, ctx| {
@@ -5011,6 +5275,7 @@ impl PaneGroup {
                 self.clean_up_pane(original_pane_id, ctx);
                 self.pane_contents.remove(&original_pane_id);
             }
+            #[cfg(feature = "agent_runtime")]
             self.restore_missing_child_agent_panes_for_terminal_pane_if_needed(
                 replacement_pane_id,
                 ctx,
@@ -5054,6 +5319,7 @@ impl PaneGroup {
     }
 
     #[cfg(feature = "local_fs")]
+    #[cfg(feature = "agent_runtime")]
     fn replace_file_pane_with_code_pane(
         &mut self,
         file_pane_id: PaneId,
@@ -5078,7 +5344,8 @@ impl PaneGroup {
         }
     }
 
-    #[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
+    #[cfg(feature = "local_fs")]
+    #[cfg(feature = "agent_runtime")]
     fn replace_code_pane_with_file_pane(
         &mut self,
         code_pane_id: PaneId,
@@ -5118,7 +5385,13 @@ impl PaneGroup {
         ctx: &mut ViewContext<Self>,
     ) {
         match event {
-            PaneEvent::Close => self.close_pane(pane_id, ctx),
+            PaneEvent::Close => {
+                if cfg!(feature = "warp_lite") {
+                    self.close_pane_with_confirmation(pane_id, ctx);
+                } else {
+                    self.close_pane(pane_id, ctx);
+                }
+            }
             PaneEvent::CloseAndFocus { pane_to_focus } => {
                 self.close_pane_and_focus(pane_id, *pane_to_focus, ctx);
             }
@@ -5150,19 +5423,49 @@ impl PaneGroup {
                 ctx.emit(Event::AppStateChanged);
             }
             PaneEvent::NewPaneInAIMode { initial_query } => {
-                self.add_terminal_pane_in_agent_mode(initial_query.as_deref(), None, ctx)
+                #[cfg(not(feature = "agent_runtime"))]
+                let _ = (&initial_query,);
+
+                #[cfg(feature = "agent_runtime")]
+                {
+                    self.add_terminal_pane_in_agent_mode(initial_query.as_deref(), None, ctx)
+                }
             }
             PaneEvent::ClearHoveredTabIndex => ctx.emit(Event::ClearHoveredTabIndex),
             #[cfg(feature = "local_fs")]
             PaneEvent::ReplaceWithCodePane { path, source } => {
-                self.replace_file_pane_with_code_pane(pane_id, path.clone(), source.clone(), ctx);
+                #[cfg(not(feature = "agent_runtime"))]
+                let _ = (&path, &source);
+
+                #[cfg(feature = "agent_runtime")]
+                {
+                    {
+                        self.replace_file_pane_with_code_pane(
+                            pane_id,
+                            path.clone(),
+                            source.clone(),
+                            ctx,
+                        );
+                    }
+                }
             }
-            #[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
+            #[cfg(feature = "local_fs")]
             PaneEvent::ReplaceWithFilePane { path, source } => {
-                self.replace_code_pane_with_file_pane(pane_id, path.clone(), source.clone(), ctx);
+                #[cfg(not(feature = "agent_runtime"))]
+                let _ = (&path, &source);
+
+                #[cfg(feature = "agent_runtime")]
+                {
+                    {
+                        self.replace_code_pane_with_file_pane(
+                            pane_id,
+                            path.clone(),
+                            source.clone(),
+                            ctx,
+                        );
+                    }
+                }
             }
-            #[cfg(all(feature = "local_fs", feature = "warp_lite"))]
-            PaneEvent::ReplaceWithFilePane { .. } => {}
             PaneEvent::RepoChanged => {
                 ctx.emit(Event::RepoChanged);
             }
@@ -5224,20 +5527,27 @@ impl PaneGroup {
     }
 
     fn close_active_pane_with_confirmation(&mut self, ctx: &mut ViewContext<Self>) {
-        if self.focused_pane_id(ctx).is_code_pane() {
-            // If focused on a CodePane, close its active editor tab (optionally, the entire pane if it only has 1 tab).
-            match self.code_view_from_pane_id(self.focused_pane_id(ctx), ctx) {
-                Some(code_view) => {
-                    code_view.update(ctx, |view, ctx| {
-                        let index = view.active_tab_index();
-                        view.handle_action(&CodeViewAction::RemoveTabAtIndex { index }, ctx);
-                    });
+        #[cfg(feature = "agent_runtime")]
+        {
+            if self.focused_pane_id(ctx).is_code_pane() {
+                // If focused on a CodePane, close its active editor tab (optionally, the entire pane if it only has 1 tab).
+                match self.code_view_from_pane_id(self.focused_pane_id(ctx), ctx) {
+                    Some(code_view) => {
+                        code_view.update(ctx, |view, ctx| {
+                            let index = view.active_tab_index();
+                            view.handle_action(&CodeViewAction::RemoveTabAtIndex { index }, ctx);
+                        });
+                    }
+                    _ => {
+                        self.close_pane_with_confirmation(self.focused_pane_id(ctx), ctx);
+                    }
                 }
-                _ => {
-                    self.close_pane_with_confirmation(self.focused_pane_id(ctx), ctx);
-                }
+            } else {
+                self.close_pane_with_confirmation(self.focused_pane_id(ctx), ctx);
             }
-        } else {
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
             self.close_pane_with_confirmation(self.focused_pane_id(ctx), ctx);
         }
     }
@@ -5340,6 +5650,7 @@ impl PaneGroup {
         success
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn ambient_agent_task_id(
         cloud_conversation: &CloudConversationData,
     ) -> Option<AmbientAgentTaskId> {
@@ -5353,6 +5664,7 @@ impl PaneGroup {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn replace_loading_pane_with_restored_ambient_cloud_mode_pane(
         &mut self,
         loading_pane_id: PaneId,
@@ -5396,6 +5708,7 @@ impl PaneGroup {
         success
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn load_data_into_restored_ambient_cloud_mode_view(
         terminal_view: ViewHandle<TerminalView>,
         cloud_conversation: CloudConversationData,
@@ -5526,6 +5839,7 @@ impl PaneGroup {
         self.pane_contents.remove(&pane_id);
         // Drop any transitive-share tracking entry for this pane so the
         // map doesn't accumulate stale ids.
+        #[cfg(feature = "agent_runtime")]
         self.forget_transitively_shared_pane(pane_id);
 
         ctx.notify();
@@ -5548,6 +5862,7 @@ impl PaneGroup {
                 self.cleanup_closed_pane(pane_id, ctx);
                 return false;
             }
+            #[cfg(feature = "agent_runtime")]
             self.restore_missing_child_agent_panes_for_terminal_pane_if_needed(pane_id, ctx);
 
             self.focus_pane_and_record_in_history(pane_id, ctx);
@@ -6132,6 +6447,7 @@ impl PaneGroup {
     /// the model is created lazily at `SessionJoined` via
     /// `TerminalView::begin_viewing_ambient_session`.
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "agent_runtime")]
     fn create_shared_session_viewer(
         session_id: SessionId,
         resources: TerminalViewResources,
@@ -6215,6 +6531,7 @@ impl PaneGroup {
         (terminal_view, terminal_manager)
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn create_conversation_viewer(
         conversation: AIConversation,
         ambient_agent_task_id: Option<AmbientAgentTaskId>,
@@ -6385,6 +6702,7 @@ impl PaneGroup {
 
     /// Replaces a loading pane with a real terminal pane that has a conversation restored.
     /// Returns true if replacement was successful.
+    #[cfg(feature = "agent_runtime")]
     pub fn replace_loading_pane_with_terminal(
         &mut self,
         loading_pane_id: PaneId,
@@ -6598,6 +6916,8 @@ impl PaneGroup {
             DefaultSessionModeBehavior::Apply
         ) && conversation_restoration.is_none()
             && AISettings::as_ref(ctx).default_session_mode(ctx) == DefaultSessionMode::Agent;
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&should_immediately_enter_agent_view,);
 
         let (pane_data, view) = self.create_terminal_pane_data(
             startup_directory,
@@ -6607,11 +6927,15 @@ impl PaneGroup {
             conversation_restoration,
             ctx,
         );
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&view,);
+
         let new_pane_id = pane_data.terminal_pane_id();
 
         let _ = self.add_pane(direction, base_pane_id, Box::new(pane_data), true, ctx);
 
         // Enter agent view if default session mode is Agent and AI is enabled
+        #[cfg(feature = "agent_runtime")]
         if should_immediately_enter_agent_view {
             view.update(ctx, |terminal_view, ctx| {
                 terminal_view.enter_agent_view_for_new_conversation(
@@ -6709,6 +7033,7 @@ impl PaneGroup {
             self.pane_contents.remove(&pane_id);
             return None;
         }
+        #[cfg(feature = "agent_runtime")]
         self.restore_missing_child_agent_panes_for_terminal_pane_if_needed(pane_id, ctx);
 
         if options.focus_new_pane {
@@ -7015,6 +7340,7 @@ impl PaneGroup {
     /// transcript viewer, or any pane whose terminal manager is not a shared-session viewer.
     /// Callers **must** treat `false` as "reuse is not possible" and open a fresh pane instead;
     /// reporting success leaves the user focused on a pane with no input box.
+    #[cfg(feature = "agent_runtime")]
     pub fn attach_execution_session_to_ambient_pane(
         &mut self,
         pane_id: PaneId,
@@ -7093,6 +7419,7 @@ impl PaneGroup {
     /// owner) regardless of whether it's currently visible. Walks the pane
     /// contents and returns the first terminal pane whose terminal view id
     /// matches the history model's owner for `conversation_id`.
+    #[cfg(feature = "agent_runtime")]
     fn pane_id_for_conversation_owner(
         &self,
         conversation_id: AIConversationId,
@@ -7113,6 +7440,7 @@ impl PaneGroup {
     /// Make the pane that owns `conversation_id` the visible one in the
     /// focused pane's slot via temporary replacement. The previous occupant
     /// is restored on revert (back-button, ESC, pill-click, close, split-off).
+    #[cfg(feature = "agent_runtime")]
     pub fn swap_active_pane_to_conversation(
         &mut self,
         focused_pane_id: PaneId,
@@ -7234,6 +7562,7 @@ impl PaneGroup {
     /// existing view to avoid cancelling in-flight commands. Reverts any
     /// swap on the target's orchestrator first; swaps belonging to other
     /// orchestrators in the same group are left alone.
+    #[cfg(feature = "agent_runtime")]
     pub fn unhide_child_agent_pane_for_split_off(
         &mut self,
         conversation_id: AIConversationId,
@@ -7311,6 +7640,7 @@ impl PaneGroup {
     /// Detach the child agent pane for `conversation_id` so it can be
     /// re-parented into a new tab ("Open in new tab"). Reuses the
     /// existing view to avoid cancelling in-flight commands.
+    #[cfg(feature = "agent_runtime")]
     pub fn take_child_agent_pane_for_split_off(
         &mut self,
         conversation_id: AIConversationId,
@@ -7377,19 +7707,26 @@ impl PaneGroup {
     /// Stamp this pane group as the destination of a split-off child
     /// agent pane, so closing the tab re-adopts the live view back to
     /// the source group.
+    #[cfg(feature = "agent_runtime")]
     pub fn set_child_agent_origin(&mut self, origin: ChildAgentOrigin) {
         self.child_agent_origin = Some(origin);
     }
 
     /// Returns the origin metadata if this group is hosting a split-off
     /// child agent tab.
+    #[cfg(feature = "agent_runtime")]
     pub fn child_agent_origin(&self) -> Option<&ChildAgentOrigin> {
         self.child_agent_origin.as_ref()
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn child_agent_origin(&self) -> Option<&ChildAgentOrigin> {
+        None
     }
 
     /// Re-adopt a previously detached child agent pane back into this
     /// group as off-tree, and clear its split-off marker so the next
     /// reveal renders pills instead of breadcrumbs.
+    #[cfg(feature = "agent_runtime")]
     pub fn re_adopt_child_agent_pane(
         &mut self,
         pane_content: Box<dyn AnyPaneContent>,
@@ -7429,6 +7766,7 @@ impl PaneGroup {
     /// the three resolvers (`child_agent_panes`, visible-pane lookup, history
     /// model owner lookup) finds a pane in this group for the target
     /// conversation. Dumps enough state to identify which step is wrong.
+    #[cfg(feature = "agent_runtime")]
     fn log_swap_resolution_failure(
         &self,
         focused_pane_id: PaneId,
@@ -7502,6 +7840,7 @@ impl PaneGroup {
     /// from `pane_contents`) would erroneously include off-tree child
     /// agent panes, since under the orchestration model those panes
     /// remain in `pane_contents` even when they are not in the tree.
+    #[cfg(feature = "agent_runtime")]
     pub(crate) fn find_visible_terminal_pane_for_conversation(
         &self,
         conversation_id: AIConversationId,
@@ -7531,6 +7870,7 @@ impl PaneGroup {
     }
 
     /// Given a pane ID, retrieve its backing code view, if the pane is a code pane.
+    #[cfg(feature = "agent_runtime")]
     pub fn code_view_from_pane_id(
         &self,
         pane_id: impl Into<PaneId>,
@@ -7692,11 +8032,13 @@ impl PaneGroup {
     /// Reattach all panes to this group. This is called when a closed tab is restored.
     pub fn reattach_panes(&mut self, ctx: &mut ViewContext<Self>) {
         let pane_ids = self.pane_contents.keys().copied().collect_vec();
+
         for pane_id in pane_ids {
             let Some(pane) = self.pane_contents.get(&pane_id) else {
                 continue;
             };
             self.attach_pane(pane.as_ref(), ctx);
+            #[cfg(feature = "agent_runtime")]
             self.restore_missing_child_agent_panes_for_terminal_pane_if_needed(pane_id, ctx);
         }
     }
@@ -7757,10 +8099,18 @@ impl PaneGroup {
         )
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn number_of_shared_sessions(&self, ctx: &AppContext) -> usize {
         self.shared_session_view_ids(ctx).len()
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn number_of_shared_sessions(&self, ctx: &AppContext) -> usize {
+        let _ = ctx;
+        0
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub fn shared_session_view_ids(&self, ctx: &AppContext) -> Vec<EntityId> {
         self.panes_of::<TerminalPane>()
             .filter_map(|p| {
@@ -7769,6 +8119,12 @@ impl PaneGroup {
                 is_shared.then(|| terminal_view.id())
             })
             .collect()
+    }
+
+    #[cfg(not(feature = "agent_runtime"))]
+    pub fn shared_session_view_ids(&self, ctx: &AppContext) -> Vec<EntityId> {
+        let _ = ctx;
+        Vec::new()
     }
 
     /// Filters out any hidden panes that aren't yet deleted (due to undo functionality).
@@ -7790,19 +8146,21 @@ impl PaneGroup {
             .collect()
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn code_views(&self, ctx: &AppContext) -> Vec<ViewHandle<CodeView>> {
         self.panes_of::<CodePane>()
             .map(|p| p.file_view(ctx))
             .collect()
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn code_diff_views(&self, ctx: &AppContext) -> Vec<ViewHandle<CodeDiffView>> {
         self.panes_of::<CodeDiffPane>()
             .map(|p| p.diff_view(ctx))
             .collect()
     }
 
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     pub fn file_notebook_views(&self, ctx: &AppContext) -> Vec<ViewHandle<FileNotebookView>> {
         self.panes_of::<FilePane>()
             .map(|p| p.file_view(ctx))
@@ -7828,51 +8186,77 @@ impl PaneGroup {
         &'a self,
         ctx: &'a AppContext,
     ) -> impl Iterator<Item = (EntityId, Option<LocalOrRemotePath>)> + 'a {
-        self.code_views(ctx).into_iter().map(move |code_view| {
-            let id = code_view.id();
-            let location = code_view
-                .as_ref(ctx)
-                .tab_at(code_view.as_ref(ctx).active_tab_index())
-                .and_then(|tab| tab.location().cloned());
-            (id, location)
-        })
+        #[cfg(feature = "agent_runtime")]
+        {
+            self.code_views(ctx).into_iter().map(move |code_view| {
+                let id = code_view.id();
+                let location = code_view
+                    .as_ref(ctx)
+                    .tab_at(code_view.as_ref(ctx).active_tab_index())
+                    .and_then(|tab| tab.location().cloned());
+                (id, location)
+            })
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = ctx;
+            std::iter::empty()
+        }
     }
 
     pub fn code_diff_view_paths<'a>(
         &'a self,
         ctx: &'a AppContext,
     ) -> impl Iterator<Item = (EntityId, Option<LocalOrRemotePath>)> + 'a {
-        self.code_diff_views(ctx).into_iter().map(move |diff_view| {
-            let id = diff_view.id();
-            let location = diff_view.as_ref(ctx).primary_file_location(ctx);
-            (id, location)
-        })
+        #[cfg(feature = "agent_runtime")]
+        {
+            self.code_diff_views(ctx).into_iter().map(move |diff_view| {
+                let id = diff_view.id();
+                let location = diff_view.as_ref(ctx).primary_file_location(ctx);
+                (id, location)
+            })
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = ctx;
+            std::iter::empty()
+        }
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     pub fn file_notebook_paths<'a>(
         &'a self,
         ctx: &'a AppContext,
     ) -> impl Iterator<Item = (EntityId, Option<LocalOrRemotePath>)> + 'a {
-        self.file_notebook_views(ctx)
-            .into_iter()
-            .map(move |file_view| {
-                let id = file_view.id();
-                let path = file_view.as_ref(ctx).path().cloned();
-                (id, path)
-            })
+        #[cfg(feature = "agent_runtime")]
+        {
+            self.file_notebook_views(ctx)
+                .into_iter()
+                .map(move |file_view| {
+                    let id = file_view.id();
+                    let path = file_view.as_ref(ctx).path().cloned();
+                    (id, path)
+                })
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = ctx;
+            std::iter::empty()
+        }
     }
 
     #[cfg(test)]
+    #[cfg(feature = "agent_runtime")]
     pub fn is_share_session_modal_open(&self) -> bool {
         self.terminal_with_open_share_session_modal.is_some()
     }
 
     #[cfg(test)]
+    #[cfg(feature = "agent_runtime")]
     pub fn share_session_modal(&self) -> &ViewHandle<ShareSessionModal> {
         &self.share_session_modal
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub(crate) fn start_agent_mode_in_new_pane(
         &mut self,
         initial_query: Option<&str>,
@@ -7917,6 +8301,7 @@ impl PaneGroup {
 
     /// Add and focus a terminal pane in AI mode. Adds the pane to the right of all other panes as
     /// a split on the root node. If `initial_query` is `Some` pre-fill the input with its value.
+    #[cfg(feature = "agent_runtime")]
     pub(crate) fn add_terminal_pane_in_agent_mode(
         &mut self,
         initial_query: Option<&str>,
@@ -7974,6 +8359,7 @@ impl PaneGroup {
     }
 
     /// Creates an ambient agent pane with the given initial prompt.
+    #[cfg(feature = "agent_runtime")]
     fn create_ambient_agent_pane(&self, ctx: &mut ViewContext<Self>) -> TerminalPane {
         let uuid = Uuid::new_v4();
         let resources = TerminalViewResources {
@@ -7997,6 +8383,7 @@ impl PaneGroup {
     }
 
     /// Add and focus a cloud mode pane.
+    #[cfg(feature = "agent_runtime")]
     pub fn add_ambient_agent_pane(&mut self, ctx: &mut ViewContext<Self>) {
         if !FeatureFlag::AgentView.is_enabled() || !FeatureFlag::CloudMode.is_enabled() {
             return;
@@ -8018,6 +8405,7 @@ impl PaneGroup {
             ctx,
         );
 
+        #[cfg(feature = "agent_runtime")]
         self.for_all_code_panes(
             |code_view, ctx| {
                 code_view.close_overlays(ctx);
@@ -8025,9 +8413,14 @@ impl PaneGroup {
             ctx,
         );
 
+        #[cfg(feature = "agent_runtime")]
         self.close_share_session_modal(ctx);
+        #[cfg(feature = "agent_runtime")]
         self.close_shared_session_role_change_modal(RoleChangeCloseSource::ViewerRequest, ctx);
-        self.terminal_with_open_share_block_modal = None;
+        #[cfg(feature = "agent_runtime")]
+        {
+            self.terminal_with_open_share_block_modal = None;
+        }
         ctx.notify();
     }
 
@@ -8140,21 +8533,28 @@ impl View for PaneGroup {
     }
 
     fn child_view_ids(&self, _app: &AppContext) -> Vec<EntityId> {
-        // Modals and banners owned directly by the pane group are only
-        // rendered while open, so they're usually absent from the render-time
-        // parent graph. Report them explicitly so they move with the pane
-        // group when it is transferred to another window; otherwise a later
-        // render of one of these handles in the new window would look the
-        // view up in a window that no longer holds it and panic with a
-        // "circular view reference". The per-pane views (and their backing
-        // terminal/editor views) are reached via the structural parent graph
-        // and `PaneView::child_view_ids`.
-        vec![
-            self.share_block_modal.id(),
-            self.share_session_modal.id(),
-            self.shared_session_role_change_modal.id(),
-            self.user_default_shell_changed_banner.id(),
-        ]
+        #[cfg(feature = "agent_runtime")]
+        {
+            // Modals and banners owned directly by the pane group are only
+            // rendered while open, so they're usually absent from the render-time
+            // parent graph. Report them explicitly so they move with the pane
+            // group when it is transferred to another window; otherwise a later
+            // render of one of these handles in the new window would look the
+            // view up in a window that no longer holds it and panic with a
+            // "circular view reference". The per-pane views (and their backing
+            // terminal/editor views) are reached via the structural parent graph
+            // and `PaneView::child_view_ids`.
+            vec![
+                self.share_block_modal.id(),
+                self.share_session_modal.id(),
+                self.shared_session_role_change_modal.id(),
+                self.user_default_shell_changed_banner.id(),
+            ]
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            vec![self.user_default_shell_changed_banner.id()]
+        }
     }
 
     fn render(&self, app: &AppContext) -> Box<dyn Element> {
@@ -8188,46 +8588,47 @@ impl View for PaneGroup {
         };
         column.add_child(Shrinkable::new(1., main_content).finish());
 
-        let mut stack = Stack::new().with_child(column.finish());
-
-        // Render the share modals on the pane group level so that their
-        // size is not restricted to within the terminal view.
-        if self.terminal_with_open_share_block_modal.is_some() {
-            stack
-                .add_child(Clipped::new(ChildView::new(&self.share_block_modal).finish()).finish());
-        } else if FeatureFlag::CreatingSharedSessions.is_enabled()
-            && self.terminal_with_open_share_session_modal.is_some()
+        #[cfg(feature = "agent_runtime")]
         {
-            stack.add_child(ChildView::new(&self.share_session_modal).finish());
-        } else if self
-            .terminal_with_shared_session_role_change_modal_open
-            .is_some()
-        {
-            stack.add_child(ChildView::new(&self.shared_session_role_change_modal).finish());
-        }
+            let mut stack = Stack::new().with_child(column.finish());
 
-        // Render the summarization cancel dialog at tab level when open.
-        if let Some(terminal_pane_id) = self.terminal_with_open_summarization_dialog
-            && let Some(terminal_view) = self.terminal_view_from_pane_id(terminal_pane_id, app)
-            && let Some(dialog_handle) = terminal_view.read(app, |view, ctx| {
-                view.summarization_cancel_dialog_handle(ctx)
-            })
-        {
-            stack.add_child(ChildView::new(&dialog_handle).finish());
-        }
+            // Render the share modals on the pane group level so that their
+            // size is not restricted to within the terminal view.
+            if self.terminal_with_open_share_block_modal.is_some() {
+                stack.add_child(
+                    Clipped::new(ChildView::new(&self.share_block_modal).finish()).finish(),
+                );
+            } else if FeatureFlag::CreatingSharedSessions.is_enabled()
+                && self.terminal_with_open_share_session_modal.is_some()
+            {
+                stack.add_child(ChildView::new(&self.share_session_modal).finish());
+            } else if self
+                .terminal_with_shared_session_role_change_modal_open
+                .is_some()
+            {
+                stack.add_child(ChildView::new(&self.shared_session_role_change_modal).finish());
+            }
 
-        // Render environment setup mode selector at tab level when open.
-        if let Some(pane_id) = self.pane_with_open_environment_setup_mode_selector {
-            let selector_handle = self
-                .terminal_view_from_pane_id(pane_id, app)
-                .and_then(|tv| {
-                    tv.as_ref(app)
-                        .environment_setup_mode_selector_handle()
-                        .cloned()
+            // Render the summarization cancel dialog at tab level when open.
+            if let Some(terminal_pane_id) = self.terminal_with_open_summarization_dialog
+                && let Some(terminal_view) = self.terminal_view_from_pane_id(terminal_pane_id, app)
+                && let Some(dialog_handle) = terminal_view.read(app, |view, ctx| {
+                    view.summarization_cancel_dialog_handle(ctx)
                 })
-                .or_else(|| {
-                    #[cfg(not(feature = "warp_lite"))]
-                    {
+            {
+                stack.add_child(ChildView::new(&dialog_handle).finish());
+            }
+
+            // Render environment setup mode selector at tab level when open.
+            if let Some(pane_id) = self.pane_with_open_environment_setup_mode_selector {
+                let selector_handle = self
+                    .terminal_view_from_pane_id(pane_id, app)
+                    .and_then(|tv| {
+                        tv.as_ref(app)
+                            .environment_setup_mode_selector_handle()
+                            .cloned()
+                    })
+                    .or_else(|| {
                         self.downcast_pane_by_id::<EnvironmentManagementPane>(pane_id)
                             .and_then(|emp| {
                                 emp.environments_page_view(app)
@@ -8235,44 +8636,43 @@ impl View for PaneGroup {
                                     .environment_setup_mode_selector_handle()
                                     .cloned()
                             })
-                    }
-                    #[cfg(feature = "warp_lite")]
-                    {
-                        None
-                    }
-                });
-            if let Some(handle) = selector_handle {
+                    });
+                if let Some(handle) = selector_handle {
+                    stack.add_child(ChildView::new(&handle).finish());
+                }
+            }
+
+            // Render auth-secret delete confirmation at tab level when open.
+            if let Some(pane_id) = self.pane_with_open_auth_secret_delete_confirmation_dialog
+                && let Some(dialog) = self
+                    .terminal_view_from_pane_id(pane_id, app)
+                    .and_then(|tv| {
+                        tv.as_ref(app)
+                            .auth_secret_delete_confirmation_dialog_element(app)
+                    })
+            {
+                stack.add_child(dialog);
+            }
+            // Render agent-assisted environment modal at tab level when open.
+            if let Some(pane_id) = self.pane_with_open_agent_assisted_environment_modal
+                && let Some(handle) = self
+                    .downcast_pane_by_id::<EnvironmentManagementPane>(pane_id)
+                    .and_then(|emp| {
+                        emp.environments_page_view(app)
+                            .as_ref(app)
+                            .agent_assisted_environment_modal_handle(app)
+                            .cloned()
+                    })
+            {
                 stack.add_child(ChildView::new(&handle).finish());
             }
-        }
 
-        // Render auth-secret delete confirmation at tab level when open.
-        if let Some(pane_id) = self.pane_with_open_auth_secret_delete_confirmation_dialog
-            && let Some(dialog) = self
-                .terminal_view_from_pane_id(pane_id, app)
-                .and_then(|tv| {
-                    tv.as_ref(app)
-                        .auth_secret_delete_confirmation_dialog_element(app)
-                })
-        {
-            stack.add_child(dialog);
+            stack.finish()
         }
-        // Render agent-assisted environment modal at tab level when open.
-        #[cfg(not(feature = "warp_lite"))]
-        if let Some(pane_id) = self.pane_with_open_agent_assisted_environment_modal
-            && let Some(handle) = self
-                .downcast_pane_by_id::<EnvironmentManagementPane>(pane_id)
-                .and_then(|emp| {
-                    emp.environments_page_view(app)
-                        .as_ref(app)
-                        .agent_assisted_environment_modal_handle(app)
-                        .cloned()
-                })
+        #[cfg(not(feature = "agent_runtime"))]
         {
-            stack.add_child(ChildView::new(&handle).finish());
+            column.finish()
         }
-
-        stack.finish()
     }
 
     fn on_window_transferred(
@@ -8281,5 +8681,36 @@ impl View for PaneGroup {
         _new_window_id: WindowId,
         _ctx: &mut ViewContext<Self>,
     ) {
+    }
+}
+
+#[cfg(not(feature = "agent_runtime"))]
+fn native_terminal_template(template: PaneTemplateType) -> Option<PaneTemplateType> {
+    match template {
+        terminal @ PaneTemplateType::PaneTemplate {
+            pane_mode: PaneMode::Terminal,
+            ..
+        } => Some(terminal),
+        PaneTemplateType::PaneTemplate {
+            pane_mode: PaneMode::Agent | PaneMode::Cloud,
+            ..
+        } => None,
+        PaneTemplateType::PaneBranchTemplate {
+            split_direction,
+            panes,
+        } => {
+            let mut panes: Vec<_> = panes
+                .into_iter()
+                .filter_map(native_terminal_template)
+                .collect();
+            match panes.len() {
+                0 => None,
+                1 => panes.pop(),
+                _ => Some(PaneTemplateType::PaneBranchTemplate {
+                    split_direction,
+                    panes,
+                }),
+            }
+        }
     }
 }

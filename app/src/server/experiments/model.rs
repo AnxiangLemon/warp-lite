@@ -2,15 +2,19 @@
 
 use std::collections::HashSet;
 
+#[cfg(feature = "agent_runtime")]
 use anyhow::Context;
 use onboarding::ChooseHowToStartExperimentArm;
 #[cfg(test)]
 pub use tests::TestModel;
+#[cfg(feature = "agent_runtime")]
 use warp_errors::report_if_error;
 use warpui::{Entity, ModelContext, SingletonEntity};
 
 use super::ServerExperiment;
+#[cfg(feature = "agent_runtime")]
 use crate::GlobalResourceHandlesProvider;
+#[cfg(feature = "agent_runtime")]
 use crate::persistence::ModelEvent;
 
 /// A global model for maintaining server-side experiment state.
@@ -48,7 +52,12 @@ impl ServerExperiments {
             experiment.on_added_to(ctx);
         }
 
+        #[cfg(feature = "agent_runtime")]
         self.cache_latest_state(incoming, ctx);
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            self.latest = incoming;
+        }
         ctx.emit(Event::ExperimentsUpdated);
     }
 
@@ -76,6 +85,7 @@ impl ServerExperiments {
     }
 
     /// Saves the latest experiment state in-memory and to the local cache.
+    #[cfg(feature = "agent_runtime")]
     fn cache_latest_state(
         &mut self,
         latest: HashSet<ServerExperiment>,

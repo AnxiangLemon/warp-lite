@@ -1689,6 +1689,6 @@ impl<V: EditorView> NewScrollableElement for EditorWrapper<V> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "element_tests.rs"]
 mod tests;

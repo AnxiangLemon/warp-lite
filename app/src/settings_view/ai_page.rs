@@ -7650,10 +7650,6 @@ impl SettingsWidget for OtherAIWidget {
     }
 }
 
-#[cfg(not(target_family = "wasm"))]
-pub(crate) fn cli_agent_settings_widget_id() -> &'static str {
-    CLIAgentWidget::static_widget_id()
-}
 fn cli_agent_widgets() -> Vec<Box<dyn SettingsWidget<View = AISettingsPageView>>> {
     vec![
         Box::new(CLIAgentWidget::default()),
@@ -10262,13 +10258,6 @@ impl SettingsWidget for GeminiEnterpriseWidget {
             .with_margin_bottom(HEADER_PADDING)
             .finish()
     }
-}
-
-/// Stable `&'static str` id for the custom model routers settings widget,
-/// exposed for the `warp://settings?widget=custom_router` deeplink (see
-/// `settings_widget_deeplink_target`).
-pub(crate) fn custom_model_routers_widget_id() -> &'static str {
-    CustomModelRoutersWidget::static_widget_id()
 }
 
 #[derive(Default)]

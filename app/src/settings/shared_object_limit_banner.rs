@@ -10,7 +10,7 @@ use crate::banner::BannerState;
 // shown in the Warp Drive sidebar, we want to remember that they did so and
 // avoid showing the same prompt again. The state is tracked per object type so
 // dismissing the notebook banner doesn't hide a future workflow banner.
-define_settings_group!(SharedObjectLimitBannerSettings, settings: [
+define_settings_group!(SharedObjectLimitBannerSettings, schema_cfg: feature = "agent_runtime", settings: [
     notebook_limit_banner_state: NotebookLimitBannerState {
         type: BannerState,
         default: BannerState::NotDismissed,

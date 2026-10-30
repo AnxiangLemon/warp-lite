@@ -7,12 +7,7 @@ use warp_editor::content::buffer::Buffer;
 use warpui_core::text::point::Point;
 
 use super::highlight_query::TextBuffer;
-
-/// The absolute indentation unit from start of the line.
-#[derive(Debug)]
-pub struct IndentDelta {
-    pub delta: u8,
-}
+pub use crate::types::IndentDelta;
 
 /// Given the current syntax tree and a point in the buffer. Calculate the correct indentation level for that point.
 pub fn indentation_delta(

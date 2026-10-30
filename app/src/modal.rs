@@ -14,6 +14,7 @@ use warpui::{
 };
 
 use crate::appearance::Appearance;
+use crate::lite_i18n::text;
 use crate::themes::theme::Fill;
 use crate::ui_components::{blended_colors, icons};
 
@@ -341,7 +342,7 @@ impl<T: View> Modal<T> {
                     1.0,
                     Align::new(
                         Text::new_inline(
-                            title.clone(),
+                            text(title).to_owned(),
                             self.header_styles
                                 .font_family_id
                                 .unwrap_or(appearance.ui_font_family()),

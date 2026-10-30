@@ -286,7 +286,7 @@ fn coerce_value_against_schema(value: &mut serde_json::Value, schema: &serde_jso
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "call_mcp_tool_tests.rs"]
 mod tests;
 

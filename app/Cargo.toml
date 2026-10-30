@@ -25,6 +25,7 @@ test = false
 [[bin]]
 name = "warp-lite"
 path = "src/bin/lite.rs"
+required-features = ["warp_lite"]
 test = false
 
 [[bin]]
@@ -60,7 +61,9 @@ test = false
 
 [dependencies]
 addr = "0.15.6"
-ai.workspace = true
+ai = { workspace = true, features = ["runtime"] }
+# Enable compression in the pinned command-signatures dependency without forking its assets.
+signature-assets = { package = "rust-embed", version = "=6.8.1", default-features = false, features = ["compression"], optional = true }
 alphanumeric-sort = "1.5.7"
 anyhow.workspace = true
 arrayvec.workspace = true
@@ -150,15 +153,15 @@ libc.workspace = true
 line-ending.workspace = true
 log.workspace = true
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
-lsp.workspace = true
+lsp = { workspace = true, default-features = false }
 warp_logging.workspace = true
 sentry = { workspace = true, optional = true }
 lz4_flex = "0.11"
 markdown_parser.workspace = true
-mcp = { workspace = true, optional = true }
+mcp = { workspace = true, default-features = false }
 memchr.workspace = true
 memo-map.workspace = true
-mermaid_to_svg.workspace = true
+mermaid_to_svg = { workspace = true, optional = true }
 num-traits.workspace = true
 num_cpus = "1.13.0"
 oauth2.workspace = true
@@ -244,7 +247,7 @@ warp_errors = { workspace = true, features = ["reqwest-errors"] }
 warp_editor.workspace = true
 warp_graphql.workspace = true
 warp_js = { workspace = true, optional = true }
-warp_search_core.workspace = true
+warp_search_core = { workspace = true, default-features = false }
 warp_server_auth.workspace = true
 warp_server_client.workspace = true
 warp_util.workspace = true
@@ -272,7 +275,7 @@ warp_multi_agent_api.workspace = true
 remote_server.workspace = true
 repo_metadata.workspace = true
 vim.workspace = true
-rmcp = { workspace = true, optional = true }
+rmcp.workspace = true
 warp_isolation_platform.workspace = true
 warp_ripgrep.workspace = true
 warp_managed_secrets.workspace = true
@@ -320,33 +323,32 @@ inquire = "0.9.1"
 diesel = { workspace = true, features = ["sqlite", "chrono"] }
 diesel_migrations = { version = "2.2.0", features = ["sqlite"] }
 env_logger.workspace = true
-git2 = { version = "0.20.4", default-features = false, features = [
+git2 = { version = "0.20.4", optional = true, default-features = false, features = [
     "vendored-libgit2",
 ] }
 http_server.workspace = true
 hyper.workspace = true
 libsqlite3-sys = { version = "0.33.0", features = ["bundled"] }
 mio = { version = "1.1.1", features = ["os-poll", "os-ext"] }
-opentelemetry.workspace = true
-opentelemetry-http.workspace = true
-opentelemetry-otlp.workspace = true
-opentelemetry_sdk.workspace = true
+opentelemetry = { workspace = true, optional = true }
+opentelemetry-http = { workspace = true, optional = true }
+opentelemetry-otlp = { workspace = true, optional = true }
+opentelemetry_sdk = { workspace = true, optional = true }
 tokio.workspace = true
 tokio-util.workspace = true
-tracing-opentelemetry.workspace = true
-tracing-subscriber.workspace = true
+tracing-opentelemetry = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, optional = true }
 warp_errors = { workspace = true, features = ["tokio-errors", "websocket-errors"] }
 
 # AWS SDK (loading credentials for BYO LLM)
-aws-config = { version = "1.8.16", features = ["credentials-login"] }
-aws-credential-types = "1"
-aws-sdk-sts = { version = "1", default-features = false, features = ["default-https-client", "rt-tokio"] }
-aws-types = "1"
+aws-config = { version = "1.8.16", features = ["credentials-login"], optional = true }
+aws-credential-types = { version = "1", optional = true }
+aws-sdk-sts = { version = "1", default-features = false, features = ["default-https-client", "rt-tokio"], optional = true }
 
 notify-debouncer-full.workspace = true
 rquickjs = { workspace = true, optional = true }
 rustls.workspace = true
-syntect = "5.0"
+syntect = { version = "5.0", optional = true }
 sysinfo.workspace = true
 warp-command-signatures = { workspace = true, features = ["embed-signatures"] }
 is_executable = "1.0.1"
@@ -365,7 +367,7 @@ js-sys = "0.3.63"
 # Make sure we embed the data into the wasm binary even when running in debug
 # mode, as it cannot be read directly from the filesystem.
 rust-embed = { workspace = true, features = ["debug-embed"] }
-syntect = { version = "5.0", default-features = false, features = [
+syntect = { version = "5.0", optional = true, default-features = false, features = [
     "default-fancy",
 ] }
 wasm-bindgen.workspace = true
@@ -514,9 +516,20 @@ crash_reporting = [
 creating_shared_sessions = []
 cross_repo_context = []
 codebase_index_persistence = ["full_source_code_embedding"]
+cloud_services = ["dep:opentelemetry", "dep:opentelemetry-http", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "dep:tracing-opentelemetry", "dep:tracing-subscriber", "http_client/network_transport", "asset_cache/network_assets", "dep:aws-config", "dep:aws-credential-types", "dep:aws-sdk-sts", "warp_graphql/network_transport", "warp_server_client/network_transport", "warp_managed_secrets/runtime"]
+agent_runtime = ["warp_completer/cli_signatures", "dep:git2"]
+rich_documents = ["dep:syntect", "warp_editor/mermaid", "warp_editor/html", "warp_editor/ipynb", "languages/all_languages", "syntax_tree/runtime", "markdown_parser/html"]
+full_text_search = ["warp_search_core/full_text_search"]
+managed_downloads = ["lsp/managed_downloads"]
+mcp_client = ["mcp/transports"]
 default = [
-    "agent_mode",
+    "rich_documents",
+    "agent_runtime",
+    "cloud_services",
+    "full_text_search",
+    "managed_downloads",
     "mcp_client",
+    "agent_mode",
     "osc_hyperlinks",
     "viewing_shared_sessions",
     "render_continuous_block_selections_with_single_border",
@@ -812,9 +825,8 @@ local_fs = [
 log_expensive_frames_in_sentry = []
 jupyter_notebook_rendering = []
 markdown_tables = []
-markdown_mermaid = []
+markdown_mermaid = ["dep:mermaid_to_svg", "warp_editor/mermaid"]
 mcp_server = []
-mcp_client = ["dep:mcp", "dep:rmcp", "ai/mcp"]
 mcp_oauth = []
 mcp_debugging_ids = []
 notebook_parameter = []
@@ -860,13 +872,20 @@ skip_login = ["warp_server_client/skip_login"]
 # UI features that matter for a local terminal (groups, default-shell selector,
 # clean minimal UI) and leaves everything else off.
 warp_lite = [
-    "skip_login",
+    "dep:signature-assets",
+    "rust-embed/debug-embed",
+    "warp_assets/lite",
     "skip_firebase_anonymous_user",
     "shell_selector",
     "grouped_tabs",
     "vertical_tabs",
-    "tab_configs",
     "pinned_tabs",
+    "tab_configs",
+    "drag_tabs_to_windows",
+    "ime_marked_text",
+    "msys2_shells",
+    "rich_history",
+    "settings_file",
     "minimalist_ui",
     "tab_close_button_on_left",
     "osc_hyperlinks",

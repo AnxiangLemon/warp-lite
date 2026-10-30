@@ -54,6 +54,6 @@ pub(crate) fn bundled_skill_snapshot_protos(catalog: &BundledSkill) -> Vec<Remot
     protos
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "remote_tests.rs"]
 mod tests;

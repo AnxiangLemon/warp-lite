@@ -62,7 +62,7 @@ use crate::editor::{
 use crate::features::FeatureFlag;
 use crate::menu::{MenuItem, MenuItemFields};
 use crate::network::{NetworkStatus, NetworkStatusEvent};
-use crate::cloud_object::CloudNotebook;
+use crate::notebooks::CloudNotebook;
 use crate::notebooks::editor::model::NotebooksEditorModel;
 use crate::notebooks::editor::rich_text_styles;
 use crate::pane_group::focus_state::{PaneFocusHandle, PaneGroupFocusEvent};
@@ -95,7 +95,7 @@ use crate::{cmd_or_ctrl_shift, safe_info, send_telemetry_from_ctx};
 
 mod details_bar;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "notebook_tests.rs"]
 mod tests;
 

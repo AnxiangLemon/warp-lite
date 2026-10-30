@@ -21,7 +21,6 @@ use warpui::{
 
 use crate::ai::AIRequestUsageModel;
 use crate::ai::agent::api::ServerConversationToken;
-use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::agent::{PassiveSuggestionTrigger, StaticQueryType};
 use crate::ai::blocklist::BlocklistAIInputModel;
 use crate::ai::blocklist::prompt::prompt_alert::{
@@ -32,6 +31,7 @@ use crate::appearance::Appearance;
 use crate::server::ids::ServerId;
 use crate::server::telemetry::InteractionSource;
 use crate::settings::InputSettings;
+use crate::terminal::session_types::AIConversationId;
 use crate::terminal::view::passive_suggestions::PromptSuggestionResolution;
 use crate::terminal::view::{ContextMenuAction, InputType, PromptSuggestion, TerminalAction};
 use crate::ui_components::blended_colors;
@@ -428,7 +428,6 @@ impl View for PromptSuggestionsView {
                     banner_state.accept_button_mouse_state.clone(),
                     Rc::new(move |ctx: &mut warpui::EventContext<'_>| {
                         if open_unavailable_modal {
-                            #[cfg(not(feature = "warp_lite"))]
                             ctx.dispatch_typed_action(
                                 WorkspaceAction::OpenPromptSuggestionsUnavailableModal,
                             );

@@ -347,6 +347,6 @@ impl fmt::Display for EnvironmentChoice {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "common_tests.rs"]
 mod tests;

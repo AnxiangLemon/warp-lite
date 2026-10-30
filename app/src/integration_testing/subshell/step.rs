@@ -6,10 +6,12 @@ use warpui::{async_assert, async_assert_eq};
 
 use super::util::{remote_server_ssh_command, remote_server_user_host, ssh_command, user_host};
 use crate::integration_testing::step::assert_no_pending_model_events;
+#[cfg(feature = "agent_runtime")]
+use crate::integration_testing::terminal::execute_command_for_single_terminal_in_tab;
+#[cfg(feature = "agent_runtime")]
 use crate::integration_testing::terminal::util::ExpectedExitStatus;
 use crate::integration_testing::terminal::{
-    assert_long_running_block_executing_for_single_terminal_in_tab,
-    execute_command_for_single_terminal_in_tab, validate_block_output,
+    assert_long_running_block_executing_for_single_terminal_in_tab, validate_block_output,
     wait_until_bootstrapped_pane,
 };
 use crate::integration_testing::view_getters::{single_terminal_view, terminal_view};
@@ -17,6 +19,7 @@ use crate::terminal::model::rich_content::RichContentType;
 use crate::terminal::view::WithinBlockBanner;
 
 /// Sets environment variables needed by the Google Cloud SDK.
+#[cfg(feature = "agent_runtime")]
 pub fn setup_gcloud_sdk() -> TestStep {
     execute_command_for_single_terminal_in_tab(
         0,

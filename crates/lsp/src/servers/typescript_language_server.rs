@@ -135,6 +135,10 @@ impl LanguageServerCandidate for TypeScriptLanguageServerCandidate {
         metadata: LanguageServerMetadata,
         executor: &CommandBuilder,
     ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            cfg!(feature = "managed_downloads"),
+            "Managed language-server installation is disabled in this build"
+        );
         log::info!(
             "Installing typescript-language-server version {}",
             metadata.version

@@ -1,37 +1,48 @@
 use std::collections::HashSet;
+#[cfg(feature = "agent_runtime")]
 use std::path::PathBuf;
 
 use warp_core::context_flag::ContextFlag;
 use warp_core::features::FeatureFlag;
 use warpui::keymap::BindingId;
-use warpui::{AppContext, Entity, ModelContext, ModelHandle, SingletonEntity, WindowId};
+use warpui::{AppContext, Entity, ModelContext, ModelHandle};
+#[cfg(feature = "agent_runtime")]
+use warpui::{SingletonEntity, WindowId};
 
-use super::conversations;
-#[cfg(not(feature = "warp_lite"))]
-use super::warp_drive;
-use crate::settings::WarpDriveSettings;
+#[cfg(feature = "agent_runtime")]
+use super::{conversations, warp_drive};
+#[cfg(feature = "agent_runtime")]
+use crate::drive::settings::WarpDriveSettings;
 use crate::search::QueryFilter;
 use crate::search::action::CommandBindingDataSource;
 use crate::search::binding_source::BindingSource;
+#[cfg(feature = "agent_runtime")]
+use crate::search::command_palette::files;
 use crate::search::command_palette::mixer::{CommandPaletteItemAction, ItemSummary};
 use crate::search::command_palette::new_session::NewSessionDataSource;
+#[cfg(feature = "agent_runtime")]
 use crate::search::command_palette::repos::RepoDataSource;
-use crate::search::command_palette::{CommandPaletteMixer, files, launch_config, navigation, tabs};
+use crate::search::command_palette::{CommandPaletteMixer, launch_config, navigation, tabs};
 use crate::search::data_source::QueryResult;
+#[cfg(feature = "agent_runtime")]
 use crate::search::files::model::FileSearchModel;
+#[cfg(feature = "agent_runtime")]
 use crate::search::mixer::AddAsyncSourceOptions;
 use crate::session_management::SessionSource;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::AISettings;
 
 /// Store of all of the [`crate::search::DataSource`]s for the command palette.
 pub struct DataSourceStore {
     actions_data_source: ModelHandle<CommandBindingDataSource>,
     sessions_data_source: ModelHandle<navigation::DataSource>,
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     warp_drive_data_source: ModelHandle<warp_drive::DataSource>,
     launch_config_data_source: ModelHandle<launch_config::DataSource>,
     new_session_data_source: Option<ModelHandle<NewSessionDataSource>>,
+    #[cfg(feature = "agent_runtime")]
     all_conversation_data_source: ModelHandle<conversations::DataSource>,
+    #[cfg(feature = "agent_runtime")]
     repo_data_source: ModelHandle<RepoDataSource>,
     tabs_data_source: Option<ModelHandle<tabs::DataSource>>,
 }
@@ -40,7 +51,7 @@ impl DataSourceStore {
     pub fn new(
         binding_source: ModelHandle<BindingSource>,
         active_session_handle: ModelHandle<SessionSource>,
-        window_id: WindowId,
+        #[cfg(feature = "agent_runtime")] window_id: WindowId,
         ctx: &mut ModelContext<Self>,
     ) -> Self {
         let actions_data_source =
@@ -49,7 +60,7 @@ impl DataSourceStore {
         let sessions_data_source =
             ctx.add_model(|_| navigation::DataSource::new(active_session_handle));
 
-        #[cfg(not(feature = "warp_lite"))]
+        #[cfg(feature = "agent_runtime")]
         let warp_drive_data_source =
             ctx.add_model(|ctx| warp_drive::DataSource::new(window_id, ctx));
 
@@ -57,21 +68,25 @@ impl DataSourceStore {
 
         let new_session_data_source = (FeatureFlag::ShellSelector.is_enabled()
             && cfg!(feature = "local_tty"))
-        .then_some(ctx.add_model(|ctx| NewSessionDataSource::new(binding_source, ctx)));
+        .then(|| ctx.add_model(|ctx| NewSessionDataSource::new(binding_source, ctx)));
 
+        #[cfg(feature = "agent_runtime")]
         let all_conversation_data_source: ModelHandle<conversations::DataSource> =
             ctx.add_model(|_| conversations::DataSource::new());
 
+        #[cfg(feature = "agent_runtime")]
         let repo_data_source = ctx.add_model(|_| RepoDataSource::new());
 
         Self {
             actions_data_source,
             sessions_data_source,
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             warp_drive_data_source,
             launch_config_data_source,
             new_session_data_source,
+            #[cfg(feature = "agent_runtime")]
             all_conversation_data_source,
+            #[cfg(feature = "agent_runtime")]
             repo_data_source,
             tabs_data_source: None,
         }
@@ -81,7 +96,7 @@ impl DataSourceStore {
     pub fn reset_search_mixer(
         &mut self,
         mixer: ModelHandle<CommandPaletteMixer>,
-        is_shared_session_viewer: bool,
+        #[cfg(feature = "agent_runtime")] is_shared_session_viewer: bool,
         ctx: &mut ModelContext<Self>,
     ) {
         mixer.update(ctx, |mixer, ctx| {
@@ -99,8 +114,8 @@ impl DataSourceStore {
                 HashSet::from([QueryFilter::Sessions]),
             );
 
-            #[cfg(not(feature = "warp_lite"))]
-            if WarpDriveSettings::is_warp_drive_enabled(ctx) {
+            #[cfg(feature = "agent_runtime")]
+            if !cfg!(feature = "warp_lite") && WarpDriveSettings::is_warp_drive_enabled(ctx) {
                 let mut warp_drive_filters = HashSet::from([
                     QueryFilter::Notebooks,
                     QueryFilter::Plans,
@@ -128,6 +143,7 @@ impl DataSourceStore {
                 );
             }
 
+            #[cfg(feature = "agent_runtime")]
             if FeatureFlag::CommandPaletteFileSearch.is_enabled() && !is_shared_session_viewer {
                 let file_search_model = FileSearchModel::as_ref(ctx);
                 let is_in_git_repo = file_search_model.repo_root_location(ctx).is_some();
@@ -150,17 +166,21 @@ impl DataSourceStore {
             }
 
             // Add conversation search if AI is enabled
-            if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
+            #[cfg(feature = "agent_runtime")]
+            if !cfg!(feature = "warp_lite") && AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
                 mixer.add_sync_source(
                     self.all_conversation_data_source.clone(),
                     HashSet::from([QueryFilter::Conversations]),
                 );
             }
 
-            mixer.add_sync_source(
-                self.repo_data_source.clone(),
-                HashSet::from([QueryFilter::Repos]),
-            );
+            #[cfg(feature = "agent_runtime")]
+            if !cfg!(feature = "warp_lite") {
+                mixer.add_sync_source(
+                    self.repo_data_source.clone(),
+                    HashSet::from([QueryFilter::Repos]),
+                );
+            }
 
             ctx.notify();
         });
@@ -212,30 +232,48 @@ impl DataSourceStore {
         summary: &ItemSummary,
         app: &AppContext,
     ) -> Option<QueryResult<CommandPaletteItemAction>> {
+        if cfg!(feature = "warp_lite")
+            && matches!(
+                summary,
+                ItemSummary::Workflow { .. }
+                    | ItemSummary::EnvVarCollection { .. }
+                    | ItemSummary::Notebook { .. }
+                    | ItemSummary::CloudObject
+                    | ItemSummary::Project { .. }
+                    | ItemSummary::Conversation { .. }
+                    | ItemSummary::NewConversation
+                    | ItemSummary::ForkConversation
+            )
+        {
+            return None;
+        }
         match summary {
+            #[cfg(not(feature = "agent_runtime"))]
+            ItemSummary::Workflow { .. }
+            | ItemSummary::EnvVarCollection { .. }
+            | ItemSummary::Notebook { .. }
+            | ItemSummary::File { .. }
+            | ItemSummary::Directory { .. }
+            | ItemSummary::Conversation { .. } => None,
             ItemSummary::Action { binding_id } => self
                 .actions_data_source
                 .as_ref(app)
                 .query_result(*binding_id),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             ItemSummary::Workflow { id } => self
                 .warp_drive_data_source
                 .as_ref(app)
                 .query_result(id, app),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             ItemSummary::EnvVarCollection { id } => self
                 .warp_drive_data_source
                 .as_ref(app)
                 .query_result(id, app),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             ItemSummary::Notebook { id } => self
                 .warp_drive_data_source
                 .as_ref(app)
                 .query_result(id, app),
-            #[cfg(feature = "warp_lite")]
-            ItemSummary::Workflow { .. }
-            | ItemSummary::EnvVarCollection { .. }
-            | ItemSummary::Notebook { .. } => None,
             ItemSummary::Session { pane_view_locator } => self
                 .sessions_data_source
                 .as_ref(app)
@@ -255,6 +293,7 @@ impl DataSourceStore {
                 .new_session_data_source
                 .as_ref()
                 .and_then(|source| source.as_ref(app).query_result(id)),
+            #[cfg(feature = "agent_runtime")]
             ItemSummary::File {
                 path,
                 project_directory,
@@ -274,6 +313,7 @@ impl DataSourceStore {
                 };
                 Some(QueryResult::from(search_item))
             }
+            #[cfg(feature = "agent_runtime")]
             ItemSummary::Directory {
                 path,
                 project_directory,
@@ -298,6 +338,7 @@ impl DataSourceStore {
                 // For now, return None as projects aren't expected in the regular command palette.
                 None
             }
+            #[cfg(feature = "agent_runtime")]
             ItemSummary::Conversation { id } => conversations::DataSource::query_result(id, app),
 
             ItemSummary::NewConversation => {
@@ -339,6 +380,6 @@ impl Entity for DataSourceStore {
     type Event = ();
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "data_sources_tests.rs"]
 mod tests;

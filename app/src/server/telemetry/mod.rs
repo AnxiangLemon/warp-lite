@@ -6,37 +6,54 @@ mod macros;
 pub mod rudder_message;
 pub mod secret_redaction;
 
+#[cfg(feature = "cloud_services")]
 use std::fs::File;
 #[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "cloud_services")]
 use std::fs::OpenOptions;
+#[cfg(feature = "cloud_services")]
 use std::future::Future;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(feature = "cloud_services")]
+use std::path::PathBuf;
 
 use anyhow::Result;
+#[cfg(feature = "cloud_services")]
 use chrono::Utc;
 pub use collector::*;
 pub use context::telemetry_context;
 pub use events::*;
+#[cfg(feature = "cloud_services")]
 use futures::FutureExt;
+#[cfg(feature = "cloud_services")]
 use rudder_message::{
     Batch as RudderBatch, BatchMessage as RudderBatchMessageWithMetadata,
     BatchMessageItem as RudderBatchMessage, Message as RudderMessage,
 };
+#[cfg(feature = "cloud_services")]
 use warp_core::channel::RudderStackDestination;
+#[cfg(feature = "cloud_services")]
 use warp_errors::report_error;
+#[cfg(feature = "cloud_services")]
 use warpui::telemetry::Event;
 
+#[cfg(feature = "cloud_services")]
 use crate::ChannelState;
 use crate::auth::UserUid;
+#[cfg(feature = "cloud_services")]
 use crate::features::FeatureFlag;
+#[cfg(feature = "cloud_services")]
 use crate::server::telemetry::context::AttachContext;
+#[cfg(feature = "cloud_services")]
 use crate::server::telemetry_ext::TelemetryExt;
 use crate::settings::PrivacySettingsSnapshot;
 
 /// Filename for file where telemetry events are written on app quit.
+#[cfg(feature = "cloud_services")]
 const RUDDER_TELEMETRY_EVENTS_FILE_NAME: &str = "rudder_telemetry_events.json";
 
 /// Filepath where the Rudder events should be written on app quit.
+#[cfg(feature = "cloud_services")]
 fn rudder_event_file_path() -> PathBuf {
     warp_core::paths::secure_state_dir()
         .unwrap_or_else(warp_core::paths::state_dir)
@@ -49,6 +66,7 @@ pub fn clear_event_queue() {
 }
 
 pub struct TelemetryApi {
+    #[cfg(feature = "cloud_services")]
     pub(super) client: http_client::Client,
 }
 
@@ -58,6 +76,7 @@ impl Default for TelemetryApi {
     }
 }
 
+#[cfg(feature = "cloud_services")]
 impl TelemetryApi {
     pub fn new() -> Self {
         cfg_if::cfg_if! {
@@ -407,6 +426,51 @@ impl TelemetryApi {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "cloud_services"))]
 #[path = "mod_tests.rs"]
 mod tests;
+
+#[cfg(not(feature = "cloud_services"))]
+impl TelemetryApi {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub async fn flush_events(&self, settings_snapshot: PrivacySettingsSnapshot) -> Result<usize> {
+        let _ = settings_snapshot;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
+
+    pub async fn flush_persisted_events_to_rudder(
+        &self,
+        path: &Path,
+        settings_snapshot: PrivacySettingsSnapshot,
+    ) -> Result<()> {
+        let _ = (path, settings_snapshot);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
+
+    pub fn flush_and_persist_events(
+        &self,
+        max_event_count: usize,
+        settings_snapshot: PrivacySettingsSnapshot,
+    ) -> Result<()> {
+        let _ = (max_event_count, settings_snapshot);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
+
+    pub async fn send_telemetry_event(
+        &self,
+        user_id: Option<UserUid>,
+        anonymous_id: String,
+        event: impl warp_core::telemetry::TelemetryEvent,
+        settings_snapshot: PrivacySettingsSnapshot,
+    ) -> Result<()> {
+        let _ = (user_id, anonymous_id, event, settings_snapshot);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
+}
+
+#[cfg(all(test, not(feature = "cloud_services")))]
+#[path = "offline_tests.rs"]
+mod offline_tests;

@@ -155,6 +155,7 @@ pub(super) fn wrap_input_with_terminal_padding_and_focus_handler(
 }
 
 /// Renders the selected workflow info overlay over the input.
+#[cfg(feature = "agent_runtime")]
 pub(super) fn add_workflow_info_overlay(
     stack: &mut Stack,
     selected_workflow_state: &super::SelectedWorkflowState,
@@ -187,6 +188,7 @@ pub(super) fn add_workflow_info_overlay(
 }
 
 /// Renders the voltron overlay over the input.
+#[cfg(feature = "agent_runtime")]
 pub(super) fn add_voltron_overlay(
     stack: &mut Stack,
     voltron_view: &ViewHandle<crate::voltron::Voltron>,
@@ -303,6 +305,7 @@ pub(super) fn add_input_suggestions_overlays(
             );
         }
         InputSuggestionsMode::AIContextMenu { .. } => {
+            #[cfg(feature = "agent_runtime")]
             input.render_ai_context_menu(stack, &menu_positioning, app);
         }
         // SlashCommandsMenu is rendered separately via inline_slash_commands_menu_view
@@ -484,6 +487,10 @@ pub(super) fn maybe_add_buy_credits_banner(
     is_input_at_top: bool,
     app: &AppContext,
 ) {
+    if cfg!(feature = "warp_lite") {
+        return;
+    }
+
     let workspaces = UserWorkspaces::as_ref(app);
     let can_purchase_addon_credits = workspaces
         .purchase_policy_for_team(workspaces.team_for_view_handle(input_view_handle, app))

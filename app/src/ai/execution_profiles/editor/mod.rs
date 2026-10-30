@@ -136,6 +136,7 @@ struct TooltipMouseStateHandles {
 }
 
 pub mod manager;
+#[cfg(feature = "agent_runtime")]
 pub use manager::*;
 
 pub const HEADER_TEXT: &str = "Profile Editor";
@@ -1495,7 +1496,7 @@ fn initial_context_window_display_value(
 
 mod ui_helpers;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "mod_tests.rs"]
 mod tests;
 

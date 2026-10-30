@@ -1,6 +1,6 @@
 /// Walks a conversation's task tree and produces a hierarchical directory of YAML files
 /// suitable for grep-based conversation search.
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "conversation_yaml_tests.rs"]
 mod tests;
 

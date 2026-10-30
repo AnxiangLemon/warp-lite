@@ -1,11 +1,20 @@
+mod events;
+#[cfg(feature = "network_transport")]
+mod session;
+#[cfg(not(feature = "network_transport"))]
+#[path = "session_offline.rs"]
 mod session;
 
 use std::result::Result as StdResult;
 use std::sync::Arc;
 
-use anyhow::{Context as _, Result, anyhow};
+use anyhow::Result;
+#[cfg(feature = "network_transport")]
+use anyhow::{Context as _, anyhow};
 use async_trait::async_trait;
+#[cfg(feature = "network_transport")]
 use cynic::{MutationBuilder, QueryBuilder};
+pub use events::AuthEvent;
 use firebase::FirebaseError;
 use instant::Duration;
 #[cfg(any(test, feature = "test-util"))]
@@ -14,33 +23,48 @@ pub use session::*;
 use thiserror::Error;
 pub use user_uid::{TEST_USER_EMAIL, TEST_USER_UID, UserUid};
 use warp_errors::{AnyhowErrorExt, ErrorExt, register_error};
+#[cfg(feature = "network_transport")]
 use warp_graphql::client::Operation;
 use warp_graphql::mutations::create_anonymous_user::{
-    AnonymousUserType, CreateAnonymousUser, CreateAnonymousUserResult, CreateAnonymousUserVariables,
+    AnonymousUserType, CreateAnonymousUserResult,
 };
-use warp_graphql::mutations::expire_api_key::{
-    ExpireApiKey, ExpireApiKeyResult, ExpireApiKeyVariables,
+#[cfg(feature = "network_transport")]
+use warp_graphql::mutations::create_anonymous_user::{
+    CreateAnonymousUser, CreateAnonymousUserVariables,
 };
+use warp_graphql::mutations::expire_api_key::ExpireApiKeyResult;
+#[cfg(feature = "network_transport")]
+use warp_graphql::mutations::expire_api_key::{ExpireApiKey, ExpireApiKeyVariables};
+use warp_graphql::mutations::generate_api_key::GenerateApiKeyResult;
+#[cfg(feature = "network_transport")]
 use warp_graphql::mutations::generate_api_key::{
-    GenerateApiKey, GenerateApiKeyInput, GenerateApiKeyResult, GenerateApiKeyVariables,
+    GenerateApiKey, GenerateApiKeyInput, GenerateApiKeyVariables,
 };
-use warp_graphql::mutations::mint_custom_token::{MintCustomTokenResult, MintCustomTokenVariables};
+use warp_graphql::mutations::mint_custom_token::MintCustomTokenResult;
+#[cfg(feature = "network_transport")]
+use warp_graphql::mutations::mint_custom_token::MintCustomTokenVariables;
+#[cfg(feature = "network_transport")]
 use warp_graphql::mutations::set_user_is_onboarded::{
     SetUserIsOnboarded, SetUserIsOnboardedResult, SetUserIsOnboardedVariables,
 };
+use warp_graphql::mutations::update_user_settings::UpdateUserSettingsInput;
+#[cfg(feature = "network_transport")]
 use warp_graphql::mutations::update_user_settings::{
-    UpdateUserSettings, UpdateUserSettingsInput, UpdateUserSettingsResult,
-    UpdateUserSettingsVariables,
+    UpdateUserSettings, UpdateUserSettingsResult, UpdateUserSettingsVariables,
 };
-use warp_graphql::queries::api_keys::{
-    ApiKeyProperties, ApiKeyPropertiesResult, ApiKeys, ApiKeysVariables,
-};
-use warp_graphql::queries::get_user::{GetUser, GetUserVariables, UserOutput as GqlUserOutput};
+use warp_graphql::queries::api_keys::ApiKeyProperties;
+#[cfg(feature = "network_transport")]
+use warp_graphql::queries::api_keys::{ApiKeyPropertiesResult, ApiKeys, ApiKeysVariables};
+use warp_graphql::queries::get_user::UserOutput as GqlUserOutput;
+#[cfg(feature = "network_transport")]
+use warp_graphql::queries::get_user::{GetUser, GetUserVariables};
+#[cfg(feature = "network_transport")]
 use warp_graphql::queries::get_user_settings::{GetUserSettings, GetUserSettingsVariables};
 use warp_server_auth::credentials::{AuthToken, Credentials, FirebaseToken, LoginToken};
 pub use warp_server_auth::user_uid;
 
 use crate::base_client::BaseClient;
+#[cfg(feature = "network_transport")]
 use crate::graphql_helpers::send_graphql_request;
 use crate::ids::ApiKeyUid;
 
@@ -56,6 +80,7 @@ pub struct AgentIdentity {
 }
 
 /// Wrapper for the `GET /api/v1/agent/identities` response.
+#[cfg(feature = "network_transport")]
 #[derive(serde::Deserialize)]
 struct AgentIdentitiesResponse {
     agents: Vec<AgentIdentity>,
@@ -78,6 +103,10 @@ pub struct FetchUserResult {
     pub from_refresh: bool,
 }
 
+fn unavailable_authentication() -> anyhow::Error {
+    warp_graphql::client::GraphQLError::Unavailable.into()
+}
+
 #[cfg_attr(any(test, feature = "test-util"), automock)]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
@@ -88,36 +117,58 @@ pub trait AuthClient: Send + Sync {
         &self,
         referral_code: Option<String>,
         anonymous_user_type: AnonymousUserType,
-    ) -> Result<CreateAnonymousUserResult>;
+    ) -> Result<CreateAnonymousUserResult> {
+        let _ = (referral_code, anonymous_user_type);
+        Err(unavailable_authentication())
+    }
 
     /// Returns the cached access token if it is still valid.
     ///
     /// If it has expired, this fetches a new access token using the user's refresh
     /// token, caches it, and then returns it. It may return an auth mode that does
     /// not require an Authorization header, such as session cookies or test credentials.
-    async fn get_or_refresh_access_token(&self) -> Result<AuthToken>;
+    async fn get_or_refresh_access_token(&self) -> Result<AuthToken> {
+        Err(unavailable_authentication())
+    }
 
     /// Fetches the user's metadata and authentication tokens.
     async fn fetch_user(
         &self,
         token: LoginToken,
         for_refresh: bool,
-    ) -> StdResult<FetchUserResult, UserAuthenticationError>;
+    ) -> StdResult<FetchUserResult, UserAuthenticationError> {
+        let _ = (token, for_refresh);
+        Err(UserAuthenticationError::Unexpected(
+            unavailable_authentication(),
+        ))
+    }
 
     /// Creates and fetches a new custom token for the current user from Firebase.
     ///
     /// This only works for anonymous users and surfaces an error if the user is not anonymous.
-    async fn fetch_new_custom_token(&self) -> Result<MintCustomTokenResult>;
+    async fn fetch_new_custom_token(&self) -> Result<MintCustomTokenResult> {
+        Err(unavailable_authentication())
+    }
 
     /// Handles the response from [`Self::fetch_new_custom_token`] by returning the newly minted custom token.
     fn on_custom_token_fetched(
         &self,
         response: Result<MintCustomTokenResult>,
-    ) -> Result<String, MintCustomTokenError>;
+    ) -> Result<String, MintCustomTokenError> {
+        let _ = response;
+        Err(MintCustomTokenError::UserFacingError(
+            unavailable_authentication().to_string(),
+        ))
+    }
 
     /// Queries warp-server for a set of the currently logged-in user's fields.
-    async fn fetch_user_properties<'a>(&self, auth_token: Option<&'a str>)
-    -> Result<GqlUserOutput>;
+    async fn fetch_user_properties<'a>(
+        &self,
+        auth_token: Option<&'a str>,
+    ) -> Result<GqlUserOutput> {
+        let _ = auth_token;
+        Err(unavailable_authentication())
+    }
 
     /// Returns the user's settings retrieved from the server, if any.
     ///
@@ -126,32 +177,59 @@ pub trait AuthClient: Send + Sync {
     /// defaults for any setting in [`SyncedUserSettings`]. If the fetched settings
     /// object exists but is missing required fields, or if the request itself fails,
     /// this returns an error.
-    async fn get_user_settings(&self) -> Result<Option<SyncedUserSettings>>;
+    async fn get_user_settings(&self) -> Result<Option<SyncedUserSettings>> {
+        Err(unavailable_authentication())
+    }
 
-    async fn set_is_telemetry_enabled(&self, value: bool) -> Result<()>;
+    async fn set_is_telemetry_enabled(&self, value: bool) -> Result<()> {
+        let _ = value;
+        Err(unavailable_authentication())
+    }
 
-    async fn set_is_crash_reporting_enabled(&self, value: bool) -> Result<()>;
+    async fn set_is_crash_reporting_enabled(&self, value: bool) -> Result<()> {
+        let _ = value;
+        Err(unavailable_authentication())
+    }
 
-    async fn set_is_cloud_conversation_storage_enabled(&self, value: bool) -> Result<()>;
+    async fn set_is_cloud_conversation_storage_enabled(&self, value: bool) -> Result<()> {
+        let _ = value;
+        Err(unavailable_authentication())
+    }
 
     /// Sends a request to update the user's settings on the server with values in the given input.
-    async fn update_user_settings(&self, input: UpdateUserSettingsInput) -> Result<()>;
+    async fn update_user_settings(&self, input: UpdateUserSettingsInput) -> Result<()> {
+        let _ = input;
+        Err(unavailable_authentication())
+    }
 
-    async fn set_user_is_onboarded(&self) -> Result<bool>;
+    async fn set_user_is_onboarded(&self) -> Result<bool> {
+        Err(unavailable_authentication())
+    }
 
     /// Requests a device authorization code from the server for headless CLI or SDK authentication.
     async fn request_device_code(
         &self,
-    ) -> StdResult<oauth2::StandardDeviceAuthorizationResponse, UserAuthenticationError>;
+    ) -> StdResult<oauth2::StandardDeviceAuthorizationResponse, UserAuthenticationError> {
+        Err(UserAuthenticationError::Unexpected(
+            unavailable_authentication(),
+        ))
+    }
 
     /// Waits for the request to be approved or rejected and exchanges it for a short-lived custom access token.
     async fn exchange_device_access_token(
         &self,
         details: &oauth2::StandardDeviceAuthorizationResponse,
         timeout: Duration,
-    ) -> StdResult<FirebaseToken, UserAuthenticationError>;
+    ) -> StdResult<FirebaseToken, UserAuthenticationError> {
+        let _ = (details, timeout);
+        Err(UserAuthenticationError::Unexpected(
+            unavailable_authentication(),
+        ))
+    }
 
-    async fn list_api_keys(&self) -> Result<Vec<ApiKeyProperties>>;
+    async fn list_api_keys(&self) -> Result<Vec<ApiKeyProperties>> {
+        Err(unavailable_authentication())
+    }
 
     async fn create_api_key(
         &self,
@@ -159,29 +237,45 @@ pub trait AuthClient: Send + Sync {
         team_id: Option<cynic::Id>,
         agent_uid: Option<cynic::Id>,
         expires_at: Option<warp_graphql::scalars::Time>,
-    ) -> Result<GenerateApiKeyResult>;
+    ) -> Result<GenerateApiKeyResult> {
+        let _ = (name, team_id, agent_uid, expires_at);
+        Err(unavailable_authentication())
+    }
 
-    async fn expire_api_key(&self, key_uid: &ApiKeyUid) -> Result<ExpireApiKeyResult>;
+    async fn expire_api_key(&self, key_uid: &ApiKeyUid) -> Result<ExpireApiKeyResult> {
+        let _ = key_uid;
+        Err(unavailable_authentication())
+    }
 
     /// Fetches the list of named agent identities for the user's team.
-    async fn list_agent_identities(&self) -> Result<Vec<AgentIdentity>>;
+    async fn list_agent_identities(&self) -> Result<Vec<AgentIdentity>> {
+        Err(unavailable_authentication())
+    }
 }
 
 /// Implements the [`AuthClient`] trait on top of a base client and auth session.
 pub struct AuthClientImpl {
+    #[cfg(feature = "network_transport")]
     base_client: Arc<BaseClient>,
+    #[cfg(feature = "network_transport")]
     auth_session: Arc<AuthSession>,
 }
 
 impl AuthClientImpl {
     pub fn new(base_client: Arc<BaseClient>) -> Self {
+        #[cfg(feature = "network_transport")]
         let auth_session = base_client.auth_session();
+        #[cfg(not(feature = "network_transport"))]
+        drop(base_client);
         Self {
+            #[cfg(feature = "network_transport")]
             base_client,
+            #[cfg(feature = "network_transport")]
             auth_session,
         }
     }
 
+    #[cfg(feature = "network_transport")]
     async fn update_settings(
         &self,
         input: UpdateUserSettingsInput,
@@ -197,6 +291,7 @@ impl AuthClientImpl {
         Self::on_settings_updated(result, unknown_error_message)
     }
 
+    #[cfg(feature = "network_transport")]
     fn on_settings_updated(
         result: UpdateUserSettingsResult,
         unknown_error_message: &'static str,
@@ -211,6 +306,7 @@ impl AuthClientImpl {
     }
 }
 
+#[cfg(feature = "network_transport")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl AuthClient for AuthClientImpl {
@@ -465,6 +561,11 @@ impl AuthClient for AuthClientImpl {
     }
 }
 
+#[cfg(not(feature = "network_transport"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl AuthClient for AuthClientImpl {}
+
 /// Error type when retrieving a user and validating it against Firebase.
 #[derive(Error, Debug)]
 pub enum UserAuthenticationError {
@@ -548,6 +649,10 @@ pub enum MintCustomTokenError {
     Unknown,
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "network_transport"))]
 #[path = "mod_tests.rs"]
 mod tests;
+
+#[cfg(all(test, not(feature = "network_transport")))]
+#[path = "offline_tests.rs"]
+mod offline_tests;

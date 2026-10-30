@@ -1,48 +1,72 @@
+#[cfg(feature = "agent_runtime")]
 use std::any::Any;
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+#[cfg(feature = "agent_runtime")]
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::pin::pin;
 use std::rc::Rc;
+#[cfg(feature = "agent_runtime")]
 use std::str::FromStr;
+#[cfg(feature = "agent_runtime")]
 use std::sync::Arc;
 
+#[cfg(feature = "agent_runtime")]
 use chrono::{Local, Utc};
+#[cfg(feature = "agent_runtime")]
 use parking_lot::FairMutex;
+#[cfg(feature = "agent_runtime")]
 use session_sharing_protocol::common::CLIAgentSessionState;
+#[cfg(feature = "agent_runtime")]
 use warp_cli::agent::Harness;
+#[cfg(feature = "agent_runtime")]
 use warp_terminal::model::escape_sequences::{BRACKETED_PASTE_END, BRACKETED_PASTE_START, C0};
+#[cfg(feature = "agent_runtime")]
+use warpui::ReadModel;
 use warpui::notification::UserNotification;
+#[cfg(feature = "agent_runtime")]
 use warpui::platform::WindowStyle;
-use warpui::{App, EntityIdSet, Presenter, ReadModel, WindowInvalidation};
+use warpui::{App, EntityIdSet, Presenter, WindowInvalidation};
 
 use super::*;
+#[cfg(feature = "agent_runtime")]
 use crate::ActiveAgentViewsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::conversation::{AIConversation, ConversationStatus};
-use crate::ai::agent::task::TaskId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::{
-    AIAgentActionId, AIAgentExchange, AIAgentExchangeId, AIAgentInput, AIAgentOutputStatus,
-    AgentReviewCommentBatch, UserQueryMode,
+    AIAgentExchange, AIAgentInput, AIAgentOutputStatus, AgentReviewCommentBatch, UserQueryMode,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_conversations_model::AgentConversationsModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ambient_agents::task::TaskPrincipalInfo;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::ambient_agents::{AmbientAgentTask, AmbientAgentTaskId, AmbientAgentTaskState};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::toolbar_item::AgentToolbarItemKind;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::{
     AgentViewEntryBlock, AgentViewEntryOrigin, AgentViewState, EnterAgentBlockAction,
     ExitAgentViewError,
 };
-use crate::ai::blocklist::block::cli_controller::UserTakeOverReason;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{
-    BlocklistAIHistoryEvent, BlocklistAIHistoryModel, InputConfig, InputType, ResponseStream,
-    ResponseStreamId,
+    BlocklistAIHistoryEvent, BlocklistAIHistoryModel, ResponseStream, ResponseStreamId,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::cloud_environments::{
     AmbientAgentEnvironment, CloudAmbientAgentEnvironment, CloudAmbientAgentEnvironmentModel,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::llms::LLMId;
+#[cfg(feature = "agent_runtime")]
 use crate::auth::user::TEST_USER_UID;
+#[cfg(feature = "agent_runtime")]
 use crate::cloud_object::model::persistence::CloudModel;
+#[cfg(feature = "agent_runtime")]
 use crate::cloud_object::{CloudObjectMetadata, CloudObjectPermissions};
+#[cfg(feature = "agent_runtime")]
 use crate::code_review::comments::{
     AttachedReviewComment, AttachedReviewCommentTarget, CommentOrigin,
 };
@@ -50,47 +74,79 @@ use crate::context_chips::prompt::Prompt;
 use crate::editor::{AutosuggestionLocation, AutosuggestionType, CrdtOperation};
 use crate::features::FeatureFlag;
 use crate::pane_group::focus_state::PaneGroupFocusState;
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::pane::PaneStack;
 use crate::pane_group::{BackingView, TerminalPaneId};
+#[cfg(feature = "agent_runtime")]
 use crate::server::ids::{ClientId, SyncId};
+#[cfg(feature = "agent_runtime")]
 use crate::server::server_api::ai::SpawnAgentRequest;
+#[cfg(feature = "agent_runtime")]
+use crate::settings::AISettings;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::import::model::ImportedConfigModel;
-use crate::settings::{AISettings, AppEditorSettings, WarpPromptSeparator};
+use crate::settings::{AppEditorSettings, WarpPromptSeparator};
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::TerminalManager;
 use crate::terminal::alt_screen::should_intercept_mouse;
 use crate::terminal::block_list_element::{SnackbarPoint, SnackbarTranslationMode};
 use crate::terminal::block_list_viewport::{ClampingMode, ScrollLines};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::event::{
     CLI_AGENT_NOTIFICATION_SENTINEL, CLIAgentEvent, CLIAgentEventPayload, CLIAgentEventSource,
     CLIAgentEventType,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::listener::CLIAgentSessionListener;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::{
     CLIAgentInputEntrypoint, CLIAgentInputState, CLIAgentRichInputCloseReason, CLIAgentSession,
     CLIAgentSessionContext, CLIAgentSessionStatus, CLIAgentSessionsModel,
 };
 use crate::terminal::model::ansi::{self, BootstrappedValue, InitShellValue, PreexecValue};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::model::block::AgentViewVisibility;
 use crate::terminal::model::blocks::{TotalIndex, insert_block};
 use crate::terminal::model::grid::Dimensions as _;
 use crate::terminal::model::terminal_model::WithinBlock;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::session_settings::AgentToolbarChipSelection;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::AIAgentActionId;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::AIAgentExchangeId;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::InputConfig;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::InputType;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::TaskId;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::UserTakeOverReason;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::shared_handlers::{
     RemoteUpdateGuard, apply_cli_agent_state_update,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::{SharedSessionSource, SharedSessionStatus};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::ambient_agent::AmbientAgentViewModelEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::load_ai_conversation::{
     RestoreConversationEntryBehavior, RestoredAIConversation,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::shared_session::ConversationEndedTombstoneView;
-use crate::terminal::{CLIAgent, MockTerminalManager, TerminalManager, TerminalModel};
+use crate::terminal::{CLIAgent, MockTerminalManager, TerminalModel};
 use crate::test_util::terminal::{
     add_window_with_id_and_terminal, initialize_app_for_terminal_view,
 };
 use crate::test_util::{add_window_with_terminal, assert_eventually};
 use crate::view_components::find::FindWithinBlockState;
+#[cfg(feature = "agent_runtime")]
 use crate::workspace::ToastStack;
 
+#[cfg(feature = "agent_runtime")]
 fn add_window_with_cloud_mode_terminal(app: &mut App) -> ViewHandle<TerminalView> {
     let tips_model = app.add_model(|_| Default::default());
     let (_, terminal) = app.add_window(WindowStyle::NotStealFocus, |ctx| {
@@ -104,6 +160,7 @@ fn add_window_with_cloud_mode_terminal(app: &mut App) -> ViewHandle<TerminalView
 
 /// Builds a resumable, owned (created by the current test user) Oz cloud task so
 /// `resolve_ai_query_routing` classifies a pane bound to it as a `NewCloudVm` follow-up target.
+#[cfg(feature = "agent_runtime")]
 fn owned_resumable_oz_task(task_id: AmbientAgentTaskId) -> AmbientAgentTask {
     let now = Utc::now();
     AmbientAgentTask {
@@ -138,6 +195,7 @@ fn owned_resumable_oz_task(task_id: AmbientAgentTaskId) -> AmbientAgentTask {
 }
 
 /// The AI blocks currently flagged to render the transcript-navigation ring.
+#[cfg(feature = "agent_runtime")]
 fn navigation_ring_targets(view: &TerminalView, app: &AppContext) -> Vec<EntityId> {
     view.rich_content_views
         .iter()
@@ -152,6 +210,7 @@ fn navigation_ring_targets(view: &TerminalView, app: &AppContext) -> Vec<EntityI
         .collect()
 }
 
+#[cfg(feature = "agent_runtime")]
 fn has_pending_user_query_block(view: &TerminalView) -> bool {
     let Some(view_id) = view.pending_user_query_view_id else {
         return false;
@@ -162,6 +221,7 @@ fn has_pending_user_query_block(view: &TerminalView) -> bool {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn agent_view_lifecycle_updates_input_mode() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -208,6 +268,7 @@ fn agent_view_lifecycle_updates_input_mode() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_up_in_agent_view_navigates_prompts_and_user_shell_blocks() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -407,6 +468,7 @@ fn cmd_up_in_agent_view_navigates_prompts_and_user_shell_blocks() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_down_past_newest_transcript_item_scrolls_to_end() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -450,6 +512,7 @@ fn cmd_down_past_newest_transcript_item_scrolls_to_end() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_down_past_newest_preserves_viewport_when_already_at_end() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -488,6 +551,7 @@ fn cmd_down_past_newest_preserves_viewport_when_already_at_end() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_down_without_navigation_cursor_is_a_no_op() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -534,6 +598,7 @@ fn cmd_down_without_navigation_cursor_is_a_no_op() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn agent_transcript_navigation_marks_target_user_query() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -673,13 +738,17 @@ fn ordinary_block_selection_unchanged_outside_agent_view() {
             // produces a query mark.
             view.select_less_recent_block(false /* is_shift_down */, ctx);
             let first = view.selected_blocks.tail().expect("a block gets selected");
+            #[cfg(feature = "agent_runtime")]
             assert_eq!(view.agent_transcript_navigated_ai_block(ctx), None);
+            #[cfg(feature = "agent_runtime")]
             assert!(navigation_ring_targets(view, ctx).is_empty());
 
             view.select_less_recent_block(false, ctx);
             let second = view.selected_blocks.tail().expect("a block stays selected");
             assert_eq!(second.0 + 1, first.0);
+            #[cfg(feature = "agent_runtime")]
             assert_eq!(view.agent_transcript_navigated_ai_block(ctx), None);
+            #[cfg(feature = "agent_runtime")]
             assert!(navigation_ring_targets(view, ctx).is_empty());
         });
     })
@@ -740,6 +809,7 @@ fn input_operations_for_buffer_content(app: &mut App, content: &str) -> Vec<Crdt
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn exchange_with_inputs(inputs: Vec<AIAgentInput>) -> AIAgentExchange {
     AIAgentExchange {
         id: AIAgentExchangeId::new(),
@@ -759,6 +829,7 @@ fn exchange_with_inputs(inputs: Vec<AIAgentInput>) -> AIAgentExchange {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn append_exchange_and_handle_event(
     view: &mut TerminalView,
     input: AIAgentInput,
@@ -772,6 +843,7 @@ fn append_exchange_and_handle_event(
     append_exchange_with_inputs_and_handle_event(view, vec![input], ctx)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn append_exchange_with_inputs_and_handle_event(
     view: &mut TerminalView,
     inputs: Vec<AIAgentInput>,
@@ -818,6 +890,7 @@ fn append_exchange_with_inputs_and_handle_event(
     (conversation_id, task_id, exchange_id, response_stream_id)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn update_exchange_input_and_handle_event(
     view: &mut TerminalView,
     conversation_id: AIConversationId,
@@ -852,6 +925,7 @@ fn update_exchange_input_and_handle_event(
     );
 }
 
+#[cfg(feature = "agent_runtime")]
 fn enter_agent_view_for_navigation(
     view: &mut TerminalView,
     ctx: &mut ViewContext<TerminalView>,
@@ -869,6 +943,7 @@ fn enter_agent_view_for_navigation(
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn append_inputs_to_conversation_and_handle_event(
     view: &mut TerminalView,
     conversation_id: AIConversationId,
@@ -907,6 +982,7 @@ fn append_inputs_to_conversation_and_handle_event(
     );
 }
 
+#[cfg(feature = "agent_runtime")]
 fn agent_view_user_query_input(query: &str) -> AIAgentInput {
     AIAgentInput::UserQuery {
         query: query.to_owned(),
@@ -919,6 +995,7 @@ fn agent_view_user_query_input(query: &str) -> AIAgentInput {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn simulate_user_shell_block_in_conversation(
     view: &mut TerminalView,
     conversation_id: AIConversationId,
@@ -931,6 +1008,7 @@ fn simulate_user_shell_block_in_conversation(
     index.into()
 }
 
+#[cfg(feature = "agent_runtime")]
 fn ai_block_count(view: &TerminalView) -> usize {
     view.rich_content_views
         .iter()
@@ -943,6 +1021,7 @@ fn ai_block_count(view: &TerminalView) -> usize {
         .count()
 }
 
+#[cfg(feature = "agent_runtime")]
 fn agent_view_entry_count_for_conversation(
     view: &TerminalView,
     conversation_id: AIConversationId,
@@ -959,6 +1038,7 @@ fn agent_view_entry_count_for_conversation(
         .count()
 }
 
+#[cfg(feature = "agent_runtime")]
 fn command_block_count_for_conversation(
     view: &TerminalView,
     conversation_id: AIConversationId,
@@ -1000,6 +1080,7 @@ fn bootstrap_with_long_running_block(view: &mut TerminalView) {
 /// `requested_command_action_id` is set but `long_running_control_state` is None.
 /// This simulates the window between when the agent writes the command to the
 /// PTY and when `BlocklistAIHistoryEvent::CreatedSubtask` fires.
+#[cfg(feature = "agent_runtime")]
 fn set_active_block_agent_driving(view: &mut TerminalView, conversation_id: AIConversationId) {
     let action_id = AIAgentActionId::from("test-action".to_owned());
     view.model
@@ -1010,6 +1091,7 @@ fn set_active_block_agent_driving(view: &mut TerminalView, conversation_id: AICo
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn updated_conversation_metadata_refreshes_selected_conversation_pane_title() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1065,11 +1147,13 @@ fn updated_conversation_metadata_refreshes_selected_conversation_pane_title() {
         });
     })
 }
+#[cfg(feature = "agent_runtime")]
 struct TestTerminalManager {
     model: Arc<FairMutex<TerminalModel>>,
     _view: ViewHandle<TerminalView>,
 }
 
+#[cfg(feature = "agent_runtime")]
 impl TerminalManager for TestTerminalManager {
     fn model(&self) -> Arc<FairMutex<TerminalModel>> {
         self.model.clone()
@@ -1164,6 +1248,7 @@ fn test_create_new_block_with_local_status() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn submit_cli_agent_rich_input_restores_unlocked_input_config() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1236,6 +1321,7 @@ fn submit_cli_agent_rich_input_restores_unlocked_input_config() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn unregister_cli_agent_session_restores_unlocked_input_config() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1310,6 +1396,7 @@ fn unregister_cli_agent_session_restores_unlocked_input_config() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn clear_buffer_action_in_fullscreen_agent_view_starts_new_conversation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1347,6 +1434,7 @@ fn clear_buffer_action_in_fullscreen_agent_view_starts_new_conversation() {
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn agent_jump_user_query(query: &str) -> AIAgentInput {
     AIAgentInput::UserQuery {
         query: query.to_owned(),
@@ -1360,6 +1448,7 @@ fn agent_jump_user_query(query: &str) -> AIAgentInput {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn jump_to_latest_agent_message_no_ops_when_agent_view_disabled() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1387,6 +1476,7 @@ fn jump_to_latest_agent_message_no_ops_when_agent_view_disabled() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn jump_to_latest_agent_message_no_ops_without_conversations() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1407,6 +1497,7 @@ fn jump_to_latest_agent_message_no_ops_without_conversations() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn jump_to_latest_agent_message_enters_agent_view_and_records_pending_scroll() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1443,6 +1534,7 @@ fn jump_to_latest_agent_message_enters_agent_view_and_records_pending_scroll() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn jump_to_latest_agent_message_targets_latest_visible_exchange() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1483,6 +1575,7 @@ fn jump_to_latest_agent_message_targets_latest_visible_exchange() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn jump_to_latest_agent_message_scrolls_without_re_entering_when_already_in_view() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1522,6 +1615,7 @@ fn jump_to_latest_agent_message_scrolls_without_re_entering_when_already_in_view
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn restoring_conversation_to_new_pane_transfers_blocks_from_previous_terminal_surface() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1634,6 +1728,7 @@ fn restoring_conversation_to_new_pane_transfers_blocks_from_previous_terminal_su
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn clicking_old_banner_for_open_conversation_focuses_current_terminal_surface_without_transferring_blocks()
  {
     App::test((), |mut app| async move {
@@ -1776,6 +1871,7 @@ fn clicking_old_banner_for_open_conversation_focuses_current_terminal_surface_wi
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn appended_exchange_renders_in_current_terminal_surface_after_conversation_transfer() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1924,6 +2020,7 @@ fn command_first_word_and_suffix_handles_alias_without_args() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn escape_pops_nested_cloud_agent_view_with_long_running_command() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -1992,6 +2089,7 @@ fn escape_pops_nested_cloud_agent_view_with_long_running_command() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn escape_does_not_exit_root_cloud_agent_view_with_long_running_command() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2016,6 +2114,7 @@ fn escape_does_not_exit_root_cloud_agent_view_with_long_running_command() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn escape_does_not_exit_local_agent_view_with_long_running_command() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2050,6 +2149,7 @@ fn escape_does_not_exit_local_agent_view_with_long_running_command() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn root_cloud_mode_pane_sets_root_cloud_mode_context_key() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2114,6 +2214,7 @@ fn root_cloud_mode_pane_sets_root_cloud_mode_context_key() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn set_input_mode_agent_does_not_enter_local_agent_from_root_cloud_mode_pane() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2142,6 +2243,7 @@ fn set_input_mode_agent_does_not_enter_local_agent_from_root_cloud_mode_pane() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cloud_mode_v1_agent_prefixed_query_spawns_cloud_agent() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2186,6 +2288,7 @@ fn cloud_mode_v1_agent_prefixed_query_spawns_cloud_agent() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cloud_mode_v2_agent_prefixed_query_spawns_cloud_agent() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2232,6 +2335,7 @@ fn cloud_mode_v2_agent_prefixed_query_spawns_cloud_agent() {
 
 /// Registers a stub `CloudAmbientAgentEnvironment` in the test `CloudModel` and
 /// returns its `SyncId` so the caller can attach it to an ambient view model.
+#[cfg(feature = "agent_runtime")]
 fn register_test_cloud_environment(app: &mut App) -> SyncId {
     let sync_id = SyncId::ClientId(ClientId::new());
     app.update(|ctx| {
@@ -2256,6 +2360,7 @@ fn register_test_cloud_environment(app: &mut App) -> SyncId {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn fresh_cloud_mode_setup_enters_agent_view_when_view_pending() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2279,6 +2384,7 @@ fn fresh_cloud_mode_setup_enters_agent_view_when_view_pending() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn shared_third_party_viewer_sync_enters_agent_view_and_retags_existing_block() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2352,6 +2458,7 @@ fn shared_third_party_viewer_sync_enters_agent_view_and_retags_existing_block() 
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn shared_third_party_viewer_syncs_from_viewer_harness_updated_when_harness_unchanged() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2421,6 +2528,7 @@ fn shared_third_party_viewer_syncs_from_viewer_harness_updated_when_harness_unch
     });
 }
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn shared_third_party_viewer_syncs_from_cli_agent_state_without_ambient_model() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2493,6 +2601,7 @@ fn shared_third_party_viewer_syncs_from_cli_agent_state_without_ambient_model() 
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cloud_mode_followup_input_uses_explicit_submit_event_even_when_view_pending() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2560,6 +2669,7 @@ fn cloud_mode_followup_input_uses_explicit_submit_event_even_when_view_pending()
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn pending_cloud_followup_without_ambient_model_restores_prompt() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2584,6 +2694,7 @@ fn pending_cloud_followup_without_ambient_model_restores_prompt() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cloud_mode_dispatched_agent_inserts_queued_user_query() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2628,6 +2739,7 @@ fn cloud_mode_dispatched_agent_inserts_queued_user_query() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cloud_mode_failed_keeps_queued_query_above_tombstone_and_hides_input() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2731,6 +2843,7 @@ fn cloud_mode_failed_keeps_queued_query_above_tombstone_and_hides_input() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_enter_from_terminal_without_selected_block_enters_agent_view() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2789,6 +2902,7 @@ fn cmd_enter_from_terminal_without_selected_block_enters_agent_view() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_enter_from_terminal_with_selected_block_enters_agent_view_with_context() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2876,6 +2990,7 @@ fn cmd_enter_from_terminal_with_selected_block_enters_agent_view_with_context() 
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_enter_from_active_non_empty_agent_view_requires_confirmation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2951,6 +3066,7 @@ fn cmd_enter_from_active_non_empty_agent_view_requires_confirmation() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cloud_mode_followup_dispatched_inserts_queued_user_query() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -2978,6 +3094,7 @@ fn cloud_mode_followup_dispatched_inserts_queued_user_query() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cloud_mode_setup_v2_suppresses_sharer_input_updates_while_followup_setup_commands_run() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -3039,6 +3156,7 @@ fn cloud_mode_setup_v2_suppresses_sharer_input_updates_while_followup_setup_comm
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn pending_cloud_mode_query_waits_for_renderable_user_query_exchange() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -3078,6 +3196,7 @@ fn pending_cloud_mode_query_waits_for_renderable_user_query_exchange() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn pending_cloud_mode_query_clears_when_streaming_exchange_becomes_renderable() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -3136,9 +3255,8 @@ fn pending_cloud_mode_query_clears_when_streaming_exchange_becomes_renderable() 
 fn test_clear_session_flag_state() {
     use warp_terminal::shell::ShellType;
 
-    use crate::ai::blocklist::SerializedBlockListItem;
     use crate::terminal::ShellHost;
-    use crate::terminal::model::block::SerializedBlock;
+    use crate::terminal::model::block::{SerializedBlock, SerializedBlockListItem};
 
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -3331,39 +3449,42 @@ fn test_insert() {
         assert_selected_blocks_cardinality_eq(&mut app, BlockSelectionCardinality::None);
         assert_selected_text_eq(&mut app, None);
 
-        // Activate Agent Mode, which should no longer allow text insertion to clear the selected block(s) or text
-        terminal.update(&mut app, |view, ctx| {
-            view.set_ai_input_mode_with_query(None, ctx);
-        });
+        #[cfg(feature = "agent_runtime")]
+        {
+            // Activate Agent Mode, which should no longer allow text insertion to clear the selected block(s) or text
+            terminal.update(&mut app, |view, ctx| {
+                view.set_ai_input_mode_with_query(None, ctx);
+            });
 
-        // Agent Mode: Nothing selected
-        terminal.update(&mut app, |view, ctx| {
-            view.focus_terminal(ctx);
-            view.typed_characters_on_terminal("_your", ctx);
-        });
-        assert_input_text_eq(&mut app, "hello_this_is_your");
-        assert_selected_blocks_cardinality_eq(&mut app, BlockSelectionCardinality::None);
-        assert_selected_text_eq(&mut app, None);
+            // Agent Mode: Nothing selected
+            terminal.update(&mut app, |view, ctx| {
+                view.focus_terminal(ctx);
+                view.typed_characters_on_terminal("_your", ctx);
+            });
+            assert_input_text_eq(&mut app, "hello_this_is_your");
+            assert_selected_blocks_cardinality_eq(&mut app, BlockSelectionCardinality::None);
+            assert_selected_text_eq(&mut app, None);
 
-        // Agent Mode: Block selected
-        terminal.update(&mut app, |view, ctx| {
-            view.selected_blocks.reset_to_single(BlockIndex::zero());
-            view.focus_terminal(ctx);
-            view.typed_characters_on_terminal("_captain", ctx);
-        });
-        assert_input_text_eq(&mut app, "hello_this_is_your_captain");
-        assert_selected_blocks_cardinality_eq(&mut app, BlockSelectionCardinality::One);
-        assert_selected_text_eq(&mut app, None);
+            // Agent Mode: Block selected
+            terminal.update(&mut app, |view, ctx| {
+                view.selected_blocks.reset_to_single(BlockIndex::zero());
+                view.focus_terminal(ctx);
+                view.typed_characters_on_terminal("_captain", ctx);
+            });
+            assert_input_text_eq(&mut app, "hello_this_is_your_captain");
+            assert_selected_blocks_cardinality_eq(&mut app, BlockSelectionCardinality::One);
+            assert_selected_text_eq(&mut app, None);
 
-        // Agent Mode: Text selected
-        terminal.update(&mut app, |view, ctx| {
-            select_text(view, ctx);
-            view.focus_terminal(ctx);
-            view.typed_characters_on_terminal("_speaking", ctx);
-        });
-        assert_input_text_eq(&mut app, "hello_this_is_your_captain_speaking");
-        assert_selected_blocks_cardinality_eq(&mut app, BlockSelectionCardinality::None);
-        assert_selected_text_eq(&mut app, Some("f".to_owned()));
+            // Agent Mode: Text selected
+            terminal.update(&mut app, |view, ctx| {
+                select_text(view, ctx);
+                view.focus_terminal(ctx);
+                view.typed_characters_on_terminal("_speaking", ctx);
+            });
+            assert_input_text_eq(&mut app, "hello_this_is_your_captain_speaking");
+            assert_selected_blocks_cardinality_eq(&mut app, BlockSelectionCardinality::None);
+            assert_selected_text_eq(&mut app, Some("f".to_owned()));
+        }
     })
 }
 
@@ -4196,7 +4317,7 @@ fn test_context_menu_includes_clear_when_block_list_non_empty() {
                 .filter_map(|item| item.fields().map(|fields| fields.label()))
                 .collect();
             assert!(
-                labels.contains(&"Clear Blocks"),
+                labels.contains(&crate::lite_i18n::choose("Clear Blocks", "清空命令块")),
                 "Expected `Clear Blocks` menu item, got {labels:?}"
             );
         });
@@ -4224,7 +4345,7 @@ fn test_context_menu_omits_clear_when_block_list_empty() {
                 .filter_map(|item| item.fields().map(|fields| fields.label()))
                 .collect();
             assert!(
-                !labels.contains(&"Clear Blocks"),
+                !labels.contains(&crate::lite_i18n::choose("Clear Blocks", "清空命令块")),
                 "Did not expect `Clear Blocks` menu item when block list is empty, got {labels:?}"
             );
         });
@@ -4253,7 +4374,7 @@ fn test_context_menu_omits_clear_for_text_right_click() {
                 .filter_map(|item| item.fields().map(|fields| fields.label()))
                 .collect();
             assert!(
-                !labels.contains(&"Clear Blocks"),
+                !labels.contains(&crate::lite_i18n::choose("Clear Blocks", "清空命令块")),
                 "Did not expect `Clear Blocks` in text-selection right-click menu, got {labels:?}"
             );
         });
@@ -5630,9 +5751,15 @@ fn test_prompt_context_menu_items_for_ps1() {
             let items = view.prompt_context_menu_items(ctx);
             let len = items.len();
             assert_eq!(len, 3);
-            assert_eq!(items[0].fields().unwrap().label(), "Copy prompt");
+            assert_eq!(
+                items[0].fields().unwrap().label(),
+                crate::lite_i18n::choose("Copy prompt", "复制提示符")
+            );
             assert!(items[1].is_separator());
-            assert_eq!(items[2].fields().unwrap().label(), "Edit prompt");
+            assert_eq!(
+                items[2].fields().unwrap().label(),
+                crate::lite_i18n::choose("Edit prompt", "编辑提示符")
+            );
             assert!(!items[2].fields().unwrap().is_disabled());
         });
     })
@@ -5686,14 +5813,20 @@ fn test_prompt_context_menu_items_for_context_chips() {
             // <context chip specific actions>
             // ------------
             // Edit prompt
-            assert_eq!(items[0].fields().unwrap().label(), "Copy prompt");
+            assert_eq!(
+                items[0].fields().unwrap().label(),
+                crate::lite_i18n::choose("Copy prompt", "复制提示符")
+            );
             assert!(items[1].is_separator());
             assert_eq!(
                 items[2].fields().unwrap().label(),
-                "Copy Time (12-hour format)"
+                crate::lite_i18n::choose("Copy Time (12-hour format)", "复制时间（12 小时制）")
             );
             assert!(items[3].is_separator());
-            assert_eq!(items[4].fields().unwrap().label(), "Edit prompt");
+            assert_eq!(
+                items[4].fields().unwrap().label(),
+                crate::lite_i18n::choose("Edit prompt", "编辑提示符")
+            );
             assert!(!items[4].fields().unwrap().is_disabled());
         });
     })
@@ -5730,15 +5863,22 @@ fn test_prompt_context_menu_items_for_no_context_chips() {
             // Copy prompt
             // ------------
             // Edit prompt
-            assert_eq!(items[0].fields().unwrap().label(), "Copy prompt");
+            assert_eq!(
+                items[0].fields().unwrap().label(),
+                crate::lite_i18n::choose("Copy prompt", "复制提示符")
+            );
             assert!(items[1].is_separator());
-            assert_eq!(items[2].fields().unwrap().label(), "Edit prompt");
+            assert_eq!(
+                items[2].fields().unwrap().label(),
+                crate::lite_i18n::choose("Edit prompt", "编辑提示符")
+            );
             assert!(!items[2].fields().unwrap().is_disabled());
         });
     })
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn test_prompt_context_menu_items_for_agent_toolbelt_flag() {
     let _agent_view_guard = FeatureFlag::AgentView.override_enabled(true);
     App::test((), |mut app| async move {
@@ -5789,6 +5929,7 @@ fn test_prompt_context_menu_items_for_agent_toolbelt_flag() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn agent_footer_updates_chip_groups_when_side_assignment_changes() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -5970,6 +6111,7 @@ fn test_scroll_position_doesnt_change_when_block_finished() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn inline_agent_view_exits_when_tagged_in_long_running_command_is_tagged_out() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6032,6 +6174,7 @@ fn inline_agent_view_exits_when_tagged_in_long_running_command_is_tagged_out() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_c_after_stop_takeover_cancels_conversation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6092,6 +6235,7 @@ fn ctrl_c_after_stop_takeover_cancels_conversation() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_c_after_transfer_takeover_does_not_cancel_conversation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6155,6 +6299,7 @@ fn ctrl_c_after_transfer_takeover_does_not_cancel_conversation() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn completed_user_controlled_lrc_resumes_when_not_suppressed() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6214,6 +6359,7 @@ fn completed_user_controlled_lrc_resumes_when_not_suppressed() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn completed_user_controlled_lrc_skips_resume_when_suppressed() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6262,6 +6408,7 @@ fn completed_user_controlled_lrc_skips_resume_when_suppressed() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn inline_agent_view_persists_across_transfer_takeover_for_monitored_long_running_command() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6344,6 +6491,7 @@ fn inline_agent_view_persists_across_transfer_takeover_for_monitored_long_runnin
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn use_agent_footer_renders_for_transfer_handoff_even_when_user_command_footer_setting_disabled() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6430,6 +6578,7 @@ fn use_agent_footer_renders_for_transfer_handoff_even_when_user_command_footer_s
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn exiting_agent_view_removes_empty_conversations() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6473,6 +6622,7 @@ fn exiting_agent_view_removes_empty_conversations() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_c_exit_agent_view_requires_confirmation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6521,6 +6671,7 @@ fn ctrl_c_exit_agent_view_requires_confirmation() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_c_buffer_clear_then_exit_requires_three_presses_in_agent_view() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6579,6 +6730,7 @@ fn ctrl_c_buffer_clear_then_exit_requires_three_presses_in_agent_view() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn terminal_action_ctrl_c_exit_agent_view_requires_confirmation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6616,6 +6768,7 @@ fn terminal_action_ctrl_c_exit_agent_view_requires_confirmation() {
 /// Sets up a CLI agent session, opens rich input, submits `text`, and returns
 /// the terminal handle and the collected PTY writes.
 #[allow(clippy::type_complexity)]
+#[cfg(feature = "agent_runtime")]
 fn submit_rich_input_and_collect_pty_writes(
     app: &mut App,
     agent: CLIAgent,
@@ -6662,10 +6815,12 @@ fn submit_rich_input_and_collect_pty_writes(
     (terminal, pty_writes)
 }
 
+#[cfg(feature = "agent_runtime")]
 fn open_cli_agent_rich_input_for_agent(app: &mut App, agent: CLIAgent) -> ViewHandle<TerminalView> {
     open_cli_agent_rich_input_for_agent_with_window_id(app, agent).1
 }
 
+#[cfg(feature = "agent_runtime")]
 fn open_cli_agent_rich_input_for_agent_with_window_id(
     app: &mut App,
     agent: CLIAgent,
@@ -6702,6 +6857,7 @@ fn open_cli_agent_rich_input_for_agent_with_window_id(
 /// focused editor context. This is a regression test for #9286 where the
 /// keybinding only matched the terminal context, not the embedded editor.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_g_closes_cli_agent_rich_input_when_editor_is_focused() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6749,6 +6905,7 @@ fn ctrl_g_closes_cli_agent_rich_input_when_editor_is_focused() {
 /// block had transitioned out of `LongRunningCommand` — for example, when the
 /// CLI agent has paused waiting for user input.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_g_closes_cli_agent_rich_input_from_terminal_context() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6793,6 +6950,7 @@ fn ctrl_g_closes_cli_agent_rich_input_from_terminal_context() {
 /// Verifies that Ctrl-G is a true toggle: opens then closes rich input from
 /// the terminal context. Regression test for #9916.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_g_toggles_cli_agent_rich_input_from_terminal_context() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6846,6 +7004,7 @@ fn ctrl_g_toggles_cli_agent_rich_input_from_terminal_context() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cli_agent_rich_input_hint_text_mentions_active_cli_agent() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6873,6 +7032,7 @@ fn cli_agent_rich_input_hint_text_mentions_active_cli_agent() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cli_agent_rich_input_shell_mode_uses_run_commands_hint_text() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6909,6 +7069,7 @@ fn cli_agent_rich_input_shell_mode_uses_run_commands_hint_text() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn submit_cli_agent_rich_input_codex_uses_bracketed_paste() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6941,6 +7102,7 @@ fn submit_cli_agent_rich_input_codex_uses_bracketed_paste() {
 /// paste payload with a standalone \r submit. Embedded newlines must remain
 /// inside the paste instead of triggering separate submissions.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn submit_cli_agent_rich_input_hermes_multiline_uses_bracketed_paste() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -6979,6 +7141,7 @@ fn submit_cli_agent_rich_input_hermes_multiline_uses_bracketed_paste() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn submit_cli_agent_rich_input_opencode_defers_enter_and_close() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7003,6 +7166,7 @@ fn submit_cli_agent_rich_input_opencode_defers_enter_and_close() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn attach_path_as_context_routes_to_open_cli_agent_rich_input() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7035,6 +7199,7 @@ fn attach_path_as_context_routes_to_open_cli_agent_rich_input() {
     })
 }
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn drag_drop_image_in_cli_agent_long_running_command_pastes_via_clipboard() {
     // Regression test: dropping an image file into a tab where a CLI agent
     // (e.g. Claude Code) is the foreground long-running process should
@@ -7127,6 +7292,7 @@ fn drag_drop_image_in_cli_agent_long_running_command_pastes_via_clipboard() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn paste_raw_image_clipboard_in_cli_agent_sends_correct_bytes() {
     fn run_for_agent(agent: CLIAgent) {
         App::test((), move |mut app| async move {
@@ -7214,6 +7380,7 @@ fn paste_raw_image_clipboard_in_cli_agent_sends_correct_bytes() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn submit_without_auto_dismiss_keeps_rich_input_open() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7262,6 +7429,7 @@ fn submit_without_auto_dismiss_keeps_rich_input_open() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn submit_with_plugin_and_auto_toggle_keeps_rich_input_open() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7319,6 +7487,7 @@ fn submit_with_plugin_and_auto_toggle_keeps_rich_input_open() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn submit_with_plugin_but_auto_toggle_off_respects_auto_dismiss() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7379,6 +7548,7 @@ fn submit_with_plugin_but_auto_toggle_off_respects_auto_dismiss() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn status_blocked_auto_closes_rich_input() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7457,6 +7627,7 @@ fn status_blocked_auto_closes_rich_input() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn status_in_progress_auto_opens_rich_input_after_blocked() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7555,6 +7726,7 @@ fn status_in_progress_auto_opens_rich_input_after_blocked() {
 // keys when Codex shows interactive option menus. Auto-toggle must not fire
 // for agents whose handlers report `supports_rich_status() == false`.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn codex_status_change_does_not_auto_open_rich_input() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7625,6 +7797,7 @@ fn codex_status_change_does_not_auto_open_rich_input() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cli_session_status_updates_active_child_conversation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7777,6 +7950,7 @@ fn cli_session_status_updates_active_child_conversation() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cli_session_status_updates_single_child_conversation_without_agent_view() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7862,6 +8036,7 @@ fn cli_session_status_updates_single_child_conversation_without_agent_view() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn manual_dismiss_disables_auto_toggle_for_session() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -7961,6 +8136,7 @@ fn manual_dismiss_disables_auto_toggle_for_session() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn close_cli_agent_rich_input_saves_draft_and_reopen_restores_it() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8017,6 +8193,7 @@ fn close_cli_agent_rich_input_saves_draft_and_reopen_restores_it() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn submit_cli_agent_rich_input_clears_draft() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8054,6 +8231,7 @@ fn submit_cli_agent_rich_input_clears_draft() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn close_cli_agent_rich_input_with_empty_buffer_stores_no_draft() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8081,6 +8259,7 @@ fn close_cli_agent_rich_input_with_empty_buffer_stores_no_draft() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn ctrl_c_does_not_accept_prompt_suggestion_banner() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8138,6 +8317,7 @@ fn ctrl_c_does_not_accept_prompt_suggestion_banner() {
 /// send" ephemeral message must be shown so the user can inspect and explicitly
 /// send it.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn linear_deeplink_populates_input_as_draft_when_not_in_agent_view() {
     use super::agent_view::ENTER_AGAIN_TO_SEND_MESSAGE_ID;
 
@@ -8184,6 +8364,7 @@ fn linear_deeplink_populates_input_as_draft_when_not_in_agent_view() {
 /// the LLM. `LinearDeepLink` returns `AutoTriggerBehavior::Never`, so even the
 /// `was_in_agent_view_already` shortcut cannot promote it to auto-submit.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn linear_deeplink_does_not_auto_submit_when_already_in_agent_view() {
     use super::agent_view::ENTER_AGAIN_TO_SEND_MESSAGE_ID;
 
@@ -8265,6 +8446,7 @@ fn linear_deeplink_does_not_auto_submit_when_already_in_agent_view() {
 /// `LinearDeepLink` returns `AutoTriggerBehavior::Never`, so it must not
 /// auto-submit regardless of prior agent-view state.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn linear_deeplink_via_default_entrypoint_does_not_auto_submit_in_fullscreen() {
     use super::agent_view::ENTER_AGAIN_TO_SEND_MESSAGE_ID;
 
@@ -8321,6 +8503,7 @@ fn linear_deeplink_via_default_entrypoint_does_not_auto_submit_in_fullscreen() {
 /// AI blocks are separate child views, so unless `close_find_bar` clears find
 /// state they keep stale highlights until the pane is refocused.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn close_find_bar_clears_ai_block_find_highlights() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8456,6 +8639,7 @@ fn close_find_bar_preserves_options_on_async_find_path() {
 /// clipboard (the regression introduced by the `mouse_down` `if !handled` guard
 /// in #12079).
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn copy_selected_text_from_ai_block() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8537,6 +8721,7 @@ fn copy_selected_text_from_ai_block() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_k_does_not_clear_buffer_when_agent_is_driving_command() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8582,6 +8767,7 @@ fn cmd_k_does_not_clear_buffer_when_agent_is_driving_command() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_k_in_agent_view_clears_active_block_not_full_buffer_when_agent_driving_command() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8651,6 +8837,7 @@ fn cmd_k_in_agent_view_clears_active_block_not_full_buffer_when_agent_driving_co
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn cmd_k_in_agent_view_cancels_in_progress_conversation_and_starts_new_one() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8881,6 +9068,7 @@ fn copy_does_not_forward_on_normal_screen() {
 }
 
 /// Builds a minimal review batch with a single non-outdated general comment.
+#[cfg(feature = "agent_runtime")]
 fn single_general_review_comment(content: &str) -> AgentReviewCommentBatch {
     AgentReviewCommentBatch {
         comments: vec![AttachedReviewComment {
@@ -8897,6 +9085,7 @@ fn single_general_review_comment(content: &str) -> AgentReviewCommentBatch {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 fn set_warp_tui_session(view: &mut TerminalView, ctx: &mut ViewContext<TerminalView>) {
     view.model.lock().simulate_long_running_block("warp", "");
     assert_eq!(
@@ -8926,6 +9115,7 @@ fn set_warp_tui_session(view: &mut TerminalView, ctx: &mut ViewContext<TerminalV
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn warp_tui_listener_does_not_auto_open_rich_input() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8955,6 +9145,7 @@ fn warp_tui_listener_does_not_auto_open_rich_input() {
     });
 }
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn active_cli_agent_recognizes_detected_warp_tui_session() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -8978,6 +9169,7 @@ fn active_cli_agent_recognizes_detected_warp_tui_session() {
 /// `active_cli_agent` must return `None` for the Warp TUI when `HoaCodeReview`
 /// is disabled, preserving the pre-feature behavior (no review destination).
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn active_cli_agent_ignores_warp_tui_when_hoa_code_review_disabled() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -9023,6 +9215,7 @@ fn active_cli_agent_ignores_non_tui_long_running_command() {
 /// Sending review comments while the Warp TUI is running writes the built prompt
 /// directly to the TUI's PTY rather than the outer rich input.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn send_review_comments_to_warp_tui_writes_prompt_to_pty() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
@@ -9066,6 +9259,7 @@ fn send_review_comments_to_warp_tui_writes_prompt_to_pty() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn back_button_label_names_the_direct_parent_at_depth() {
     App::test((), |mut app| async move {
         crate::test_util::settings::initialize_history_persistence_for_tests(&mut app);
@@ -9143,6 +9337,7 @@ fn back_button_label_names_the_direct_parent_at_depth() {
 /// still resolve the parent through the history model's canonical
 /// resolution, yielding the same back-button label as an id-linked child.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn back_button_label_resolves_token_only_parent_linkage() {
     App::test((), |mut app| async move {
         crate::test_util::settings::initialize_history_persistence_for_tests(&mut app);

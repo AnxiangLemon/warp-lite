@@ -1,28 +1,28 @@
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
 use std::time::Duration;
 
 use tracing::subscriber;
 
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
 mod cloud_agent_auth;
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
 mod native;
 
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
 const DEFAULT_EXPORT_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub fn init() -> anyhow::Result<Initialization> {
-    #[cfg(target_family = "wasm")]
+    #[cfg(any(not(feature = "cloud_services"), target_family = "wasm"))]
     {
         install_no_subscriber()?;
         Ok(Initialization::default())
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
     native::init()
 }
 
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
 /// Starts cloud-agent trace credential refresh after authenticated application services exist.
 ///
 /// The exporter and dispatch credential are initialized earlier by [`init`]. This later lifecycle
@@ -35,6 +35,14 @@ pub fn start_auth_refresh(
     native::start_auth_refresh(client, ctx);
 }
 
+#[cfg(all(not(feature = "cloud_services"), not(target_family = "wasm")))]
+pub fn start_auth_refresh(
+    client: std::sync::Arc<dyn warp_managed_secrets::client::ManagedSecretsClient>,
+    ctx: &mut warpui::AppContext,
+) {
+    let _ = (client, ctx);
+}
+
 fn install_no_subscriber() -> anyhow::Result<()> {
     // Configure the global tracing subscriber to not care about any spans or
     // events.
@@ -45,18 +53,21 @@ fn install_no_subscriber() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[cfg_attr(target_family = "wasm", derive(Default))]
+#[cfg_attr(
+    any(not(feature = "cloud_services"), target_family = "wasm"),
+    derive(Default)
+)]
 pub struct Initialization {
     initialization_warning: Option<anyhow::Error>,
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
     active_spans: Option<native::ActiveSpanRegistry>,
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
     provider: Option<opentelemetry_sdk::trace::SdkTracerProvider>,
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
     shutdown_timeout: std::time::Duration,
 }
 
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
 impl Default for Initialization {
     fn default() -> Self {
         Self {
@@ -76,7 +87,7 @@ impl Initialization {
     }
 
     pub(crate) fn shutdown(&mut self) {
-        #[cfg(not(target_family = "wasm"))]
+        #[cfg(all(feature = "cloud_services", not(target_family = "wasm")))]
         {
             match (self.active_spans.take(), self.provider.take()) {
                 (Some(active_spans), Some(provider)) => {

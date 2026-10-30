@@ -1,6 +1,7 @@
 mod builder;
 mod step;
 
+#[cfg_attr(feature = "warp_lite", path = "test_lite.rs")]
 pub mod test;
 pub mod user_defaults;
 pub mod util;

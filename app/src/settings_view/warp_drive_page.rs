@@ -24,7 +24,7 @@ use super::{
 use crate::appearance::Appearance;
 use crate::auth::AuthStateProvider;
 use crate::auth::auth_manager::{AuthManager, AuthManagerEvent};
-use crate::settings::WarpDriveSettings;
+use crate::drive::settings::WarpDriveSettings;
 
 #[derive(Debug, Clone)]
 pub enum WarpDriveSettingsPageAction {

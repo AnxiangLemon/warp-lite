@@ -7,13 +7,13 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use warpui::{AppContext, Entity, SingletonEntity};
 
-use crate::ai::agent::conversation::AIConversationId;
-use crate::ai::agent::{AIAgentActionResultType, AIAgentExchangeId, AIAgentInput};
+use crate::ai::agent::{AIAgentActionResultType, AIAgentInput};
 use crate::ai::blocklist::BlocklistAIHistoryModel;
 use crate::search::SyncDataSource;
 use crate::search::data_source::{Query, QueryResult};
 use crate::search::mixer::DataSourceRunErrorWrapper;
 use crate::terminal::input::rewind::search_item::RewindSearchItem;
+use crate::terminal::session_types::{AIAgentExchangeId, AIConversationId};
 
 /// Action emitted when a rewind point is selected.
 #[derive(Clone, Debug)]

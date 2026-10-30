@@ -9,6 +9,8 @@ use settings::Setting;
 use warp_core::settings::SyncToCloud;
 use warp_core::ui::color::blend::Blend;
 use warp_core::ui::theme::color::internal_colors;
+#[cfg(feature = "agent_runtime")]
+use warpui::elements::MainAxisAlignment;
 use warpui::elements::new_scrollable::{
     ClippedAxisConfiguration, DualAxisConfig, SingleAxisConfig,
 };
@@ -19,8 +21,6 @@ use warpui::elements::{
     ParentOffsetBounds, Radius, SavePosition, ScrollTarget, ScrollToPositionMode, Shrinkable,
     SizeConstraintCondition, SizeConstraintSwitch, Stack, Text,
 };
-#[cfg(not(feature = "warp_lite"))]
-use warpui::elements::MainAxisAlignment;
 use warpui::fonts::{Properties, Weight};
 use warpui::platform::Cursor;
 use warpui::ui_components::button::{Button, ButtonVariant};
@@ -29,36 +29,35 @@ use warpui::units::Pixels;
 use warpui::{Action, AppContext, SingletonEntity, ViewContext, ViewHandle};
 
 use super::SettingsSection;
-use super::lite_i18n;
 use super::about_page::AboutPageView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::ai_page::{AISettingsPageAction, AISettingsPageView};
 use super::appearance_page::AppearanceSettingsPageView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::billing_and_usage_dispatch::BillingAndUsageDispatchView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::code_page::CodeSettingsPageView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::environments_page::EnvironmentsPageView;
 use super::features_page::FeaturesPageView;
 use super::keybindings::KeybindingsView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::main_page::MainSettingsPageView;
-#[cfg(feature = "mcp_client")]
+#[cfg(feature = "agent_runtime")]
 use super::mcp_servers_page::MCPServersSettingsPageView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::privacy_page::PrivacyPageView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::referrals_page::ReferralsPageView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::scripting_page::ScriptingSettingsPageView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::show_blocks_view::ShowBlocksView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::teams_page::TeamsPageView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::warp_drive_page::WarpDriveSettingsPageView;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::warpify_page::WarpifyPageView;
 use crate::appearance::Appearance;
 use crate::settings::CloudPreferencesSettings;
@@ -118,37 +117,37 @@ pub trait SettingsPageMeta {
 /// It is required to allow for SettingsPage struct be put in the collection (ie. vector).
 #[derive(Clone)]
 pub enum SettingsPageViewHandle {
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     Main(ViewHandle<MainSettingsPageView>),
     Appearance(ViewHandle<AppearanceSettingsPageView>),
     Features(ViewHandle<FeaturesPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     SharedBlocks(ViewHandle<ShowBlocksView>),
     Keybindings(ViewHandle<KeybindingsView>),
     About(ViewHandle<AboutPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     Code(ViewHandle<CodeSettingsPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     Teams(ViewHandle<TeamsPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     OzCloudAPIKeys(ViewHandle<super::platform_page::PlatformPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     Privacy(ViewHandle<PrivacyPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     Warpify(ViewHandle<WarpifyPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     Referrals(ViewHandle<ReferralsPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     Scripting(ViewHandle<ScriptingSettingsPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     AI(ViewHandle<AISettingsPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     CloudEnvironments(ViewHandle<EnvironmentsPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     BillingAndUsage(ViewHandle<BillingAndUsageDispatchView>),
-    #[cfg(feature = "mcp_client")]
+    #[cfg(feature = "agent_runtime")]
     MCPServers(ViewHandle<MCPServersSettingsPageView>),
-    #[cfg(not(feature = "warp_lite"))]
+    #[cfg(feature = "agent_runtime")]
     WarpDrive(ViewHandle<WarpDriveSettingsPageView>),
 }
 
@@ -156,43 +155,43 @@ impl SettingsPageViewHandle {
     pub fn child_view(&self) -> Box<dyn Element> {
         use SettingsPageViewHandle::*;
         match self {
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             Main(view_handle) => ChildView::new(view_handle).finish(),
             Appearance(view_handle) => ChildView::new(view_handle).finish(),
             Features(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             SharedBlocks(view_handle) => ChildView::new(view_handle).finish(),
             Keybindings(view_handle) => ChildView::new(view_handle).finish(),
             About(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             Code(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             Teams(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             OzCloudAPIKeys(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             Privacy(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             Warpify(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             Referrals(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             Scripting(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             AI(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             CloudEnvironments(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             BillingAndUsage(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(feature = "mcp_client")]
+            #[cfg(feature = "agent_runtime")]
             MCPServers(view_handle) => ChildView::new(view_handle).finish(),
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             WarpDrive(view_handle) => ChildView::new(view_handle).finish(),
         }
     }
 }
 
-#[cfg(feature = "mcp_client")]
+#[cfg(feature = "agent_runtime")]
 impl From<ViewHandle<MCPServersSettingsPageView>> for SettingsPageViewHandle {
     fn from(view_handle: ViewHandle<MCPServersSettingsPageView>) -> Self {
         SettingsPageViewHandle::MCPServers(view_handle)
@@ -228,7 +227,7 @@ impl SettingsPage {
                 },
                 self.button_state_handle.clone(),
             )
-            .with_text_label(lite_i18n::tr(self.section.to_string()) + &match_data.to_string())
+            .with_text_label(self.section.to_string() + &match_data.to_string())
             .with_style(
                 UiComponentStyles::default()
                     .set_border_width(0.)
@@ -290,7 +289,6 @@ pub fn render_sub_header(
     text_name: impl Into<Cow<'static, str>>,
     local_only_icon_state: Option<LocalOnlyIconState>,
 ) -> Box<dyn Element> {
-    let text_name = lite_i18n::tr_cow(text_name);
     let mut sub_header = Flex::row()
         .with_cross_axis_alignment(CrossAxisAlignment::Start)
         .with_child(
@@ -326,6 +324,8 @@ pub fn build_sub_header(
     text_name: impl Into<Cow<'static, str>>,
     color_override: Option<Fill>,
 ) -> Container {
+    let text_name = text_name.into();
+    let text_name = super::lite_i18n::text(&text_name).to_owned();
     let color = color_override.unwrap_or(appearance.theme().active_ui_text_color());
     Container::new(
         Align::new(
@@ -345,8 +345,8 @@ pub fn render_sub_header_with_description(
     text_name: impl Into<Cow<'static, str>>,
     description: impl Into<Cow<'static, str>>,
 ) -> Box<dyn Element> {
-    let text_name = lite_i18n::tr_cow(text_name);
-    let description = lite_i18n::tr_cow(description);
+    let description = description.into();
+    let description = super::lite_i18n::label(description);
     Container::new(
         Flex::column()
             .with_child(build_sub_header(appearance, text_name, None).finish())
@@ -371,6 +371,8 @@ pub fn render_sub_sub_header(
     text_name: impl Into<Cow<'static, str>>,
     local_only_icon_state: Option<LocalOnlyIconState>,
 ) -> Box<dyn Element> {
+    let text_name = text_name.into();
+    let text_name = super::lite_i18n::text(&text_name).to_owned();
     let mut sub_sub_header = Flex::row().with_child(
         Container::new(
             Align::new(
@@ -434,7 +436,7 @@ pub fn render_separator(appearance: &Appearance) -> Box<dyn Element> {
         .finish()
 }
 
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 pub fn render_full_pane_width_ai_button(
     text: &str,
     is_any_ai_enabled: bool,
@@ -570,6 +572,9 @@ impl LocalOnlyIconState {
         mouse_states: &mut HashMap<String, MouseStateHandle>,
         app: &AppContext,
     ) -> Self {
+        if cfg!(feature = "warp_lite") {
+            return Self::Hidden;
+        }
         if !*CloudPreferencesSettings::as_ref(app).settings_sync_enabled {
             // Only show the local-only icon if settings sync is enabled.
             return Self::Hidden;
@@ -598,6 +603,7 @@ pub fn render_info_icon<T: Clone + Action>(
     let tooltip_text = additional_info
         .tooltip_override_text
         .unwrap_or("Click to learn more in docs".to_owned());
+    let tooltip_text = super::lite_i18n::text(&tooltip_text).to_owned();
     let icon = Container::new(
         ConstrainedBox::new(
             Icon::Info
@@ -711,7 +717,7 @@ pub fn render_body_item_label_internal<T: Clone + Action>(
     toggle_state: ToggleState,
     appearance: &Appearance,
 ) -> Box<dyn Element> {
-    let label_text = lite_i18n::tr(label_text);
+    let label_text = super::lite_i18n::text(&label_text).to_owned();
     let mut label = Flex::row();
     let label_color = match label_color_override {
         Some(color) => color,
@@ -746,7 +752,7 @@ pub fn render_body_item_label_internal<T: Clone + Action>(
                 Some(
                     appearance
                         .ui_builder()
-                        .span(secondary_text)
+                        .span(super::lite_i18n::text(&secondary_text).to_owned())
                         .with_style(UiComponentStyles {
                             font_color: Some(
                                 warp_theme
@@ -807,10 +813,14 @@ pub fn render_body_item_label_internal<T: Clone + Action>(
 pub fn render_page_title(text: &str, size: f32, appearance: &Appearance) -> Box<dyn Element> {
     Container::new(
         Align::new(
-            Text::new_inline(text.to_string(), appearance.ui_font_family(), size)
-                .with_style(Properties::default().weight(Weight::Bold))
-                .with_color(appearance.theme().active_ui_text_color().into())
-                .finish(),
+            Text::new_inline(
+                super::lite_i18n::text(text).to_owned(),
+                appearance.ui_font_family(),
+                size,
+            )
+            .with_style(Properties::default().weight(Weight::Bold))
+            .with_color(appearance.theme().active_ui_text_color().into())
+            .finish(),
         )
         .left()
         .finish(),
@@ -841,7 +851,7 @@ pub fn render_body_item<T: Clone + Action>(
         ),
         child_element,
         appearance,
-        description_text.map(lite_i18n::tr),
+        description_text,
     )
 }
 
@@ -874,6 +884,7 @@ pub fn build_toggle_element(
     }
     column.add_child(header_row.finish());
     if let Some(description_text) = description_text {
+        let description_text = super::lite_i18n::text(&description_text).to_owned();
         let description = appearance
             .ui_builder()
             .paragraph(description_text)
@@ -910,8 +921,7 @@ pub fn render_dropdown_item_label(
     color_override: Option<Fill>,
     appearance: &Appearance,
 ) -> Box<dyn Element> {
-    let label_text = lite_i18n::tr(label_text);
-    let secondary_text = secondary_text.map(lite_i18n::tr);
+    let label_text = super::lite_i18n::text(&label_text).to_owned();
     let label = Text::new(label_text, appearance.ui_font_family(), CONTENT_FONT_SIZE)
         .with_color(
             color_override
@@ -923,7 +933,7 @@ pub fn render_dropdown_item_label(
         let warp_theme = appearance.theme();
         let secondary_text_child = appearance
             .ui_builder()
-            .span(secondary_text)
+            .span(super::lite_i18n::label(secondary_text))
             .with_style(UiComponentStyles {
                 font_color: Some(
                     color_override
@@ -979,8 +989,8 @@ pub(crate) fn render_dropdown_item<T: DropdownItemAction>(
     let row = Flex::row().with_cross_axis_alignment(CrossAxisAlignment::Center);
 
     let dropdown_item_label = Align::new(render_dropdown_item_label(
-        lite_i18n::tr(label),
-        secondary_text.map(lite_i18n::tr),
+        label.to_string(),
+        secondary_text.map(|secondary_text| secondary_text.to_string()),
         local_only_icon_state,
         color_override,
         appearance,
@@ -1022,8 +1032,8 @@ pub(crate) fn render_filterable_dropdown_item<T: DropdownItemAction>(
     let row = Flex::row().with_cross_axis_alignment(CrossAxisAlignment::Center);
 
     let dropdown_item_label = Align::new(render_dropdown_item_label(
-        lite_i18n::tr(label),
-        secondary_text.map(lite_i18n::tr),
+        label.to_string(),
+        secondary_text.map(|secondary_text| secondary_text.to_string()),
         local_only_icon_state,
         color_override,
         appearance,
@@ -1424,7 +1434,7 @@ pub(super) fn search_terms_match(terms: &str, query: &str) -> bool {
         return true;
     }
     let terms_lower = terms.to_lowercase();
-    query
+    super::lite_i18n::search_query(query)
         .to_lowercase()
         .split_whitespace()
         .all(|word| terms_lower.contains(word))

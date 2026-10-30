@@ -24,6 +24,7 @@ pub fn render_rich_history(entry: &HistoryEntry, ctx: &AppContext) -> Box<dyn El
 
     let mut flex_column = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
 
+    #[cfg(feature = "agent_runtime")]
     if let Some(workflow) = entry.linked_workflow(ctx) {
         flex_column.add_child(render_row_with_icon_and_paragraph(
             "bundled/svg/workflow.svg",
@@ -61,6 +62,7 @@ pub fn render_rich_history(entry: &HistoryEntry, ctx: &AppContext) -> Box<dyn El
         );
     }
 
+    #[cfg(feature = "agent_runtime")]
     if let Some(git_head) = &entry.git_head {
         flex_column.add_child(
             Container::new(render_row_with_icon_and_paragraph(

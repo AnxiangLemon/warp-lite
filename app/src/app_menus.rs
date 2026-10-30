@@ -24,6 +24,7 @@ use crate::auth;
 use crate::auth::AuthStateProvider;
 use crate::default_terminal::DefaultTerminal;
 use crate::features::{FeatureFlag, runtime_flags_menu_items};
+use crate::lite_i18n::choose;
 use crate::root_view::OpenLaunchConfigArg;
 use crate::server::telemetry::LaunchConfigUiLocation;
 use crate::settings::{
@@ -82,9 +83,9 @@ pub fn menu_bar(ctx: &mut AppContext) -> MenuBar {
 // To create submenus, we could use MenuItem::Custom(CustomMenuItem::new_with_submenu(...))
 pub fn dock_menu() -> Menu {
     Menu::new(
-        "New Window",
+        choose("New Window", "新建窗口"),
         vec![MenuItem::Custom(CustomMenuItem::new(
-            "New Window",
+            choose("New Window", "新建窗口"),
             move |ctx| {
                 ctx.dispatch_global_action("root_view:open_new", &());
                 ctx.dispatch_global_action("workspace:save_app", &());
@@ -229,7 +230,6 @@ fn make_new_app_menu(ctx: &AppContext) -> Menu {
         None,
     )));
     menu_items.push(MenuItem::Separator);
-    #[cfg(not(feature = "warp_lite"))]
     menu_items.push(MenuItem::Custom(CustomMenuItem::new(
         "Log out",
         auth::maybe_log_out,
@@ -273,7 +273,7 @@ fn make_new_file_menu(ctx: &AppContext) -> Menu {
         updateable_custom_item_without_checkmark(CustomAction::CloseWindow, ctx),
     ]);
 
-    Menu::new("File", file_menu_options)
+    Menu::new(choose("File", "文件"), file_menu_options)
 }
 
 fn make_new_edit_menu(ctx: &AppContext) -> Menu {
@@ -371,7 +371,7 @@ fn make_new_edit_menu(ctx: &AppContext) -> Menu {
 
     edit_menu_items.extend(group_5);
 
-    Menu::new("Edit", edit_menu_items)
+    Menu::new(choose("Edit", "编辑"), edit_menu_items)
 }
 
 fn make_new_view_menu(ctx: &AppContext) -> Menu {
@@ -485,7 +485,7 @@ fn make_new_view_menu(ctx: &AppContext) -> Menu {
         ]);
     }
 
-    Menu::new("View", items)
+    Menu::new(choose("View", "视图"), items)
 }
 
 fn make_new_tab_menu(ctx: &AppContext) -> Menu {
@@ -742,7 +742,7 @@ fn toggle_bootstrap_block_menu_item() -> MenuItem {
 
 fn make_new_window_menu() -> Menu {
     Menu::new(
-        "Window",
+        choose("Window", "窗口"),
         vec![
             MenuItem::Standard(StandardAction::Minimize),
             MenuItem::Standard(StandardAction::Zoom),
@@ -928,7 +928,7 @@ fn feedback_menu_item() -> MenuItem {
 
 fn make_new_help_menu() -> Menu {
     Menu::new(
-        "Help",
+        choose("Help", "帮助"),
         vec![
             feedback_menu_item(),
             link_menu_item("Warp Documentation...", links::USER_DOCS_URL.into()),
@@ -982,13 +982,13 @@ fn make_new_elements_menu_items(ctx: &AppContext) -> Vec<MenuItem> {
     // shows its dedicated keystroke instead.
     let mut new_elements_menu = vec![
         MenuItem::Custom(CustomMenuItem::new(
-            "New Window",
+            choose("New Window", "新建窗口"),
             open_new_window,
             no_updates,
             Some(Keystroke::parse("cmd-n").expect("Valid keystroke")),
         )),
         MenuItem::Custom(CustomMenuItem::new(
-            "New Terminal Tab",
+            choose("New Terminal Tab", "新建终端标签页"),
             open_new_default_tab_or_window,
             move |_props: &MenuItemProperties, ctx: &mut AppContext| {
                 let mut changes = MenuItemPropertyChanges::default();
@@ -1049,7 +1049,7 @@ fn make_new_elements_menu_items(ctx: &AppContext) -> Vec<MenuItem> {
     let reopen_session_action_updater =
         custom_action_updater(CustomAction::ReopenClosedSession, Box::new(|_| false));
     new_elements_menu.push(MenuItem::Custom(CustomMenuItem::new(
-        "Reopen closed session",
+        choose("Reopen closed session", "重新打开已关闭的会话"),
         |ctx| {
             UndoCloseStack::handle(ctx).update(ctx, |stack, ctx| {
                 stack.undo_close(ctx);

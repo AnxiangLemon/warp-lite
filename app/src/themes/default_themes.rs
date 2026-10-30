@@ -8,6 +8,17 @@ use warp_core::ui::theme::{
     VerticalGradient, WarpTheme,
 };
 
+fn builtin_background(
+    source: warpui::assets::asset_cache::AssetSource,
+    opacity: u8,
+) -> Option<Image> {
+    if cfg!(feature = "warp_lite") {
+        None
+    } else {
+        Some(Image { source, opacity })
+    }
+}
+
 const DARK_MODE_NORMAL_COLORS: AnsiColors = AnsiColors::new(
     AnsiColor::from_u32(0x616161FF),
     AnsiColor::from_u32(0xFF8272FF),
@@ -416,10 +427,7 @@ pub(super) fn phenomenon() -> WarpTheme {
         None,
         Some(Details::Darker),
         phenomenon_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/phenomenon_bg.jpg"),
-            opacity: 100,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/phenomenon_bg.jpg"), 100),
         Some("Phenomenon".to_string()),
     )
 }
@@ -433,10 +441,7 @@ pub(super) fn jellyfish() -> WarpTheme {
         None,
         Some(Details::Darker),
         dark_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/jellyfish_bg.jpg"),
-            opacity: 30,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/jellyfish_bg.jpg"), 30),
         Some("Jellyfish".to_string()),
     )
 }
@@ -449,10 +454,7 @@ pub(super) fn koi() -> WarpTheme {
         None,
         Some(Details::Darker),
         dark_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/koi_bg.jpg"),
-            opacity: 30,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/koi_bg.jpg"), 30),
         Some("Koi".to_string()),
     )
 }
@@ -465,10 +467,7 @@ pub(super) fn leafy() -> WarpTheme {
         None,
         Some(Details::Darker),
         dark_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/leafy_bg.jpg"),
-            opacity: 30,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/leafy_bg.jpg"), 30),
         Some("Leafy".to_string()),
     )
 }
@@ -481,10 +480,7 @@ pub(super) fn marble() -> WarpTheme {
         None,
         Some(Details::Lighter),
         light_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/marble_bg.jpg"),
-            opacity: 50,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/marble_bg.jpg"), 50),
         Some("Marble".to_string()),
     )
 }
@@ -500,10 +496,7 @@ pub(super) fn pink_city() -> WarpTheme {
         None,
         Some(Details::Custom(details)),
         light_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/pink_city_bg.jpg"),
-            opacity: 40,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/pink_city_bg.jpg"), 40),
         Some("Pink City".to_string()),
     )
 }
@@ -519,10 +512,7 @@ pub(super) fn snowy() -> WarpTheme {
         None,
         Some(Details::Lighter),
         light_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/snowy_bg.jpg"),
-            opacity: 20,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/snowy_bg.jpg"), 20),
         Some("Snowy".to_string()),
     )
 }
@@ -540,10 +530,7 @@ pub(super) fn red_rock() -> WarpTheme {
         None,
         Some(Details::Darker),
         dark_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/red_rock_bg.jpg"),
-            opacity: 30,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/red_rock_bg.jpg"), 30),
         Some("Red Rock".to_string()),
     )
 }
@@ -561,10 +548,7 @@ pub(super) fn dark_city() -> WarpTheme {
         None,
         Some(Details::Darker),
         dark_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/dark_city_bg.jpg"),
-            opacity: 20,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/dark_city_bg.jpg"), 20),
         Some("Dark City".to_string()),
     )
 }
@@ -577,10 +561,10 @@ pub(super) fn sent_referral_reward() -> WarpTheme {
         None,
         Some(Details::Darker),
         dark_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/sent_referral_reward_bg.jpg"),
-            opacity: 100,
-        }),
+        builtin_background(
+            bundled_or_fetched_asset!("jpg/sent_referral_reward_bg.jpg"),
+            100,
+        ),
         Some("Warp Referral".to_string()),
     )
 }
@@ -593,10 +577,7 @@ pub(super) fn solar_flare() -> WarpTheme {
         None,
         Some(Details::Darker),
         solarflare_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/solarflare_bg.jpg"),
-            opacity: 20,
-        }),
+        builtin_background(bundled_or_fetched_asset!("jpg/solarflare_bg.jpg"), 20),
         Some("Solar Flare".to_string()),
     )
 }
@@ -622,10 +603,10 @@ pub(super) fn received_referral_reward() -> WarpTheme {
         None,
         Some(Details::Lighter),
         light_mode_colors(),
-        Some(Image {
-            source: bundled_or_fetched_asset!("jpg/received_referral_reward_bg.jpg"),
-            opacity: 100,
-        }),
+        builtin_background(
+            bundled_or_fetched_asset!("jpg/received_referral_reward_bg.jpg"),
+            100,
+        ),
         Some("Received Referral Reward".to_string()),
     )
 }

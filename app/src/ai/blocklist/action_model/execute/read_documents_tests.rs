@@ -14,7 +14,7 @@ use crate::cloud_object::model::persistence::CloudModel;
 use crate::cloud_object::{
     CloudObjectMetadata, CloudObjectPermissions, CloudObjectStatuses, CloudObjectSyncStatus, Owner,
 };
-use crate::cloud_object::{CloudNotebook, CloudNotebookModel};
+use crate::notebooks::{CloudNotebook, CloudNotebookModel};
 use crate::server::ids::SyncId;
 use crate::test_util::settings::initialize_settings_for_tests;
 

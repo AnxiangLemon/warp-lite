@@ -15,7 +15,7 @@ pub use convert_from::{
 };
 use futures_lite::Stream;
 pub use r#impl::generate_multi_agent_output;
-use crate::ai::mcp::TemplatableMCPServerInfo;
+use mcp::TemplatableMCPServerInfo;
 use serde::Serialize;
 use warp_core::channel::{Channel, ChannelState};
 use warp_core::execution_mode::AppExecutionMode;
@@ -92,7 +92,7 @@ impl ServerConversationToken {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "api_tests.rs"]
 mod tests;
 impl From<ServerConversationToken> for String {

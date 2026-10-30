@@ -1,9 +1,14 @@
 use warpui::async_assert_eq;
-use warpui::integration::{AssertionCallback, AssertionOutcome};
+use warpui::integration::AssertionCallback;
+#[cfg(feature = "agent_runtime")]
+use warpui::integration::AssertionOutcome;
 
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::redaction::redact_secrets;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::block::secret_redaction::find_secrets_in_text;
 use crate::integration_testing::view_getters::single_terminal_view;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::safe_mode_settings::get_secret_obfuscation_mode;
 
 pub fn assert_secret_tooltip_open(open: bool) -> AssertionCallback {
@@ -21,6 +26,7 @@ pub fn assert_secret_tooltip_open(open: bool) -> AssertionCallback {
 }
 
 /// Assert that secrets are properly redacted for AI conversations in both modes
+#[cfg(feature = "agent_runtime")]
 pub fn assert_secrets_redacted_for_ai(
     test_text: String,
     expected_phone_redaction: String,

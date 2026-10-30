@@ -48,8 +48,11 @@ use super::items::ai_fact_collection::WarpDriveAIFactCollection;
 use super::items::item::{ItemStates, WarpDriveRow, tools_panel_menu_direction};
 use super::items::mcp_server_collection::WarpDriveMCPServerCollection;
 use super::settings::WarpDriveSettings;
+use super::sharing::ContentEditability;
+#[cfg(feature = "agent_runtime")]
+use super::sharing::ShareableObject;
+#[cfg(feature = "agent_runtime")]
 use super::sharing::dialog::{SharingDialog, SharingDialogEvent};
-use super::sharing::{ContentEditability, ShareableObject};
 use super::{CloudObjectTypeAndId, DriveObjectType, DriveSortOrder};
 use crate::ai::document::ai_document_model::AIDocumentId;
 use crate::ai::facts::{AIFact, AIMemory};
@@ -57,7 +60,7 @@ use crate::appearance::Appearance;
 use crate::auth::AuthStateProvider;
 use crate::auth::auth_manager::{AuthManager, LoginGatedFeature};
 use crate::auth::auth_state::AuthState;
-use crate::auth::AuthViewVariant;
+use crate::auth::auth_view_modal::AuthViewVariant;
 use crate::banner::BannerState;
 use crate::cloud_object::model::persistence::{CloudModel, CloudModelEvent};
 use crate::cloud_object::model::view::{CloudViewModel, CloudViewModelEvent, UpdateTimestamp};
@@ -78,9 +81,9 @@ use crate::server::cloud_objects::update_manager::{
 };
 use crate::server::ids::{ClientId, ObjectUid, ServerId, SyncId};
 use crate::server::sync_queue::SyncQueue;
-use crate::server::telemetry::{
-    AnonymousUserSignupEntrypoint, SharingDialogSource, TelemetryEvent,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::server::telemetry::SharingDialogSource;
+use crate::server::telemetry::{AnonymousUserSignupEntrypoint, TelemetryEvent};
 use crate::settings::SharedObjectLimitBannerSettings;
 use crate::settings::app_installation_detection::{
     UserAppInstallDetectionSettings, UserAppInstallStatus,
@@ -281,6 +284,7 @@ pub enum DriveIndexAction {
         space: Space,
         warp_drive_item_id: WarpDriveItemId,
     },
+    #[cfg(feature = "agent_runtime")]
     ToggleShareDialog {
         warp_drive_item_id: WarpDriveItemId,
     },
@@ -504,7 +508,11 @@ struct MouseStateHandles {
     search_button_mouse_state: MouseStateHandle,
 }
 
-pub use crate::cloud_object::DriveIndexVariant;
+#[derive(Copy, Clone, PartialEq)]
+pub enum DriveIndexVariant {
+    MainIndex,
+    Trash,
+}
 
 #[derive(Clone)]
 struct SpaceMenuState {
@@ -523,6 +531,7 @@ pub struct DriveIndex {
     /// default, should get the menu fields on open, example: + button to add notebook)
     menu: ViewHandle<Menu<DriveIndexAction>>,
 
+    #[cfg(feature = "agent_runtime")]
     sharing_dialog: ViewHandle<SharingDialog>,
     /// Variant of the index, determines whether base Warp Drive or trash is viewed.
     index_variant: DriveIndexVariant,
@@ -962,7 +971,9 @@ impl DriveIndex {
             ctx.notify();
         });
 
+        #[cfg(feature = "agent_runtime")]
         let sharing_dialog = ctx.add_typed_action_view(|ctx| SharingDialog::new(None, ctx));
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_view(&sharing_dialog, |me, _, event, ctx| {
             me.handle_sharing_dialog_event(event, ctx);
         });
@@ -1011,6 +1022,7 @@ impl DriveIndex {
         Self {
             window_id: ctx.window_id(),
             menu,
+            #[cfg(feature = "agent_runtime")]
             sharing_dialog,
             index_variant: DriveIndexVariant::MainIndex,
             menu_object_id_if_open: None,
@@ -1186,6 +1198,7 @@ impl DriveIndex {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn handle_sharing_dialog_event(
         &mut self,
         event: &SharingDialogEvent,
@@ -2728,25 +2741,31 @@ impl DriveIndex {
                 row_position_id.as_str(),
                 app,
             );
-        } else if share_dialog_open {
-            self.add_dialog_to_stack(
-                &mut stack,
-                ChildView::new(&self.sharing_dialog).finish(),
-                row_position_id.as_str(),
-                app,
-            );
-        } else if is_hovered || (!active_hover_preview && is_focused && !is_selected) {
-            // Show object preview when 1) object is hovered, 2) object is focused but not selected + nothing else is hovered
-            // (active object in pane won't have hover preview since it's already open)
-            if let Some(preview) = object_preview {
-                self.add_row_overlay_to_stack(
+        } else {
+            #[cfg(feature = "agent_runtime")]
+            if share_dialog_open {
+                self.add_dialog_to_stack(
                     &mut stack,
-                    preview,
+                    ChildView::new(&self.sharing_dialog).finish(),
                     row_position_id.as_str(),
-                    OffsetType::Pixel(HOVER_PREVIEW_X_OFFSET),
-                    OffsetType::Pixel(HOVER_PREVIEW_Y_OFFSET),
                     app,
                 );
+            }
+            if !share_dialog_open
+                && (is_hovered || (!active_hover_preview && is_focused && !is_selected))
+            {
+                // Show object preview when 1) object is hovered, 2) object is focused but not selected + nothing else is hovered
+                // (active object in pane won't have hover preview since it's already open)
+                if let Some(preview) = object_preview {
+                    self.add_row_overlay_to_stack(
+                        &mut stack,
+                        preview,
+                        row_position_id.as_str(),
+                        OffsetType::Pixel(HOVER_PREVIEW_X_OFFSET),
+                        OffsetType::Pixel(HOVER_PREVIEW_Y_OFFSET),
+                        app,
+                    );
+                }
             }
         }
 
@@ -4537,6 +4556,7 @@ impl DriveIndex {
                             .into_item(),
                     );
                     if editability.can_edit() {
+                        #[cfg(feature = "agent_runtime")]
                         menu_items.push(
                             MenuItemFields::new("Share")
                                 .with_on_select_action(DriveIndexAction::ToggleShareDialog {
@@ -4765,6 +4785,7 @@ impl DriveIndex {
                             );
                         }
                         if editability.can_edit() {
+                            #[cfg(feature = "agent_runtime")]
                             menu_items.push(
                                 MenuItemFields::new("Share")
                                     .with_on_select_action(DriveIndexAction::ToggleShareDialog {
@@ -4947,6 +4968,7 @@ impl DriveIndex {
         ctx.notify();
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn toggle_share_dialog(
         &mut self,
         warp_drive_item_id: &WarpDriveItemId,
@@ -5701,6 +5723,7 @@ impl TypedActionView for DriveIndex {
                     user_workspaces.generate_stripe_billing_portal_link(*team_uid, ctx);
                 });
             }
+            #[cfg(feature = "agent_runtime")]
             DriveIndexAction::ToggleShareDialog { warp_drive_item_id } => {
                 self.toggle_share_dialog(
                     warp_drive_item_id,
@@ -5733,6 +5756,6 @@ impl TypedActionView for DriveIndex {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "index_tests.rs"]
 mod tests;

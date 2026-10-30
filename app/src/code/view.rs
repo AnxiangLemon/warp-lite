@@ -45,8 +45,9 @@ use crate::code::{EditorTabBarDropTargetData, ImmediateSaveError, SaveOutcome, S
 use crate::editor::InteractionState;
 use crate::input::Vector2F;
 use crate::menu::{MenuItem, MenuItemFields};
-use crate::util::openable_file_type::renders_in_warp_notebook_viewer;
-use crate::view_components::MarkdownDisplayMode;
+use crate::notebooks::file::{MarkdownDisplayMode, renders_in_warp_notebook_viewer};
+#[cfg(feature = "agent_runtime")]
+use crate::pane_group::CodePane;
 use crate::pane_group::focus_state::PaneFocusHandle;
 use crate::pane_group::pane::view::header::components::{
     CenteredHeaderEdgeWidth, render_pane_header_buttons, render_pane_header_title_text,
@@ -55,8 +56,8 @@ use crate::pane_group::pane::view::header::components::{
 use crate::pane_group::pane::view::header::render_pane_header_draggable;
 use crate::pane_group::pane::{ActionOrigin, PaneHeaderAction, view};
 use crate::pane_group::{
-    BackingView, CodePane, PaneConfiguration, PaneConfigurationEvent, PaneDragDropLocation,
-    PaneEvent, TabBarAxis,
+    BackingView, PaneConfiguration, PaneConfigurationEvent, PaneDragDropLocation, PaneEvent,
+    TabBarAxis,
 };
 use crate::quit_warning::UnsavedStateSummary;
 use crate::search::ItemHighlightState;
@@ -1284,6 +1285,7 @@ impl CodeView {
         self.set_active_tab_index_after_remove(index, ctx);
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn remove_tab_for_move(
         &mut self,
         index: usize,

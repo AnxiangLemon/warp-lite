@@ -13,6 +13,7 @@ use warpui::{
 };
 
 use crate::appearance::Appearance;
+use crate::lite_i18n::choose;
 use crate::terminal::general_settings::{GeneralSettings, GeneralSettingsChangedEvent};
 use crate::ui_components::dialog::{Dialog, dialog_styles};
 
@@ -51,10 +52,11 @@ pub enum NativeModalEvent {
 impl NativeModal {
     pub fn new(ctx: &mut ViewContext<Self>) -> Self {
         let general_settings = GeneralSettings::handle(ctx);
-        let dont_show_again = !*general_settings
-            .as_ref(ctx)
-            .show_warning_before_quitting
-            .value();
+        let dont_show_again = !cfg!(feature = "warp_lite")
+            && !*general_settings
+                .as_ref(ctx)
+                .show_warning_before_quitting
+                .value();
         ctx.subscribe_to_model(&general_settings, Self::handle_general_settings_event);
         NativeModal {
             alert_dialog: None,
@@ -70,7 +72,9 @@ impl NativeModal {
         event: &GeneralSettingsChangedEvent,
         ctx: &mut ViewContext<Self>,
     ) {
-        if let GeneralSettingsChangedEvent::ShowWarningBeforeQuitting { .. } = event {
+        if !cfg!(feature = "warp_lite")
+            && let GeneralSettingsChangedEvent::ShowWarningBeforeQuitting { .. } = event
+        {
             self.dont_show_again = !general_settings.read(ctx, |settings, _| {
                 *settings.show_warning_before_quitting.value()
             });
@@ -99,10 +103,17 @@ impl NativeModal {
     fn trigger_button_callback(&mut self, idx: usize, ctx: &mut ViewContext<Self>) {
         // Once we trigger a callback from a button, we are guaranteed that the modal will close so
         // it's ok to take the alert dialog from Self.
+        if self
+            .alert_dialog
+            .as_ref()
+            .is_none_or(|dialog| idx >= dialog.button_data.len())
+        {
+            return;
+        }
         if let Some(mut dialog) = self.alert_dialog.take() {
             let button = dialog.button_data.remove(idx);
             (button.on_click)(ctx);
-            if self.dont_show_again {
+            if !cfg!(feature = "warp_lite") && self.dont_show_again {
                 (dialog.on_disable)(ctx);
             }
         }
@@ -137,18 +148,24 @@ impl View for NativeModal {
         let dont_show_again_checkbox = appearance
             .ui_builder()
             .checkbox(self.dont_show_again_mouse_state.clone(), Some(14.))
-            .with_label(Span::new("Don't show again.", Default::default()))
+            .with_label(Span::new(
+                choose("Don't show again.", "不再提示。"),
+                Default::default(),
+            ))
             .check(self.dont_show_again)
             .build()
             .with_cursor(Cursor::PointingHand)
             .on_click(|ctx, _, _| ctx.dispatch_typed_action(NativeModalAction::ToggleDontShowAgain))
             .finish();
 
-        let mut dialog_column_contents = vec![
-            Container::new(dont_show_again_checkbox)
-                .with_padding_bottom(20.)
-                .finish(),
-        ];
+        let mut dialog_column_contents = Vec::new();
+        if !cfg!(feature = "warp_lite") {
+            dialog_column_contents.push(
+                Container::new(dont_show_again_checkbox)
+                    .with_padding_bottom(20.)
+                    .finish(),
+            );
+        }
 
         for (i, modal_button) in alert_dialog.button_data.iter().enumerate() {
             let button = Align::new(
@@ -176,6 +193,10 @@ impl View for NativeModal {
             )
             .finish();
 
+            #[cfg(feature = "integration_tests")]
+            let button =
+                warpui::elements::SavePosition::new(button, &format!("native-modal-button:{i}"))
+                    .finish();
             dialog_column_contents.push(Container::new(button).with_padding_bottom(8.).finish());
         }
 
@@ -195,6 +216,8 @@ impl View for NativeModal {
         .build()
         .finish();
 
+        #[cfg(feature = "integration_tests")]
+        let dialog = warpui::elements::SavePosition::new(dialog, "native-modal-dialog").finish();
         // This blurs the background and makes it uninteractable.
         Container::new(Align::new(dialog).finish())
             .with_background_color(Fill::blur().into())
@@ -212,12 +235,15 @@ impl TypedActionView for NativeModal {
                 self.trigger_button_callback(*idx, ctx);
             }
             NativeModalAction::ToggleDontShowAgain => {
-                self.dont_show_again = !self.dont_show_again;
-                ctx.notify();
+                if !cfg!(feature = "warp_lite") {
+                    self.dont_show_again = !self.dont_show_again;
+                    ctx.notify();
+                }
             }
             NativeModalAction::Close => {
-                let last_button_idx = self.modal_button_mouse_states.len() - 1;
-                self.trigger_button_callback(last_button_idx, ctx);
+                if let Some(last_button_idx) = self.modal_button_mouse_states.len().checked_sub(1) {
+                    self.trigger_button_callback(last_button_idx, ctx);
+                }
             }
             NativeModalAction::Confirm => {
                 self.trigger_button_callback(0, ctx);

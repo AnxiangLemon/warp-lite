@@ -40,13 +40,15 @@ pub(crate) const FIND_EDITOR_BORDER_WIDTH: f32 = 1.;
 const FIND_EDITOR_FONT_SIZE: f32 = 12.;
 
 pub const REGEX_TOGGLE_LABEL: &str = ". *";
-pub const REGEX_TOGGLE_TOOLTIP: &str = "Regex toggle";
+pub const REGEX_TOGGLE_TOOLTIP: &str = crate::lite_i18n::choose("Regex toggle", "正则表达式");
 
 pub const CASE_SENSITIVE_LABEL: &str = "Aa";
-pub const CASE_SENSITIVE_TOOLTIP: &str = "Case sensitive search";
+pub const CASE_SENSITIVE_TOOLTIP: &str =
+    crate::lite_i18n::choose("Case sensitive search", "区分大小写");
 
-pub const FIND_WITHIN_BLOCK_TOOLTIP: &str = "Find in selected block";
-pub const FIND_PLACEHOLDER_TEXT: &str = "Find";
+pub const FIND_WITHIN_BLOCK_TOOLTIP: &str =
+    crate::lite_i18n::choose("Find in selected block", "在所选命令块中查找");
+pub const FIND_PLACEHOLDER_TEXT: &str = crate::lite_i18n::choose("Find", "查找");
 
 // Moving FindEvent, FindModel implementations away from terminal/.
 pub enum FindEvent {
@@ -329,7 +331,7 @@ impl<T: FindModel + Entity<Event = FindEvent> + 'static> Find<T> {
             let label = if match_count > 0 {
                 format!("{}+ ...", match_count)
             } else {
-                "Scanning...".to_string()
+                crate::lite_i18n::choose("Scanning...", "正在搜索…").to_string()
             };
             return Text::new_inline(label, appearance.ui_font_family(), FIND_EDITOR_FONT_SIZE)
                 .with_color(blended_colors::text_sub(

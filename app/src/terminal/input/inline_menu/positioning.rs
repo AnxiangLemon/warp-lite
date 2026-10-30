@@ -6,9 +6,13 @@ use warpui::units::{IntoPixels, Pixels};
 use warpui::{AppContext, Entity, ModelContext, ModelHandle, SingletonEntity, WindowId};
 
 use super::styles::{HEADER_BORDER, HEADER_ROW_HEIGHT};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewController;
 use crate::appearance::Appearance;
-use crate::settings::{InputModeSettings, InputSettings};
+#[cfg(feature = "agent_runtime")]
+use crate::settings::InputModeSettings;
+use crate::settings::InputSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::block_list_viewport::InputMode;
 use crate::terminal::input::inline_menu::InlineMenuType;
 use crate::terminal::input::inline_menu::message_bar::INLINE_MENU_BORDER_WIDTH;
@@ -46,6 +50,7 @@ pub struct InlineMenuPositioner {
     window_id: WindowId,
     should_render_below_input: bool,
     suggestions_mode_model: ModelHandle<InputSuggestionsModeModel>,
+    #[cfg(feature = "agent_runtime")]
     agent_view_controller: ModelHandle<AgentViewController>,
     /// Per-menu custom content heights, set by resize.
     custom_content_heights: HashMap<InlineMenuType, f32>,
@@ -54,7 +59,7 @@ pub struct InlineMenuPositioner {
 impl InlineMenuPositioner {
     pub fn new(
         suggestions_mode_model: &ModelHandle<InputSuggestionsModeModel>,
-        agent_view_controller: &ModelHandle<AgentViewController>,
+        #[cfg(feature = "agent_runtime")] agent_view_controller: &ModelHandle<AgentViewController>,
         terminal_content_position_id: String,
         input_save_position_id: String,
         size_info: SizeInfo,
@@ -65,10 +70,15 @@ impl InlineMenuPositioner {
             .inline_menu_custom_content_heights
             .value()
             .clone();
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(suggestions_mode_model, |me, _, _, ctx| {
             let suggestions_mode_model = me.suggestions_mode_model.as_ref(ctx);
             if suggestions_mode_model.is_inline_menu_open() {
-                if me.agent_view_controller.as_ref(ctx).is_active() {
+                if crate::terminal::input::inline_menu::agent_view_is_active(
+                    #[cfg(feature = "agent_runtime")]
+                    &me.agent_view_controller,
+                    ctx,
+                ) {
                     me.should_render_below_input = false;
                 } else {
                     match *InputModeSettings::as_ref(ctx).input_mode {
@@ -100,6 +110,7 @@ impl InlineMenuPositioner {
             input_save_position_id,
             window_id,
             suggestions_mode_model: suggestions_mode_model.clone(),
+            #[cfg(feature = "agent_runtime")]
             agent_view_controller: agent_view_controller.clone(),
             should_render_below_input: false,
             custom_content_heights: persisted_heights,
@@ -219,7 +230,11 @@ impl InlineMenuPositioner {
         } else {
             0.
         };
-        if self.agent_view_controller.as_ref(app).is_active() {
+        if crate::terminal::input::inline_menu::agent_view_is_active(
+            #[cfg(feature = "agent_runtime")]
+            &self.agent_view_controller,
+            app,
+        ) {
             header_height
         } else {
             header_height + standard_message_bar_height(app) + INLINE_MENU_BORDER_WIDTH

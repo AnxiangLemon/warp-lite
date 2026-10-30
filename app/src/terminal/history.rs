@@ -6,19 +6,28 @@ use futures::Future;
 use serde::{Deserialize, Serialize};
 use warp_core::command::ExitCode;
 use warp_errors::report_error;
-use warpui::{AppContext, Entity, ModelContext, SingletonEntity};
+#[cfg(feature = "agent_runtime")]
+use warpui::AppContext;
+use warpui::{Entity, ModelContext, SingletonEntity};
 
 use super::model::block::{AgentInteractionMetadata, Block, SerializedAIMetadata, SerializedBlock};
 use super::shell::ShellType;
+#[cfg(feature = "agent_runtime")]
 use crate::cloud_object::Space;
+#[cfg(feature = "agent_runtime")]
 use crate::cloud_object::model::persistence::CloudModel;
+#[cfg(feature = "agent_runtime")]
 use crate::cloud_object::model::view::CloudViewModel;
 use crate::server::ids::{ClientId, HashableId as _, SyncId};
 use crate::terminal::model::session::{Session, SessionId};
 use crate::util::dedupe_from_last;
+use crate::workflows::WorkflowId;
+#[cfg(feature = "agent_runtime")]
 use crate::workflows::local_workflows::LocalWorkflows;
+#[cfg(feature = "agent_runtime")]
 use crate::workflows::workflow::Workflow;
-use crate::workflows::{WorkflowId, WorkflowSource, WorkflowType};
+#[cfg(feature = "agent_runtime")]
+use crate::workflows::{WorkflowSource, WorkflowType};
 
 mod up_arrow;
 pub use up_arrow::UpArrowHistoryConfig;
@@ -220,6 +229,7 @@ pub enum LinkedWorkflowData {
 impl LinkedWorkflowData {
     /// Returns the WorkflowType and WorkflowSource corresponding to this `LinkedWorkflowData`, if
     /// any.
+    #[cfg(feature = "agent_runtime")]
     pub fn linked_workflow(&self, ctx: &AppContext) -> Option<(WorkflowType, WorkflowSource)> {
         match self {
             LinkedWorkflowData::Id(id) => {
@@ -381,6 +391,7 @@ impl HistoryEntry {
     ///
     /// First looks up the workflow using `self.workflow_id`, then falls back to looking up the
     /// workflow using `self.workflow_command`, if any.
+    #[cfg(feature = "agent_runtime")]
     pub fn linked_workflow(&self, app: &AppContext) -> Option<Workflow> {
         match (&self.workflow_id, &self.workflow_command) {
             (Some(workflow_id), _) => CloudModel::as_ref(app)

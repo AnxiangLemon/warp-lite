@@ -138,6 +138,6 @@ fn conversation_export_filename_at(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "conversation_export_tests.rs"]
 mod tests;

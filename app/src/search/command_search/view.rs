@@ -8,6 +8,7 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 use pathfinder_color::ColorU;
 use pathfinder_geometry::vector::Vector2F;
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
 use warp_errors::report_error;
 use warpui::accessibility::{AccessibilityContent, WarpA11yRole};
@@ -26,26 +27,30 @@ use warpui::{
     ViewContext, ViewHandle, WeakViewHandle,
 };
 
+#[cfg(feature = "agent_runtime")]
 use super::ai_queries::AIQueriesDataSource;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::env_var_collections::EnvVarCollectionDataSource;
 use super::history::history_data_source_for_session;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use super::notebooks::notebooks_data_source;
+#[cfg(feature = "agent_runtime")]
 use super::warp_ai::WarpAIDataSource;
-use super::workflows::{WorkflowsDataSource, WorkflowIdentity, WorkflowSearchItem};
-#[cfg(not(feature = "warp_lite"))]
-use super::workflows::cloud_workflows_data_source;
+#[cfg(feature = "agent_runtime")]
+use super::workflows::{WorkflowsDataSource, cloud_workflows_data_source};
 use super::zero_state::{CommandSearchZeroStateEvent, CommandSearchZeroStateView};
 use crate::ai_assistant::GenerateCommandsFromNaturalLanguageError;
+#[cfg(feature = "agent_runtime")]
 use crate::ai_assistant::execution_context::WarpAiExecutionContext;
 use crate::appearance::Appearance;
 use crate::auth::auth_manager::AuthManager;
 use crate::auth::auth_state::AuthState;
-use crate::auth::AuthViewVariant;
+use crate::auth::auth_view_modal::AuthViewVariant;
 use crate::auth::{AuthStateProvider, UserUid};
+#[cfg(feature = "agent_runtime")]
 use crate::completer::SessionContext;
-use crate::settings::WarpDriveSettings;
+#[cfg(feature = "agent_runtime")]
+use crate::drive::settings::WarpDriveSettings;
 use crate::search::QueryFilter;
 use crate::search::command_search::searcher::{CommandSearchItemAction, CommandSearchMixer};
 use crate::search::mixer::AddAsyncSourceOptions;
@@ -53,8 +58,10 @@ use crate::search::result_renderer::{QueryResultRenderer, QueryResultRendererSty
 use crate::search::search_bar::{SearchBar, SearchBarEvent, SearchBarState, SearchResultOrdering};
 use crate::send_telemetry_from_ctx;
 use crate::server::ids::ServerId;
+#[cfg(feature = "agent_runtime")]
 use crate::server::server_api::ai::AIClient;
 use crate::server::telemetry::TelemetryEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::AISettings;
 use crate::terminal::input::MenuPositioning;
 use crate::terminal::model::session::SessionId;
@@ -62,7 +69,10 @@ use crate::terminal::resizable_data::{DEFAULT_UNIVERSAL_SEARCH_WIDTH, ModalType,
 use crate::terminal::{History, HistoryEvent};
 use crate::workspaces::user_workspaces::UserWorkspaces;
 
-const DEFAULT_PLACEHOLDER_TEXT: &str = "Search your history, workflows, and more";
+const DEFAULT_PLACEHOLDER_TEXT: &str = crate::lite_i18n::choose(
+    "Search your history, workflows, and more",
+    "搜索本地命令历史",
+);
 const PANEL_POSITION_ID: &str = "CommandSearchViewPanel";
 const DETAILS_PANEL_MARGIN: f32 = 4.;
 const MIN_WIDTH_RATIO: f32 = 0.25;
@@ -126,6 +136,7 @@ pub struct CommandSearchView {
     handle: WeakViewHandle<Self>,
     menu_positioning: MenuPositioning,
     auth_state: Arc<AuthState>,
+    #[cfg(feature = "agent_runtime")]
     ai_client: Arc<dyn AIClient>,
     state: CommandSearchViewState,
     visible_results_range_sender: Sender<Range<usize>>,
@@ -137,7 +148,10 @@ pub struct CommandSearchView {
 }
 
 impl CommandSearchView {
-    pub fn new(ai_client: Arc<dyn AIClient>, ctx: &mut ViewContext<Self>) -> Self {
+    pub fn new(
+        #[cfg(feature = "agent_runtime")] ai_client: Arc<dyn AIClient>,
+        ctx: &mut ViewContext<Self>,
+    ) -> Self {
         let search_bar_state =
             ctx.add_model(|_| SearchBarState::new(SearchResultOrdering::BottomUp));
 
@@ -201,6 +215,7 @@ impl CommandSearchView {
 
         Self {
             auth_state: AuthStateProvider::as_ref(ctx).get().clone(),
+            #[cfg(feature = "agent_runtime")]
             ai_client,
             zero_state_handle,
             menu_positioning: Default::default(),
@@ -223,10 +238,11 @@ impl CommandSearchView {
     fn reset_command_search_mixer(
         &mut self,
         session_id: SessionId,
-        session_context: Option<SessionContext>,
-        ai_execution_context: Option<WarpAiExecutionContext>,
+        #[cfg(feature = "agent_runtime")] session_context: Option<SessionContext>,
+        #[cfg(feature = "agent_runtime")] ai_execution_context: Option<WarpAiExecutionContext>,
         ctx: &mut ViewContext<Self>,
     ) {
+        #[cfg(feature = "agent_runtime")]
         let window_id = ctx.window_id();
         self.mixer.update(ctx, |mixer, ctx| {
             mixer.reset(ctx);
@@ -234,6 +250,7 @@ impl CommandSearchView {
             // Add data sources in lowest->highest priority order.  If results from two
             // data sources produce the same ranking score, the data source added first
             // will show up higher in the list (i.e.: further away from the input).
+            #[cfg(feature = "agent_runtime")]
             if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
                 mixer.add_sync_source(
                     WarpAIDataSource::new(self.ai_client.clone(), None),
@@ -251,13 +268,13 @@ impl CommandSearchView {
                 );
             }
 
-            mixer.add_sync_source(
-                WorkflowsDataSource::new(session_context.as_ref(), ctx),
-                HashSet::from([QueryFilter::Workflows]),
-            );
-
-            #[cfg(not(feature = "warp_lite"))]
+            #[cfg(feature = "agent_runtime")]
             if WarpDriveSettings::is_warp_drive_enabled(ctx) {
+                mixer.add_sync_source(
+                    WorkflowsDataSource::new(session_context.as_ref(), ctx),
+                    HashSet::from([QueryFilter::Workflows]),
+                );
+
                 let mut workflows_filters = HashSet::from([QueryFilter::Workflows]);
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
                     workflows_filters.insert(QueryFilter::AgentModeWorkflows);
@@ -295,6 +312,7 @@ impl CommandSearchView {
                 );
             }
 
+            #[cfg(feature = "agent_runtime")]
             if FeatureFlag::AgentMode.is_enabled() && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
             {
                 mixer.add_sync_source(
@@ -355,14 +373,17 @@ impl CommandSearchView {
     pub fn reset_state(
         &mut self,
         session_id: SessionId,
-        session_context: Option<SessionContext>,
+        #[cfg(feature = "agent_runtime")] session_context: Option<SessionContext>,
         initial_query: String,
         query_filter: Option<QueryFilter>,
         menu_positioning: MenuPositioning,
-        ai_execution_context: Option<WarpAiExecutionContext>,
+        #[cfg(feature = "agent_runtime")] ai_execution_context: Option<WarpAiExecutionContext>,
         ctx: &mut ViewContext<Self>,
     ) {
+        #[cfg(feature = "agent_runtime")]
         self.reset_command_search_mixer(session_id, session_context, ai_execution_context, ctx);
+        #[cfg(not(feature = "agent_runtime"))]
+        self.reset_command_search_mixer(session_id, ctx);
         let ordering = match menu_positioning {
             MenuPositioning::AboveInputBox => SearchResultOrdering::BottomUp,
             MenuPositioning::BelowInputBox => SearchResultOrdering::TopDown,
@@ -569,7 +590,7 @@ impl CommandSearchView {
         let muted_color: ColorU = appearance.theme().nonactive_ui_text_color().into();
         let text = appearance
             .ui_builder()
-            .span("Loading...")
+            .span(crate::lite_i18n::text("Loading..."))
             .with_style(UiComponentStyles {
                 font_size: Some(appearance.monospace_font_size()),
                 font_family_id: Some(appearance.ui_font_family()),
@@ -752,7 +773,7 @@ impl CommandSearchView {
                 // There are no results to display, so notify the user of that fact.
                 let text = appearance
                     .ui_builder()
-                    .span("No results found.")
+                    .span(crate::lite_i18n::text("No results found."))
                     .with_style(UiComponentStyles {
                         font_size: Some(appearance.monospace_font_size()),
                         font_family_id: Some(appearance.ui_font_family()),

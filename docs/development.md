@@ -4,28 +4,29 @@
 
 | 路径 | 用途 |
 | --- | --- |
-| `app/src/bin/lite.rs` | Lite 入口，设置独立应用标识、本地服务配置与日志名 |
-| `app/Cargo.toml` | `warp-lite` binary 与 `warp_lite` feature 聚合 |
-| `app/src/lib.rs` | 共享应用入口，按 feature 选择完整或 Lite 模块 |
-| `app/src/ai_lite/`、`app/src/ai_assistant_lite/`、`*_lite.rs` | Lite 接口与精简实现，仍为共享代码保留部分数据类型 |
-| `app/src/terminal/` | 终端模型、输入、渲染与 shell 集成 |
-| `app/src/workspace/`、`app/src/pane_group/` | 工作区、标签与分屏 |
-| `app/src/settings_view/lite_i18n.rs` | Lite 设置中文文案映射 |
-| `crates/warp_core/src/channel/config.rs` | `local_only()` 服务配置 |
-| `crates/warpui/`、`crates/warpui_core/` | 共享 UI 基础设施 |
-| `script/run-lite`、`script/run-lite.ps1` | 本地运行脚本 |
+| `app/src/bin/lite.rs` | Lite 入口、独立应用标识与本地服务配置 |
+| `app/src/lite_cli.rs` | 本地终端 CLI 参数，不接受云端操作与凭据参数 |
+| `app/Cargo.toml` | `warp_lite`、`agent_runtime`、`cloud_services` 等 feature 边界 |
+| `app/src/terminal/`、`app/src/pane_group/`、`app/src/workspace/` | 终端、分屏、标签分组及恢复 |
+| `app/src/settings_view/lite_i18n.rs` | 中文设置文案与搜索词映射 |
+| `crates/http_client/`、`crates/warp_server_client/` | 显式区分离线接口与网络 transport |
+| `crates/managed_secrets/`、`crates/mcp/` | 禁用云凭据和 MCP transport 时保留所需接口 |
+| `crates/warp_assets/` | Lite 压缩资源与资源过滤 |
+| `crates/integration/src/test/lite.rs` | 隔离的 Windows GUI 终端与恢复测试 |
+| `script/run-lite.ps1`、`script/package-lite.ps1` | 运行与打包 |
+| `script/verify-lite-dependencies.ps1` | 检查 Lite 运行依赖中是否混入已移除的服务组件 |
 
-修改模块门控时同时检查默认上游配置和 Lite 配置，避免一个配置能编译、另一个引用缺失模块。
+当前使用共享模块内的 feature 门控，移除了之前不完整的 `ai_lite/`、`ai_assistant_lite/` 等替代模块。持久化类型和终端共用接口继续保留，避免精简过程中破坏历史数据与会话恢复。
 
-## 本地验证
-
-先执行最小构建检查：
+## 构建与检查
 
 ```powershell
 cargo check -p warp --bin warp-lite --no-default-features --features warp_lite --locked
+cargo build -p warp --bin warp-lite --profile lite --no-default-features --features warp_lite --locked
+.\script\verify-lite-dependencies.ps1
 ```
 
-格式化与上游 Clippy 门槛以 `script/presubmit` 为准，在 Git Bash 中运行：
+格式和完整 workspace 的 Clippy 命令以 `script/presubmit` 为准，使用 Git Bash：
 
 ```bash
 ./script/format
@@ -35,40 +36,42 @@ cargo clippy -p warp --all-targets --tests -- -D warnings
 cargo clippy -p warp_completer --all-targets --tests -- -D warnings
 ```
 
-Lite 自身还应检查其 feature 组合：
+完整 workspace 的检查还涉及上游保留的 JS completer，需要 Node、Corepack / Yarn 和对应 JS 依赖。Lite 的构建不需要这条 JS completer 路径。Windows 构建 helper 在 Cargo job 内运行，不应请求 job breakaway。
+
+## 针对性单元测试
+
+有 `cargo-nextest` 时优先用 nextest；也可执行：
 
 ```powershell
-cargo clippy -p warp --bin warp-lite --no-default-features --features warp_lite -- -D warnings
+cargo test -p http_client -p warp_server_client -p warp_managed_secrets -p mcp --lib --no-default-features --locked
+cargo test -p warp --lib --no-default-features --features warp_lite --locked lite_
+cargo test -p warp --lib --no-default-features --features warp_lite --locked terminal::session_types::tests
+cargo test -p warp --lib --no-default-features --features warp_lite --locked themes::backgrounds::tests
+cargo test -p warp --lib --no-default-features --features warp_lite --locked server::telemetry::offline_tests
+cargo test -p warp --lib --no-default-features --features warp_lite --locked test_sqlite_round_trips_vertical_tabs_panel_open
 ```
 
-完整检查使用 `./script/presubmit`，包含格式、Clippy、原生代码格式和测试。按改动范围运行对应测试；GUI 行为需要实际启动观察，不能用 `cargo check` 替代。明确记录尚未运行或失败的检查，不把旧构建日志当作当前源码验证结果。
+## 实际 GUI 验证
 
-## 资源与构建产物
+```powershell
+cargo build -p integration --bin integration --no-default-features --features warp_lite --locked
+$env:WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS = '1'
+$env:WARP_INTEGRATION_TEST_ARTIFACTS_DIR = Join-Path $PWD 'target/lite-test-artifacts'
+.\target\debug\integration.exe test_lite_terminal_smoke
+.\target\debug\integration.exe test_lite_terminal_management
+.\target\debug\integration.exe test_lite_chinese_settings
+.\target\debug\integration.exe test_lite_restore_named_tabs
+.\target\debug\integration.exe test_lite_close_confirmation
+```
 
-以下内容留在本机，由 `.gitignore` 过滤：
+测试使用独立的 `WarpIntegrationLiteSmoke-*` 应用标识与数据目录，不使用日常 Warp Lite 数据库。实际显示测试逐个运行，避免同时争用窗口和焦点。
 
-- 根目录 `target/`、`target-*/`、`dist/`：编译缓存和分发产物。
-- 根目录 `lite_check*.txt`：历史排错日志。
-- `script/fix_lite_document_imports.py` 与 `script/fix_lite_drive_imports.py`：本次拆分使用的一次性源码改写脚本，不属于运行或构建依赖。
-- `.note/`、Python cache、个人环境变量文件与编辑器临时文件。
+跨进程恢复使用 `test_lite_restore_saved_tabs`。先从 smoke test 输出的 evidence JSON 获取数据库与项目目录，将 SQLite 一致性备份路径设置为 `WARP_LITE_RESTORE_DATABASE`、项目目录设置为 `WARP_LITE_RESTORE_DIRECTORY`，再执行该测试；设置 `WARP_LITE_EXPECT_RESTORED_GROUPS=1` 还会检查分组和侧栏恢复。SQLite 使用 WAL，不能仅复制仍有 WAL 数据的主数据库文件；应使用 SQLite backup API，或在确认进程退出并 checkpoint 后复制。
 
-过滤不等于删除本机文件。不要用全局 `*.exe`、`*.dll`、`*.txt` 或图片规则批量排除：上游受控资源包含 Windows ConPTY / OpenConsole 组件、字体许可证、shell bootstrap 文本和测试数据，它们可能是运行或编译依赖。
+## 资源与提交
 
-保留 `Cargo.lock` 以复现依赖版本。仓库使用 Git LFS 管理部分 PDB 与模型资源，新 checkout 应安装 Git LFS 并执行 `git lfs pull`。不要将 LFS pointer 当作实际资源打包。
+保留 `Cargo.lock`、数据库 migrations、ConPTY / OpenConsole、字体、shell bootstrap 与许可证。不要用全局 `*.exe`、`*.dll` 或 `*.txt` 规则排除运行资源。
 
-## 提交与同步
+`target*/`、`dist/`、`.note/`、排错日志和一次性 import 改写脚本不提交。提交前检查 `git diff --check` 和暂存区；不将旧分发包作为当前源码的构建证明。
 
-提交前检查 `git status --short`、`git diff --check` 与暂存区内容，确认没有缓存、分发目录或本地配置。源码拆分所需的 `*_lite.rs` 和 `*_full.rs` 需要一并提交，不能仅提交引用它们的模块声明。
-
-目标仓库为 `AnxiangLemon/warp-lite`，默认分支为 `main`。本地默认远端 `origin` 指向本仓库；
-上游历史仅用于追踪来源，仓库不配置自动拉取或合并上游更新。推送使用正常的 fast-forward
-或 merge 流程，保留远端已有提交。
-
-## 自动化范围
-
-仅保留轻量的 `Repository checks`，检查变更行的 whitespace 与误提交的构建产物。
-移除上游私有 runner、云端发布、同步、Oz 机器人和通知等自动化依赖。
-具体触发条件与权限见 [.github/workflows/README.md](../.github/workflows/README.md)。
-
-这项清理不改变 `Cargo.toml` / `Cargo.lock` 中已有的编译依赖；其中仍包含由上游维护的 Git
-库。完全独立的依赖镜像或 vendoring 需要另行验证，不能通过删除工作流实现。
+本仓库默认远端 `origin` 指向 `AnxiangLemon/warp-lite`，不配置自动合并上游。GitHub Actions 的范围见 [.github/workflows/README.md](../.github/workflows/README.md)。

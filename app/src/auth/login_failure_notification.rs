@@ -8,9 +8,16 @@ use warpui::{Action, AppContext, Element, SingletonEntity};
 
 use crate::appearance::Appearance;
 
-use super::login_failure_reason::LoginFailureReason;
-
 const LOGIN_TROUBLESHOOTING_DOCS_URL: &str = "https://docs.warp.dev/support-and-community/troubleshooting-and-support/troubleshooting-login-issues";
+
+/// Represents reasons why login failed.
+pub enum LoginFailureReason {
+    InvalidRedirectUrl { was_pasted: bool },
+    FailedUserAuthentication,
+    FailedMintCustomToken,
+    InvalidStateParameter,
+    MissingStateParameter,
+}
 
 impl LoginFailureReason {
     /// Returns an error message to be presented to the user when login fails.

@@ -12,6 +12,7 @@ use warpui::{
     ViewHandle,
 };
 
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewController;
 use crate::ai::blocklist::block::cli_controller::{CLISubagentController, CLISubagentEvent};
 use crate::ai::blocklist::{BlocklistAIHistoryEvent, BlocklistAIHistoryModel};
@@ -123,7 +124,7 @@ impl InlineModelSelectorView {
         terminal_view_id: EntityId,
         ambient_agent_view_model: Option<ModelHandle<AmbientAgentViewModel>>,
         suggestions_mode_model: ModelHandle<InputSuggestionsModeModel>,
-        agent_view_controller: ModelHandle<AgentViewController>,
+        #[cfg(feature = "agent_runtime")] agent_view_controller: ModelHandle<AgentViewController>,
         input_buffer_model: &ModelHandle<InputBufferModel>,
         cli_subagent_controller: ModelHandle<CLISubagentController>,
         positioner: &ModelHandle<InlineMenuPositioner>,
@@ -181,7 +182,8 @@ impl InlineModelSelectorView {
                     mixer.clone(),
                     positioner.clone(),
                     &suggestions_mode_model,
-                    agent_view_controller,
+                    #[cfg(feature = "agent_runtime")]
+agent_view_controller,
                     tab_configs,
                     None,
                     ctx,
@@ -228,6 +230,7 @@ impl InlineModelSelectorView {
                     mixer.clone(),
                     positioner.clone(),
                     &suggestions_mode_model,
+                    #[cfg(feature = "agent_runtime")]
                     agent_view_controller,
                     tab_configs,
                     None,

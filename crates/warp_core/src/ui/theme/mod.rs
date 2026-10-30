@@ -648,6 +648,10 @@ impl WarpTheme {
     pub fn background_image(&self) -> Option<Image> {
         self.background_image.clone()
     }
+
+    pub fn set_background_image(&mut self, image: Option<Image>) {
+        self.background_image = image;
+    }
 }
 
 #[cfg(any(test, feature = "test-util"))]

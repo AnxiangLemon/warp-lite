@@ -8,7 +8,7 @@ use warp_core::ui::theme::color::internal_colors;
 use warpui::elements::ChildView;
 use warpui::{AppContext, Element, Entity, EntityId, ModelHandle, View, ViewContext, ViewHandle};
 
-use crate::ai::agent::conversation::AIConversationId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::{AgentViewController, AgentViewControllerEvent};
 use crate::features::FeatureFlag;
 use crate::search::data_source::{Query, QueryFilter};
@@ -27,6 +27,7 @@ use crate::terminal::input::suggestions_mode_model::{
     InputSuggestionsModeEvent, InputSuggestionsModeModel,
 };
 use crate::terminal::model::session::active_session::ActiveSession;
+use crate::terminal::session_types::AIConversationId;
 use crate::ui_components::icons::Icon;
 use crate::view_components::action_button::{ActionButton, ActionButtonTheme, ButtonSize};
 use crate::workspace::WorkspaceAction;
@@ -171,17 +172,22 @@ impl InlineHistoryMenuView {
         terminal_view_id: EntityId,
         active_session: ModelHandle<ActiveSession>,
         input_suggestions_model: &ModelHandle<InputSuggestionsModeModel>,
-        agent_view_controller: ModelHandle<AgentViewController>,
+        #[cfg(feature = "agent_runtime")] agent_view_controller: ModelHandle<AgentViewController>,
         positioner: &ModelHandle<InlineMenuPositioner>,
         buffer_model: ModelHandle<InputBufferModel>,
         ctx: &mut ViewContext<Self>,
     ) -> Self {
-        let is_agent_view = agent_view_controller.as_ref(ctx).is_active();
+        let is_agent_view = crate::terminal::input::inline_menu::agent_view_is_active(
+            #[cfg(feature = "agent_runtime")]
+            &agent_view_controller,
+            ctx,
+        );
         let tab_configs = build_tab_configs(is_agent_view);
         Self::new_inner(
             terminal_view_id,
             active_session,
             input_suggestions_model,
+            #[cfg(feature = "agent_runtime")]
             agent_view_controller,
             positioner,
             buffer_model,
@@ -196,7 +202,7 @@ impl InlineHistoryMenuView {
         terminal_view_id: EntityId,
         active_session: ModelHandle<ActiveSession>,
         input_suggestions_model: &ModelHandle<InputSuggestionsModeModel>,
-        agent_view_controller: ModelHandle<AgentViewController>,
+        #[cfg(feature = "agent_runtime")] agent_view_controller: ModelHandle<AgentViewController>,
         positioner: &ModelHandle<InlineMenuPositioner>,
         buffer_model: ModelHandle<InputBufferModel>,
         tab_configs: Vec<InlineMenuTabConfig<HistoryTab>>,
@@ -206,6 +212,7 @@ impl InlineHistoryMenuView {
             terminal_view_id,
             active_session,
             input_suggestions_model,
+            #[cfg(feature = "agent_runtime")]
             agent_view_controller,
             positioner,
             buffer_model,
@@ -220,7 +227,7 @@ impl InlineHistoryMenuView {
         terminal_view_id: EntityId,
         active_session: ModelHandle<ActiveSession>,
         input_suggestions_model: &ModelHandle<InputSuggestionsModeModel>,
-        agent_view_controller: ModelHandle<AgentViewController>,
+        #[cfg(feature = "agent_runtime")] agent_view_controller: ModelHandle<AgentViewController>,
         positioner: &ModelHandle<InlineMenuPositioner>,
         buffer_model: ModelHandle<InputBufferModel>,
         tab_configs: Vec<InlineMenuTabConfig<HistoryTab>>,
@@ -231,6 +238,7 @@ impl InlineHistoryMenuView {
             InlineHistoryMenuDataSource::new(
                 terminal_view_id,
                 active_session,
+                #[cfg(feature = "agent_runtime")]
                 agent_view_controller.clone(),
             )
         });
@@ -283,6 +291,7 @@ impl InlineHistoryMenuView {
                     mixer.clone(),
                     positioner.clone(),
                     input_suggestions_model,
+                    #[cfg(feature = "agent_runtime")]
                     agent_view_controller.clone(),
                     tab_configs,
                     None,
@@ -296,6 +305,7 @@ impl InlineHistoryMenuView {
                     mixer.clone(),
                     positioner.clone(),
                     input_suggestions_model,
+                    #[cfg(feature = "agent_runtime")]
                     agent_view_controller.clone(),
                     tab_configs,
                     None,
@@ -330,7 +340,9 @@ impl InlineHistoryMenuView {
             },
         );
 
+        #[cfg(feature = "agent_runtime")]
         let suggestions_mode_model = input_suggestions_model.clone();
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(
             &agent_view_controller,
             move |me, controller, event, ctx| match event {

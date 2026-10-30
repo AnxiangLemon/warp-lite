@@ -1,3 +1,4 @@
+#[cfg(not(feature = "warp_lite"))]
 use serde_json::Value;
 use warpui::{App, SingletonEntity};
 
@@ -19,6 +20,7 @@ fn initialize_app(app: &mut App) {
 #[test]
 // Legacy prompt configs do not have git diff stats, so it should be added after normalization.
 // `did_separate_git_diff_stats` is set to `false`.
+#[cfg(not(feature = "warp_lite"))]
 fn test_prompt_config_adds_git_diff_stats_for_legacy_config() {
     let config = PromptConfiguration::from_chips(
         [
@@ -52,6 +54,7 @@ fn test_prompt_config_adds_git_diff_stats_for_legacy_config() {
 #[test]
 // Ensure that prompt configs don't re-insert git diff stats if they were explicitly removed.
 // `did_separate_git_diff_stats` is set to `true`.
+#[cfg(not(feature = "warp_lite"))]
 fn test_prompt_config_after_nomalization() {
     let config = PromptConfiguration::from_chips(
         [ContextChipKind::ShellGitBranch],
@@ -114,4 +117,57 @@ fn test_prompt_settings() {
             assert_eq!(settings.saved_prompt.to_owned(), PromptSelection::Default);
         });
     });
+}
+
+#[test]
+#[cfg(feature = "warp_lite")]
+fn lite_prompt_omits_git_even_from_saved_custom_configuration() {
+    let config = PromptConfiguration::from_chips(
+        [
+            ContextChipKind::WorkingDirectory,
+            ContextChipKind::ShellGitBranch,
+            ContextChipKind::GitBranchStatus,
+            ContextChipKind::GitDiffStats,
+            ContextChipKind::GithubPullRequest,
+        ],
+        true,
+        WarpPromptSeparator::DollarSign,
+    );
+    let mut serialized = serde_json::to_value(config).expect("serialize prompt");
+    serialized["chips"] = serde_json::to_value([
+        super::PromptChip::new(ContextChipKind::WorkingDirectory, Default::default()),
+        super::PromptChip::new(ContextChipKind::ShellGitBranch, Default::default()),
+        super::PromptChip::new(ContextChipKind::GitDiffStats, Default::default()),
+        super::PromptChip::new(ContextChipKind::GithubPullRequest, Default::default()),
+    ])
+    .expect("serialize legacy chips");
+    serialized["did_separate_git_diff_stats"] = serde_json::Value::Bool(false);
+    let saved: PromptConfiguration =
+        serde_json::from_value(serialized).expect("read legacy prompt");
+    let normalized = saved.normalize_custom_prompt_config();
+    assert_eq!(
+        normalized.chip_kinds(),
+        vec![ContextChipKind::WorkingDirectory]
+    );
+    assert!(normalized.same_line_prompt_enabled());
+    assert_eq!(normalized.separator(), WarpPromptSeparator::DollarSign);
+    assert_eq!(normalized.chips.len(), 1);
+}
+
+#[test]
+#[cfg(feature = "warp_lite")]
+fn lite_default_prompt_keeps_local_terminal_context() {
+    let chips = PromptConfiguration::default_prompt().chip_kinds();
+    assert!(chips.contains(&ContextChipKind::WorkingDirectory));
+    assert!(chips.contains(&ContextChipKind::VirtualEnvironment));
+    for git in [
+        ContextChipKind::ShellGitBranch,
+        ContextChipKind::GitBranchStatus,
+        ContextChipKind::GitDiffStats,
+        ContextChipKind::GithubPullRequest,
+    ] {
+        assert!(!chips.contains(&git));
+        assert!(!crate::context_chips::available_chips().contains(&git));
+        assert!(git.to_chip().is_none());
+    }
 }

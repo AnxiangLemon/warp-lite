@@ -281,6 +281,6 @@ impl OrchestrationConfigState {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "config_state_tests.rs"]
 mod tests;

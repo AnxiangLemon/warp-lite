@@ -20,16 +20,23 @@ pub use agent_input_footer::*;
 pub use agent_message_bar::*;
 pub use agent_view_block::*;
 pub use controller::*;
+#[cfg(feature = "agent_runtime")]
 pub(crate) use conversation_selection::AgentViewConversationSelection;
 pub use ephemeral_message_model::*;
+#[cfg(feature = "agent_runtime")]
 pub(crate) use gui_input_mode_policy::GuiInputModePolicy;
+#[cfg(feature = "agent_runtime")]
 pub use inline_agent_view_header::*;
-pub use orchestration_pill_bar::{OrchestrationPillBar, render_orchestration_breadcrumbs};
+#[cfg(feature = "agent_runtime")]
+pub use orchestration_pill_bar::OrchestrationPillBar;
+#[cfg(feature = "agent_runtime")]
+pub use orchestration_pill_bar::render_orchestration_breadcrumbs;
 use pathfinder_color::ColorU;
 use warp_core::ui::appearance::Appearance;
 use warp_core::ui::theme::Fill;
 use warpui::fonts::Properties;
 use warpui::keymap::Keystroke;
+#[cfg(feature = "agent_runtime")]
 pub use zero_state_block::*;
 
 use crate::terminal::model::TerminalModel;

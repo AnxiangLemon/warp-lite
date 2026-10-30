@@ -203,7 +203,10 @@ pub trait ObjectClient: 'static + Send + Sync {
     async fn create_workflow(
         &self,
         request: CreateObjectRequest,
-    ) -> Result<CreateCloudObjectResult>;
+    ) -> Result<CreateCloudObjectResult> {
+        let _ = request;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// Updates a workflow with the new data. The update may be rejected if a revision
     /// is specified _and_ that revision is not the current revision of the object in storage.
@@ -212,7 +215,10 @@ pub trait ObjectClient: 'static + Send + Sync {
         workflow_id: WorkflowId,
         data: SerializedModel,
         revision: Option<Revision>,
-    ) -> Result<UpdateCloudObjectResult<ServerWorkflow>>;
+    ) -> Result<UpdateCloudObjectResult<ServerWorkflow>> {
+        let _ = (workflow_id, data, revision);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// Creates n generic string objects in a single graphql request. Use
     /// this rather than calling create_generic_string_object multiple times
@@ -221,21 +227,30 @@ pub trait ObjectClient: 'static + Send + Sync {
         &self,
         owner: Owner,
         objects: &[BulkCreateGenericStringObjectsRequest],
-    ) -> Result<BulkCreateCloudObjectResult>;
+    ) -> Result<BulkCreateCloudObjectResult> {
+        let _ = (owner, objects);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn create_generic_string_object(
         &self,
         format: GenericStringObjectFormat,
         uniqueness_key: Option<GenericStringObjectUniqueKey>,
         request: CreateObjectRequest,
-    ) -> Result<CreateCloudObjectResult>;
+    ) -> Result<CreateCloudObjectResult> {
+        let _ = (format, uniqueness_key, request);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// Creates a notebook on the server, returning the ID and revision of the object after
     /// creation.
     async fn create_notebook(
         &self,
         request: CreateObjectRequest,
-    ) -> Result<CreateCloudObjectResult>;
+    ) -> Result<CreateCloudObjectResult> {
+        let _ = request;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// Updates a notebook with the new title and data. The update may be rejected if a revision
     /// is specified _and_ that revision is not the current revision of the object in storage.
@@ -245,72 +260,120 @@ pub trait ObjectClient: 'static + Send + Sync {
         title: Option<String>,
         data: Option<SerializedModel>,
         revision: Option<Revision>,
-    ) -> Result<UpdateCloudObjectResult<ServerNotebook>>;
+    ) -> Result<UpdateCloudObjectResult<ServerNotebook>> {
+        let _ = (notebook_id, title, data, revision);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn create_folder(&self, request: CreateObjectRequest) -> Result<CreateCloudObjectResult>;
+    async fn create_folder(&self, request: CreateObjectRequest) -> Result<CreateCloudObjectResult> {
+        let _ = request;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn update_folder(
         &self,
         folder_id: FolderId,
         name: SerializedModel,
-    ) -> Result<UpdateCloudObjectResult<ServerFolder>>;
+    ) -> Result<UpdateCloudObjectResult<ServerFolder>> {
+        let _ = (folder_id, name);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn update_generic_string_object(
         &self,
         object_id: GenericStringObjectId,
         model: SerializedModel,
         revision: Option<Revision>,
-    ) -> Result<UpdateCloudObjectResult<Box<dyn ServerObject>>>;
+    ) -> Result<UpdateCloudObjectResult<Box<dyn ServerObject>>> {
+        let _ = (object_id, model, revision);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// Sets the current editor of the notebook to be the logged in user
     async fn grab_notebook_edit_access(
         &self,
         notebook_id: cloud_object_models::NotebookId,
-    ) -> Result<ServerMetadata>;
+    ) -> Result<ServerMetadata> {
+        let _ = notebook_id;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// Sets the current editor of the notebook to be null
     async fn give_up_notebook_edit_access(
         &self,
         notebook_id: cloud_object_models::NotebookId,
-    ) -> Result<ServerMetadata>;
+    ) -> Result<ServerMetadata> {
+        let _ = notebook_id;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// Gets updates for all Warp Drive actions.
     async fn get_warp_drive_updates(
         &self,
         message_sender: Sender<ObjectUpdateMessage>,
         stream_ready_sender: Sender<()>,
-    ) -> Result<()>;
+    ) -> Result<()> {
+        let _ = (message_sender, stream_ready_sender);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn fetch_changed_objects(
         &self,
         objects_to_update: ObjectsToUpdate,
         force_refresh: bool,
-    ) -> Result<InitialLoadResponse>;
+    ) -> Result<InitialLoadResponse> {
+        let _ = (objects_to_update, force_refresh);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn fetch_single_cloud_object(&self, id: ServerId) -> Result<GetCloudObjectResponse>;
+    async fn fetch_single_cloud_object(&self, id: ServerId) -> Result<GetCloudObjectResponse> {
+        let _ = id;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     // Transfers a notebook to the given owner
     async fn transfer_notebook_owner(
         &self,
         notebook_id: cloud_object_models::NotebookId,
         owner: Owner,
-    ) -> Result<bool>;
+    ) -> Result<bool> {
+        let _ = (notebook_id, owner);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn transfer_workflow_owner(&self, workflow_id: WorkflowId, owner: Owner) -> Result<bool>;
+    async fn transfer_workflow_owner(&self, workflow_id: WorkflowId, owner: Owner) -> Result<bool> {
+        let _ = (workflow_id, owner);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn transfer_generic_string_object_owner(
         &self,
         workflow_id: GenericStringObjectId,
         owner: Owner,
-    ) -> Result<bool>;
+    ) -> Result<bool> {
+        let _ = (workflow_id, owner);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn trash_object(&self, id: ServerId) -> Result<bool>;
+    async fn trash_object(&self, id: ServerId) -> Result<bool> {
+        let _ = id;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn untrash_object(&self, id: ServerId) -> Result<ObjectMetadataUpdateResult>;
+    async fn untrash_object(&self, id: ServerId) -> Result<ObjectMetadataUpdateResult> {
+        let _ = id;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn delete_object(&self, id: ServerId) -> Result<ObjectDeleteResult>;
+    async fn delete_object(&self, id: ServerId) -> Result<ObjectDeleteResult> {
+        let _ = id;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn empty_trash(&self, owner: Owner) -> Result<ObjectDeleteResult>;
+    async fn empty_trash(&self, owner: Owner) -> Result<ObjectDeleteResult> {
+        let _ = owner;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn move_object(
         &self,
@@ -318,7 +381,10 @@ pub trait ObjectClient: 'static + Send + Sync {
         folder_id: Option<FolderId>,
         owner: Owner,
         object_type: ObjectType,
-    ) -> Result<bool>;
+    ) -> Result<bool> {
+        let _ = (id, folder_id, owner, object_type);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn record_object_action(
         &self,
@@ -326,40 +392,61 @@ pub trait ObjectClient: 'static + Send + Sync {
         action_type: ObjectActionType,
         timestamp: DateTime<Utc>,
         data: Option<String>,
-    ) -> Result<ObjectActionHistory>;
+    ) -> Result<ObjectActionHistory> {
+        let _ = (id, action_type, timestamp, data);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
-    async fn leave_object(&self, id: ServerId) -> Result<ObjectDeleteResult>;
+    async fn leave_object(&self, id: ServerId) -> Result<ObjectDeleteResult> {
+        let _ = id;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn set_object_link_permissions(
         &self,
         object_id: ServerId,
         access_level: SharingAccessLevel,
-    ) -> Result<ObjectPermissionUpdateResult>;
+    ) -> Result<ObjectPermissionUpdateResult> {
+        let _ = (object_id, access_level);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn remove_object_link_permissions(
         &self,
         object_id: ServerId,
-    ) -> Result<ObjectPermissionUpdateResult>;
+    ) -> Result<ObjectPermissionUpdateResult> {
+        let _ = object_id;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn add_object_guests(
         &self,
         object_id: ServerId,
         guest_emails: Vec<String>,
         access_level: AccessLevel,
-    ) -> Result<ObjectPermissionsUpdateData>;
+    ) -> Result<ObjectPermissionsUpdateData> {
+        let _ = (object_id, guest_emails, access_level);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn update_object_guests(
         &self,
         object_id: ServerId,
         guest_emails: Vec<String>,
         access_level: AccessLevel,
-    ) -> Result<ServerPermissions>;
+    ) -> Result<ServerPermissions> {
+        let _ = (object_id, guest_emails, access_level);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     async fn remove_object_guest(
         &self,
         object_id: ServerId,
         guest: GuestIdentifier,
-    ) -> Result<ServerPermissions>;
+    ) -> Result<ServerPermissions> {
+        let _ = (object_id, guest);
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 
     /// Fetches the last-used timestamps for all cloud environments.
     ///
@@ -368,5 +455,7 @@ pub trait ObjectClient: 'static + Send + Sync {
     /// Returns a map from environment UID to timestamp.
     async fn fetch_environment_last_task_run_timestamps(
         &self,
-    ) -> Result<HashMap<String, DateTime<Utc>>>;
+    ) -> Result<HashMap<String, DateTime<Utc>>> {
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
 }

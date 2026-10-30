@@ -52,7 +52,6 @@ use super::selection::ScrollDelta;
 use super::session::{BootstrapSessionType, InBandCommandOutputReceiver, SessionId};
 use super::{Secret, SecretHandle};
 use crate::ai::ambient_agents::AmbientAgentTaskId;
-use crate::ai::blocklist::SerializedBlockListItem;
 use crate::terminal::available_shells::AvailableShell;
 use crate::terminal::block_filter::BlockFilterQuery;
 use crate::terminal::block_list_element::GridType;
@@ -68,6 +67,7 @@ use crate::terminal::model::ansi::{
     InitSubshellValue, PreInteractiveSSHSessionValue, PrecmdValue, PreexecValue, PromptMetadata,
     SSHValue, SourcedRcFileForWarpValue,
 };
+use crate::terminal::model::block::SerializedBlockListItem;
 use crate::terminal::model::bootstrap::BootstrapStage;
 use crate::terminal::model::completions::{
     ShellCompletion, ShellCompletionUpdate, ShellData as CompletionsShellData,
@@ -78,6 +78,7 @@ use crate::terminal::model::index::VisibleRow;
 use crate::terminal::model::iterm_image::{ITermImage, ITermImageMetadata};
 use crate::terminal::model::secrets::ObfuscateSecrets;
 use crate::terminal::model::session::SessionInfo;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::ai_agent::encode_agent_response_event;
 use crate::terminal::shared_session::{SharedSessionSource, SharedSessionStatus};
 use crate::terminal::shell::{ShellName, ShellType};
@@ -1289,6 +1290,7 @@ impl TerminalModel {
     /// The participant_id should be the ID of the participant who initiated the query.
     /// The forked_from_conversation_token is used for forked conversations to help viewers
     /// link the new server-assigned token to an existing conversation from historical replay.
+    #[cfg(feature = "agent_runtime")]
     pub fn send_agent_response_for_shared_session(
         &mut self,
         response: &warp_multi_agent_api::ResponseEvent,

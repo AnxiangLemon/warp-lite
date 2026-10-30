@@ -55,6 +55,7 @@ use warpui::{Entity, ModelContext, SingletonEntity};
 use workspace::WorkspaceClient;
 
 use super::experiments::{ServerExperiment, ServerExperiments};
+use crate::ChannelState;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ai::get_relevant_files::api::{GetRelevantFiles, GetRelevantFilesResponse};
 use crate::ai::predict::generate_ai_input_suggestions::GenerateAIInputSuggestionsRequest;
@@ -66,7 +67,8 @@ use crate::auth::auth_manager::AuthManager;
 use crate::auth::auth_state::AuthState;
 use crate::server::telemetry::TelemetryApi;
 use crate::settings::PrivacySettingsSnapshot;
-use crate::{ChannelState, settings_view};
+#[cfg(feature = "agent_runtime")]
+use crate::settings_view;
 
 pub const FETCH_CHANNEL_VERSIONS_TIMEOUT: std::time::Duration = Duration::from_secs(60);
 #[derive(Serialize)]
@@ -407,15 +409,23 @@ impl ServerApi {
         iap_state: Option<Arc<IapState>>,
         ctx: &mut ModelContext<ServerApiProvider>,
     ) -> Self {
+        #[cfg(feature = "cloud_services")]
         let mut client = http_client::Client::new();
+        #[cfg(not(feature = "cloud_services"))]
+        let mut client = http_client::Client::new_offline();
         let iap_token_provider = iap_state.map(|state| {
             client.set_iap_token_provider(state.clone());
             state as Arc<dyn http_client::iap::IapTokenProvider>
         });
-        let mut telemetry_api = TelemetryApi::new();
+        let telemetry_api = TelemetryApi::new();
+        #[cfg(feature = "cloud_services")]
+        let mut telemetry_api = telemetry_api;
         if ContextFlag::NetworkLogConsole.is_enabled() {
             NetworkLogModel::handle(ctx).update(ctx, |model, model_ctx| {
+                #[cfg(feature = "cloud_services")]
                 model.install_on_clients([&mut client, &mut telemetry_api.client], model_ctx);
+                #[cfg(not(feature = "cloud_services"))]
+                model.install_on_clients([&mut client], model_ctx);
             });
         }
         Self::new_with_parts(
@@ -1330,7 +1340,7 @@ impl ServerApiProvider {
             state.apply_latest_state(experiments, ctx);
         });
 
-        #[cfg(not(feature = "warp_lite"))]
+        #[cfg(feature = "agent_runtime")]
         settings_view::handle_experiment_change(ctx);
     }
 

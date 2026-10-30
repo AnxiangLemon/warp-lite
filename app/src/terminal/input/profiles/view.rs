@@ -56,6 +56,7 @@ impl InlineProfileSelectorView {
                 mixer.clone(),
                 positioner.clone(),
                 &suggestions_mode_model,
+                #[cfg(feature = "agent_runtime")]
                 agent_view_controller,
                 ctx,
             )

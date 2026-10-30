@@ -10,6 +10,7 @@ pub(super) mod shared_session;
 mod slash_command;
 use std::collections::{HashMap, HashSet};
 #[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "agent_runtime")]
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -54,23 +55,25 @@ use crate::ai::agent::{
 };
 use crate::ai::agent_events::AgentMessageEventMetadata;
 #[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_sdk::ClaudeHarness;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
-use ai::document::{AIDocumentId};
-#[cfg(not(feature = "warp_lite"))]
-use crate::ai::document::ai_document_model::{AIDocumentModel, AIDocumentUserEditStatus, };
+use crate::ai::document::ai_document_model::{
+    AIDocumentId, AIDocumentModel, AIDocumentUserEditStatus,
+};
 use crate::ai::llms::{LLMId, LLMPreferences};
 use crate::ai::skills::{ActiveSkillLookupError, SkillManager};
 use crate::cloud_object::model::persistence::CloudModel;
+#[cfg(feature = "agent_runtime")]
 use crate::features::FeatureFlag;
 use crate::global_resource_handles::GlobalResourceHandlesProvider;
 use crate::network::NetworkStatus;
-#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::editor::model::FileLinkResolutionContext;
 use crate::persistence::ModelEvent;
 use crate::send_telemetry_from_ctx;
 use crate::server::server_api::AIApiError;
 #[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "agent_runtime")]
 use crate::server::server_api::ServerApiProvider;
 use crate::server::telemetry::TelemetryEvent;
 use crate::terminal::ShellLaunchData;
@@ -824,18 +827,15 @@ impl BlocklistAIController {
         inputs.push(ai_input);
 
         // Piggyback any pending orchestration config updates for this conversation.
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            let taken_dirty_events = AIDocumentModel::handle(ctx).update(ctx, |model, _| {
-                model.take_dirty_orchestration_events(&conversation_id)
+        let taken_dirty_events = AIDocumentModel::handle(ctx).update(ctx, |model, _| {
+            model.take_dirty_orchestration_events(&conversation_id)
+        });
+        for dirty_event in &taken_dirty_events {
+            inputs.push(AIAgentInput::OrchestrationConfigUpdate {
+                plan_id: dirty_event.plan_id.clone(),
+                config: dirty_event.config.clone(),
+                status: dirty_event.status,
             });
-            for dirty_event in &taken_dirty_events {
-                inputs.push(AIAgentInput::OrchestrationConfigUpdate {
-                    plan_id: dirty_event.plan_id.clone(),
-                    config: dirty_event.config.clone(),
-                    status: dirty_event.status,
-                });
-            }
         }
 
         let send_result = self.send_request_input(
@@ -862,7 +862,6 @@ impl BlocklistAIController {
         // silently lost.
         if let Err(e) = &send_result {
             report_error!(e);
-            #[cfg(not(feature = "warp_lite"))]
             if !taken_dirty_events.is_empty() {
                 AIDocumentModel::handle(ctx).update(ctx, |model, _| {
                     model.set_dirty_orchestration_events(conversation_id, taken_dirty_events);
@@ -874,7 +873,6 @@ impl BlocklistAIController {
     /// Populates plan documents from user query to AIDocumentModel if not already present.
     /// Parses attachments from query and creates AI documents for any user-attached plans.
     /// This is split from parse_context_attachments to run later in the pipeline when new conversations are created.
-    #[cfg(not(feature = "warp_lite"))]
     fn maybe_populate_plans_for_ai_document_model(
         &self,
         referenced_attachments: &HashMap<String, AIAgentAttachment>,
@@ -1709,7 +1707,7 @@ impl BlocklistAIController {
         true
     }
 
-    #[cfg(target_family = "wasm")]
+    #[cfg(any(target_family = "wasm", not(feature = "agent_runtime")))]
     fn maybe_prepare_local_claude_wake(
         &mut self,
         _conversation_id: AIConversationId,
@@ -1719,7 +1717,7 @@ impl BlocklistAIController {
         false
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "agent_runtime"))]
     fn maybe_prepare_local_claude_wake(
         &mut self,
         conversation_id: AIConversationId,
@@ -2529,7 +2527,6 @@ impl BlocklistAIController {
                 ..
             } = input
             {
-                #[cfg(not(feature = "warp_lite"))]
                 self.maybe_populate_plans_for_ai_document_model(
                     referenced_attachments,
                     conversation_data.id,
@@ -2582,7 +2579,6 @@ impl BlocklistAIController {
             });
 
             // Update the document status to UpToDate after query submission
-            #[cfg(not(feature = "warp_lite"))]
             if let Some(doc_id) = pending_document_id {
                 AIDocumentModel::handle(ctx).update(ctx, |model, mctx| {
                     model.set_user_edit_status(&doc_id, AIDocumentUserEditStatus::UpToDate, mctx);
@@ -2869,6 +2865,7 @@ impl BlocklistAIController {
                 match event {
                     Ok(event) => {
                         // If this controller is part of a shared session, forward the entire response event to viewers first.
+                        #[cfg(feature = "agent_runtime")]
                         if FeatureFlag::AgentSharedSessions.is_enabled() {
                             let mut model = self.terminal_model.lock();
                             if model.shared_session_status().is_sharer() {
@@ -2891,6 +2888,7 @@ impl BlocklistAIController {
                                             .map(|t| t.as_str().to_string())
                                     });
 
+                                #[cfg(feature = "agent_runtime")]
                                 model.send_agent_response_for_shared_session(
                                     &event,
                                     participant_id,
@@ -3094,6 +3092,7 @@ impl BlocklistAIController {
                     // of any user-initiated cancellation. We skip internal cancellations that preserve
                     // the conversation's InProgress status, such as follow-ups and CLI subagent user
                     // takeover, because those do not end the conversation.
+                    #[cfg(feature = "agent_runtime")]
                     if FeatureFlag::AgentSharedSessions.is_enabled()
                         && !matches!(
                             stream_cancellation.reason.conversation_outcome(),
@@ -3597,6 +3596,6 @@ fn get_running_command(terminal_model: &TerminalModel) -> Option<RunningCommand>
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "controller_tests.rs"]
 mod tests;

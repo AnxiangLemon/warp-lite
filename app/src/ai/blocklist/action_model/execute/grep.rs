@@ -690,6 +690,6 @@ impl Entity for GrepExecutor {
     type Event = ();
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "grep_tests.rs"]
 mod tests;

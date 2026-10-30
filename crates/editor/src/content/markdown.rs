@@ -1,17 +1,24 @@
 use std::collections::VecDeque;
 use std::fmt::Write;
 use std::ops::Range;
+#[cfg(feature = "html")]
 use std::{io, iter};
 
-use anyhow::{Context, Result};
+#[cfg(feature = "html")]
+use anyhow::Context;
+use anyhow::Result;
+#[cfg(feature = "html")]
 use html5ever::serialize::{Serialize, Serializer, TraversalScope};
+#[cfg(feature = "html")]
 use html5ever::{QualName, serialize};
+#[cfg(feature = "html")]
 use itertools::Itertools;
 use markdown_parser::{
     CodeBlockText, FormattedIndentTextInline, FormattedTableAlignment, FormattedTaskList,
     FormattedText, FormattedTextFragment, FormattedTextHeader, FormattedTextInline,
     FormattedTextLine, OrderedFormattedIndentTextInline,
 };
+#[cfg(feature = "html")]
 use markup5ever::ns;
 use string_offset::CharOffset;
 use warpui_core::elements::{ListIndentLevel, ListNumbering};
@@ -23,9 +30,11 @@ use super::buffer::{
     StyledBufferBlocks, StyledBufferRun,
 };
 use super::core::{CoreEditorAction, CoreEditorActionType};
+#[cfg(feature = "html")]
+use super::text::BufferBlockItem;
 use super::text::{
-    BlockHeaderSize, BlockType, BufferBlockItem, BufferBlockStyle, FormattedTable,
-    TABLE_BLOCK_MARKDOWN_LANG, TextStylesWithMetadata,
+    BlockHeaderSize, BlockType, BufferBlockStyle, FormattedTable, TABLE_BLOCK_MARKDOWN_LANG,
+    TextStylesWithMetadata,
 };
 use crate::content::anchor::AnchorSide;
 use crate::content::selection_model::BufferSelectionModel;
@@ -725,12 +734,20 @@ pub struct ExportedBufferBlocks<'a> {
 impl ExportedBufferBlocks<'_> {
     // Serialize a styled block into HTML string.
     pub fn serialize_styled_blocks(self) -> Result<String> {
-        let mut result = vec![];
-        serialize(&mut result, &self, Default::default())?;
-        String::from_utf8(result).context("Failed to parse HTML bytes")
+        #[cfg(feature = "html")]
+        {
+            let mut result = vec![];
+            serialize(&mut result, &self, Default::default())?;
+            String::from_utf8(result).context("Failed to parse HTML bytes")
+        }
+        #[cfg(not(feature = "html"))]
+        {
+            Err(anyhow::anyhow!("HTML export is disabled in this build"))
+        }
     }
 }
 
+#[cfg(feature = "html")]
 impl Serialize for ExportedBufferBlocks<'_> {
     fn serialize<S>(&self, serializer: &mut S, _: TraversalScope) -> io::Result<()>
     where
@@ -1037,6 +1054,7 @@ impl Serialize for ExportedBufferBlocks<'_> {
     }
 }
 
+#[cfg(feature = "html")]
 fn start_list_with_indent<S>(
     serializer: &mut S,
     tag: &str,
@@ -1074,6 +1092,7 @@ where
     Ok(())
 }
 
+#[cfg(feature = "html")]
 fn end_list_with_indent<S>(serializer: &mut S, tag: &str, indent_level: usize) -> io::Result<()>
 where
     S: Serializer,
@@ -1089,6 +1108,7 @@ where
 /// The parent element wrapping consecutive blocks of a given style.
 ///
 /// This only applies to list blocks.
+#[cfg(feature = "html")]
 fn container_element(style: &BufferBlockStyle) -> Option<&'static str> {
     match style {
         BufferBlockStyle::OrderedList { .. } => Some("ol"),
@@ -1130,6 +1150,7 @@ fn formatted_text_line_to_block_style(line: &FormattedTextLine) -> Option<Buffer
     }
 }
 
+#[cfg(feature = "html")]
 fn alignment_to_html_value(alignment: &FormattedTableAlignment) -> &'static str {
     match alignment {
         FormattedTableAlignment::Left => "left",
@@ -1138,6 +1159,7 @@ fn alignment_to_html_value(alignment: &FormattedTableAlignment) -> &'static str 
     }
 }
 
+#[cfg(feature = "html")]
 fn serialize_table_cell_inline<S>(
     serializer: &mut S,
     inline: &[FormattedTextFragment],
@@ -1196,6 +1218,7 @@ where
     Ok(())
 }
 
+#[cfg(feature = "html")]
 fn serialize_table_to_html<S>(serializer: &mut S, table: &FormattedTable) -> io::Result<()>
 where
     S: Serializer,

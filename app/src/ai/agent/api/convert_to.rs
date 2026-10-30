@@ -902,9 +902,8 @@ impl From<Suggestions> for api::Suggestions {
     }
 }
 
-// Convert MCP resource to proto format.
-#[cfg(feature = "mcp_client")]
-fn convert_mcp_resource(resource: crate::ai::mcp::Resource) -> api::request::mcp_context::McpResource {
+// Convert rmcp resource to proto format.
+fn convert_mcp_resource(resource: rmcp::model::Resource) -> api::request::mcp_context::McpResource {
     let rmcp::model::RawResource {
         uri,
         name,
@@ -920,19 +919,8 @@ fn convert_mcp_resource(resource: crate::ai::mcp::Resource) -> api::request::mcp
     }
 }
 
-#[cfg(not(feature = "mcp_client"))]
-fn convert_mcp_resource(_resource: crate::ai::mcp::Resource) -> api::request::mcp_context::McpResource {
-    api::request::mcp_context::McpResource {
-        uri: String::new(),
-        name: String::new(),
-        description: String::new(),
-        mime_type: String::new(),
-    }
-}
-
-// Convert MCP tool to proto format, skipping tools with invalid schemas.
-#[cfg(feature = "mcp_client")]
-fn convert_mcp_tool(tool: crate::ai::mcp::Tool) -> Option<api::request::mcp_context::McpTool> {
+// Convert rmcp tool to proto format, skipping tools with invalid schemas.
+fn convert_mcp_tool(tool: rmcp::model::Tool) -> Option<api::request::mcp_context::McpTool> {
     let Ok(prost_types::Value {
         kind: Some(prost_types::value::Kind::StructValue(input_schema)),
     }) = serde_json_to_prost(tool.input_schema.as_ref().clone().into())
@@ -945,11 +933,6 @@ fn convert_mcp_tool(tool: crate::ai::mcp::Tool) -> Option<api::request::mcp_cont
         description: tool.description.map(|d| d.to_string()).unwrap_or_default(),
         input_schema: Some(input_schema),
     })
-}
-
-#[cfg(not(feature = "mcp_client"))]
-fn convert_mcp_tool(_tool: crate::ai::mcp::Tool) -> Option<api::request::mcp_context::McpTool> {
-    None
 }
 
 impl From<MCPContext> for api::request::McpContext {
@@ -1054,6 +1037,6 @@ fn serde_json_to_prost(value: serde_json::Value) -> Result<prost_types::Value, S
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "convert_to_tests.rs"]
 mod tests;

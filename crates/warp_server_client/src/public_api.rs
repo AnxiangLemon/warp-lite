@@ -1,9 +1,14 @@
-use anyhow::{Context as _, Result};
+#[cfg(feature = "network_transport")]
+use anyhow::Context as _;
+use anyhow::Result;
 use serde::de::DeserializeOwned;
+#[cfg(feature = "network_transport")]
 use warp_core::channel::ChannelState;
 use warp_errors::{ErrorExt, register_error};
 
-use crate::base_client::{AmbientHeaderPolicy, BaseClient};
+#[cfg(feature = "network_transport")]
+use crate::base_client::AmbientHeaderPolicy;
+use crate::base_client::BaseClient;
 
 /// Typed error for HTTP operations so retry classifiers can inspect status failures.
 #[derive(Debug, thiserror::Error)]
@@ -21,11 +26,13 @@ impl ErrorExt for HttpStatusError {
 
 register_error!(HttpStatusError);
 
+#[cfg(feature = "network_transport")]
 #[derive(serde::Deserialize)]
 struct PublicApiError {
     error: String,
 }
 
+#[cfg(feature = "network_transport")]
 impl BaseClient {
     /// Sends a GET request to a public API endpoint and returns the raw response on success.
     ///
@@ -90,6 +97,22 @@ impl BaseClient {
     }
 }
 
-#[cfg(test)]
+#[cfg(not(feature = "network_transport"))]
+impl BaseClient {
+    pub async fn get_public_api_response(&self, path: &str) -> Result<http_client::Response> {
+        let _ = path;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
+
+    pub async fn get_public_api<R>(&self, path: &str) -> Result<R>
+    where
+        R: DeserializeOwned,
+    {
+        let _ = path;
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
+    }
+}
+
+#[cfg(all(test, feature = "network_transport"))]
 #[path = "public_api_tests.rs"]
 mod tests;

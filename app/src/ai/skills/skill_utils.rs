@@ -207,6 +207,6 @@ pub fn skill_path_from_location(location: &LocalOrRemotePath) -> Option<LocalOrR
     None
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "skill_utils_tests.rs"]
 mod tests;

@@ -6,7 +6,7 @@ use anyhow::Result;
 use base64::Engine as _;
 use base64::prelude::BASE64_STANDARD;
 use bytes::Bytes;
-use reqwest::Url;
+use url::Url;
 use warpui_core::assets::asset_cache::{
     Asset, AssetCache, AssetSource, AssetState, AsyncAssetId, AsyncAssetType,
 };
@@ -141,6 +141,7 @@ impl AssetCacheExt for AssetCache {
 }
 
 /// Fetches a file from the given `url` to memory.
+#[cfg(feature = "network_assets")]
 async fn fetch_file_to_memory(url: Url) -> Result<Bytes, anyhow::Error> {
     cfg_if::cfg_if! {
         if #[cfg(target_family = "wasm")] {
@@ -154,6 +155,12 @@ async fn fetch_file_to_memory(url: Url) -> Result<Bytes, anyhow::Error> {
     }
     let content = response.error_for_status()?.bytes().await?;
     Ok(content)
+}
+
+#[cfg(not(feature = "network_assets"))]
+async fn fetch_file_to_memory(url: Url) -> Result<Bytes, anyhow::Error> {
+    let _ = url;
+    anyhow::bail!("Network assets are unavailable in this build")
 }
 
 /// Given a url and a directory where cached artifacts are stored, returns a unique

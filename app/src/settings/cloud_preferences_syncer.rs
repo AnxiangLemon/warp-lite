@@ -23,7 +23,7 @@ use crate::auth::auth_state::AuthState;
 use crate::cloud_object::model::generic_string_model::GenericStringObjectId;
 use crate::cloud_object::model::persistence::CloudModel;
 use crate::cloud_object::{CloudObjectEventEntrypoint, GenericStringObjectFormat, JsonObjectType};
-use crate::cloud_object::CloudObjectTypeAndId;
+use crate::drive::CloudObjectTypeAndId;
 use crate::server::cloud_objects::update_manager::{
     GenericStringObjectInput, InitiatedBy, UpdateManager, UpdateManagerEvent,
 };
@@ -99,7 +99,8 @@ pub fn initialize_cloud_preferences_syncer(
 
     // The settings surface decides whether this process participates in cloud
     // sync at all (e.g. the TUI keeps its config local).
-    let sync_enabled = settings::settings_mode().should_sync_to_cloud();
+    let sync_enabled =
+        !cfg!(feature = "warp_lite") && settings::settings_mode().should_sync_to_cloud();
     CloudPreferencesSyncer::new(
         force_local_wins_on_startup,
         toml_file_path,

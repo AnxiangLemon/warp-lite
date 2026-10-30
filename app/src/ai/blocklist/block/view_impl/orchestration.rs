@@ -693,6 +693,6 @@ fn render_formatted_text_element(
     .set_selectable(true)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "orchestration_tests.rs"]
 mod tests;

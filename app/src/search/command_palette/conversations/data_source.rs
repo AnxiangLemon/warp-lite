@@ -16,6 +16,7 @@ use crate::search::command_palette::mixer::CommandPaletteItemAction;
 use crate::search::command_palette::separator_search_item::SeparatorSearchItem;
 use crate::search::data_source::{DataSourceSearchError, Query, QueryResult};
 use crate::search::mixer::DataSourceRunErrorWrapper;
+#[cfg(feature = "agent_runtime")]
 use crate::workspace::Workspace;
 
 /// Sections for grouping conversations in the command palette.
@@ -121,28 +122,36 @@ impl DataSource {
 
 /// Get the selected conversation in the focused pane.
 fn selected_conversation_in_focused_pane(app: &AppContext) -> Option<&AIConversation> {
-    app.windows().active_window().and_then(|window_id| {
-        app.views_of_type::<Workspace>(window_id)
-            .and_then(|views| views.first().cloned())
-            .and_then(|workspace| {
-                workspace.read(app, |workspace, workspace_ctx| {
-                    workspace.active_tab_pane_group().read(
-                        workspace_ctx,
-                        |pane_group, pane_group_ctx| {
-                            pane_group.focused_session_view(pane_group_ctx).and_then(
-                                |terminal_view| {
-                                    terminal_view
-                                        .as_ref(pane_group_ctx)
-                                        .ai_context_model()
-                                        .as_ref(pane_group_ctx)
-                                        .selected_conversation(app)
-                                },
-                            )
-                        },
-                    )
+    #[cfg(feature = "agent_runtime")]
+    {
+        app.windows().active_window().and_then(|window_id| {
+            app.views_of_type::<Workspace>(window_id)
+                .and_then(|views| views.first().cloned())
+                .and_then(|workspace| {
+                    workspace.read(app, |workspace, workspace_ctx| {
+                        workspace.active_tab_pane_group().read(
+                            workspace_ctx,
+                            |pane_group, pane_group_ctx| {
+                                pane_group.focused_session_view(pane_group_ctx).and_then(
+                                    |terminal_view| {
+                                        terminal_view
+                                            .as_ref(pane_group_ctx)
+                                            .ai_context_model()
+                                            .as_ref(pane_group_ctx)
+                                            .selected_conversation(app)
+                                    },
+                                )
+                            },
+                        )
+                    })
                 })
-            })
-    })
+        })
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    {
+        let _ = app;
+        None
+    }
 }
 
 impl SyncDataSource for DataSource {

@@ -96,6 +96,6 @@ impl Entity for ReadSkillExecutor {
     type Event = ();
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "read_skill_tests.rs"]
 mod tests;

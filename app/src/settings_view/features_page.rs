@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use ::settings::{Setting, ToggleableSetting};
 use lazy_static::lazy_static;
+#[cfg(feature = "agent_runtime")]
 use strum::IntoEnumIterator;
 use warp_core::channel::ChannelState;
 use warp_core::context_flag::ContextFlag;
@@ -60,22 +61,23 @@ use crate::search::command_search::settings::{
     CommandSearchSettings, ShowGlobalWorkflowsInUniversalSearch,
 };
 use crate::server::telemetry::TelemetryEvent;
+#[cfg(feature = "agent_runtime")]
+use crate::settings::AISettingsChangedEvent;
 use crate::settings::ai::AISettings;
 use crate::settings::native_preference::{NativePreferenceSettings, UserNativePreference};
 use crate::settings::{
-    AISettingsChangedEvent, AliasExpansionEnabled, AliasExpansionSettings, AppEditorSettings,
-    AtContextMenuInTerminalMode, AutocompleteSymbols, AutosuggestionKeybindingHint,
-    ChangelogSettings, CloudPreferencesSettings, CodeEditorLineNumberMode,
-    CodeEditorLineNumberModeSetting, CodeSettings, CommandCorrections, CompletionsOpenWhileTyping,
-    CopyOnSelect, CtrlTabBehavior, DEFAULT_QUAKE_MODE_SIZE_PERCENTAGES, DefaultSessionMode,
-    EnableSlashCommandsInTerminal, ErrorUnderliningEnabled, ExtraMetaKeys, GPUSettings,
-    GlobalHotkeyMode, InputSettings, InputSettingsChangedEvent, LinuxSelectionClipboard,
-    MiddleClickPasteEnabled, MouseScrollMultiplier, OutlineCodebaseSymbolsForAtContextMenu,
-    PreferLowPowerGPU, PreferredGraphicsBackend, QUAKE_WINDOW_AUTOHIDE_SUPPORTED,
-    QuakeModeSettings, ScrollSettings, ScrollSettingsChangedEvent, SelectionSettings,
-    ShowAutosuggestionIgnoreButton, ShowChangelogAfterUpdate, ShowTerminalInputMessageBar,
-    SshSettings, SyntaxHighlighting, TabBehavior, UserNativeRedirectPreference, VimModeEnabled,
-    VimStatusBar, VimUnnamedSystemClipboard,
+    AliasExpansionEnabled, AliasExpansionSettings, AppEditorSettings, AtContextMenuInTerminalMode,
+    AutocompleteSymbols, AutosuggestionKeybindingHint, ChangelogSettings, CloudPreferencesSettings,
+    CodeEditorLineNumberMode, CodeEditorLineNumberModeSetting, CodeSettings, CommandCorrections,
+    CompletionsOpenWhileTyping, CopyOnSelect, CtrlTabBehavior, DEFAULT_QUAKE_MODE_SIZE_PERCENTAGES,
+    DefaultSessionMode, EnableSlashCommandsInTerminal, ErrorUnderliningEnabled, ExtraMetaKeys,
+    GPUSettings, GlobalHotkeyMode, InputSettings, InputSettingsChangedEvent,
+    LinuxSelectionClipboard, MiddleClickPasteEnabled, MouseScrollMultiplier,
+    OutlineCodebaseSymbolsForAtContextMenu, PreferLowPowerGPU, PreferredGraphicsBackend,
+    QUAKE_WINDOW_AUTOHIDE_SUPPORTED, QuakeModeSettings, ScrollSettings, ScrollSettingsChangedEvent,
+    SelectionSettings, ShowAutosuggestionIgnoreButton, ShowChangelogAfterUpdate,
+    ShowTerminalInputMessageBar, SshSettings, SyntaxHighlighting, TabBehavior,
+    UserNativeRedirectPreference, VimModeEnabled, VimStatusBar, VimUnnamedSystemClipboard,
 };
 use crate::terminal::alt_screen_reporting::{
     AltScreenReporting, FocusReportingEnabled, MouseReportingEnabled, ScrollReportingEnabled,
@@ -102,6 +104,7 @@ use crate::terminal::settings::{
 };
 use crate::terminal::{BlockListSettings, PreserveInputFocusOnBlockSelection, SnackbarEnabled};
 use crate::undo_close::UndoCloseSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::user_config::{WarpConfig, WarpConfigUpdateEvent};
 use crate::util::bindings::{
     keybinding_name_to_display_string, reset_keybinding_to_default, set_custom_keybinding,
@@ -402,6 +405,7 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
             context,
             flags::QUIT_WARNING_MODAL,
         )
+        .with_enabled(|| !cfg!(feature = "warp_lite"))
         .is_supported_on_current_platform(
             GeneralSettings::as_ref(app)
                 .show_warning_before_quitting
@@ -861,6 +865,14 @@ fn max_max_grid_size() -> usize {
 }
 
 fn block_maximum_rows_description() -> String {
+    if cfg!(feature = "warp_lite") || !cfg!(feature = "agent_runtime") {
+        let max_rows = if ChannelState::enable_debug_features() {
+            "1000 万"
+        } else {
+            "100 万"
+        };
+        return format!("单个命令块超过 10 万行可能影响性能，最多支持 {max_rows}行。");
+    }
     let max_rows = if ChannelState::enable_debug_features() {
         "10 million"
     } else {
@@ -1383,7 +1395,7 @@ pub struct FeaturesPageView {
 
     button_mouse_states: MouseStateHandles,
     ctrl_tab_behavior_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
-    code_editor_line_number_mode_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
+    code_editor_line_number_mode_dropdown: Option<ViewHandle<Dropdown<FeaturesPageAction>>>,
 
     global_hotkey_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
     activation_hotkey_keybinding_editor_state: KeybindingEditorState,
@@ -1411,14 +1423,14 @@ pub struct FeaturesPageView {
     valid_mouse_scroll_multiplier: bool,
 
     #[cfg(feature = "local_fs")]
-    external_editor_view: ViewHandle<features::ExternalEditorView>,
+    external_editor_view: Option<ViewHandle<features::ExternalEditorView>>,
     word_boundary_editor: ViewHandle<EditorView>,
 
     tab_behavior_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
     graphics_backend_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
     new_tab_placement_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
     osc52_clipboard_access_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
-    default_session_mode_dropdown: ViewHandle<FilterableDropdown<FeaturesPageAction>>,
+    default_session_mode_dropdown: Option<ViewHandle<FilterableDropdown<FeaturesPageAction>>>,
     tab_behavior: Tracked<TabBehavior>,
     completions_keystroke: Tracked<String>,
     autosuggestions_keystroke: Tracked<String>,
@@ -1890,13 +1902,15 @@ impl TypedActionView for FeaturesPageView {
                 });
             }
             ToggleShowWarningBeforeQuitting => {
-                GeneralSettings::handle(ctx).update(ctx, |warning_settings, ctx| {
-                    report_if_error!(
-                        warning_settings
-                            .show_warning_before_quitting
-                            .toggle_and_save_value(ctx)
-                    );
-                })
+                if !cfg!(feature = "warp_lite") {
+                    GeneralSettings::handle(ctx).update(ctx, |warning_settings, ctx| {
+                        report_if_error!(
+                            warning_settings
+                                .show_warning_before_quitting
+                                .toggle_and_save_value(ctx)
+                        );
+                    });
+                }
             }
             ToggleSmartSelection => {
                 SemanticSelection::handle(ctx).update(ctx, |selection, ctx| {
@@ -2217,13 +2231,19 @@ impl FeaturesPageView {
         );
 
         // Listen for model changes on all the settings that are used in this view.
-        ctx.subscribe_to_model(&AppEditorSettings::handle(ctx), |me, _, _, ctx| {
-            Self::update_code_editor_line_number_mode_dropdown(
-                me.code_editor_line_number_mode_dropdown.clone(),
-                ctx,
-            );
-            ctx.notify();
-        });
+        #[cfg(feature = "agent_runtime")]
+        if !cfg!(feature = "warp_lite") {
+            ctx.subscribe_to_model(&AppEditorSettings::handle(ctx), |me, _, _, ctx| {
+                Self::update_code_editor_line_number_mode_dropdown(
+                    me.code_editor_line_number_mode_dropdown
+                        .as_ref()
+                        .expect("agent settings dropdown is initialized")
+                        .clone(),
+                    ctx,
+                );
+                ctx.notify();
+            });
+        }
 
         ctx.subscribe_to_model(&SelectionSettings::handle(ctx), |_, _, _, ctx| ctx.notify());
         ctx.subscribe_to_model(&AltScreenReporting::handle(ctx), |_, _, _, ctx| {
@@ -2355,19 +2375,25 @@ impl FeaturesPageView {
             ctx.notify();
         });
 
-        ctx.subscribe_to_model(&AISettings::handle(ctx), |me, _, event, ctx| {
-            if matches!(
-                event,
-                AISettingsChangedEvent::IsAnyAIEnabled { .. }
-                    | AISettingsChangedEvent::DefaultSessionMode { .. }
-            ) {
-                Self::update_default_session_mode_dropdown(
-                    me.default_session_mode_dropdown.clone(),
-                    ctx,
-                );
-                ctx.notify();
-            }
-        });
+        #[cfg(feature = "agent_runtime")]
+        if !cfg!(feature = "warp_lite") {
+            ctx.subscribe_to_model(&AISettings::handle(ctx), |me, _, event, ctx| {
+                if matches!(
+                    event,
+                    AISettingsChangedEvent::IsAnyAIEnabled { .. }
+                        | AISettingsChangedEvent::DefaultSessionMode { .. }
+                ) {
+                    Self::update_default_session_mode_dropdown(
+                        me.default_session_mode_dropdown
+                            .as_ref()
+                            .expect("agent settings dropdown is initialized")
+                            .clone(),
+                        ctx,
+                    );
+                    ctx.notify();
+                }
+            });
+        }
 
         let pin_position_dropdown = ctx.add_typed_action_view(|ctx| {
             let mut dropdown = Dropdown::new(ctx);
@@ -2435,21 +2461,38 @@ impl FeaturesPageView {
             ctx.notify();
         });
 
-        let default_session_mode_dropdown = ctx.add_typed_action_view(FilterableDropdown::new);
-        Self::update_default_session_mode_dropdown(default_session_mode_dropdown.clone(), ctx);
+        #[cfg(feature = "agent_runtime")]
+        let default_session_mode_dropdown = if !cfg!(feature = "warp_lite") {
+            let dropdown = ctx.add_typed_action_view(FilterableDropdown::new);
+            Self::update_default_session_mode_dropdown(dropdown.clone(), ctx);
+            Some(dropdown)
+        } else {
+            None
+        };
+        #[cfg(not(feature = "agent_runtime"))]
+        let default_session_mode_dropdown = None;
 
-        ctx.subscribe_to_model(&WarpConfig::handle(ctx), |me, _, event, ctx| {
-            if matches!(event, WarpConfigUpdateEvent::TabConfigs) {
-                Self::update_default_session_mode_dropdown(
-                    me.default_session_mode_dropdown.clone(),
-                    ctx,
-                );
-                ctx.notify();
-            }
-        });
+        #[cfg(feature = "agent_runtime")]
+        if !cfg!(feature = "warp_lite") {
+            ctx.subscribe_to_model(&WarpConfig::handle(ctx), |me, _, event, ctx| {
+                if matches!(event, WarpConfigUpdateEvent::TabConfigs) {
+                    Self::update_default_session_mode_dropdown(
+                        me.default_session_mode_dropdown
+                            .as_ref()
+                            .expect("agent settings dropdown is initialized")
+                            .clone(),
+                        ctx,
+                    );
+                    ctx.notify();
+                }
+            });
+        }
 
-        #[cfg(feature = "local_fs")]
-        let external_editor_view = ctx.add_typed_action_view(features::ExternalEditorView::new);
+        #[cfg(all(feature = "local_fs", feature = "agent_runtime"))]
+        let external_editor_view = (!cfg!(feature = "warp_lite"))
+            .then(|| ctx.add_typed_action_view(features::ExternalEditorView::new));
+        #[cfg(all(feature = "local_fs", not(feature = "agent_runtime")))]
+        let external_editor_view = None;
 
         let global_hotkey_mode =
             KeysSettings::handle(ctx).read(ctx, |settings, ctx| settings.global_hotkey_mode(ctx));
@@ -2465,11 +2508,16 @@ impl FeaturesPageView {
         let ctrl_tab_behavior_dropdown = ctx.add_typed_action_view(Dropdown::new);
         Self::update_ctrl_tab_behavior_dropdown(ctrl_tab_behavior_dropdown.clone(), ctx);
 
-        let code_editor_line_number_mode_dropdown = ctx.add_typed_action_view(Dropdown::new);
-        Self::update_code_editor_line_number_mode_dropdown(
-            code_editor_line_number_mode_dropdown.clone(),
-            ctx,
-        );
+        #[cfg(feature = "agent_runtime")]
+        let code_editor_line_number_mode_dropdown = if !cfg!(feature = "warp_lite") {
+            let dropdown = ctx.add_typed_action_view(Dropdown::new);
+            Self::update_code_editor_line_number_mode_dropdown(dropdown.clone(), ctx);
+            Some(dropdown)
+        } else {
+            None
+        };
+        #[cfg(not(feature = "agent_runtime"))]
+        let code_editor_line_number_mode_dropdown = None;
 
         ctx.subscribe_to_model(&KeysSettings::handle(ctx), |me, _, event, ctx| {
             if matches!(
@@ -2731,6 +2779,9 @@ impl FeaturesPageView {
     }
 
     fn build_page(ctx: &mut ViewContext<Self>) -> PageType<Self> {
+        if cfg!(feature = "warp_lite") || !cfg!(feature = "agent_runtime") {
+            return Self::build_lite_page(ctx);
+        }
         let mut general_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![];
         if !cfg!(feature = "warp_lite") {
             general_widgets.push(Box::new(DefaultSessionModeWidget::default()));
@@ -2792,9 +2843,10 @@ impl FeaturesPageView {
         }
 
         let changelog_settings = ChangelogSettings::as_ref(ctx);
-        if changelog_settings
-            .show_changelog_after_update
-            .is_supported_on_current_platform()
+        if !cfg!(feature = "warp_lite")
+            && changelog_settings
+                .show_changelog_after_update
+                .is_supported_on_current_platform()
         {
             general_widgets.push(Box::new(ShowChangelogWidget::default()));
         }
@@ -2892,9 +2944,10 @@ impl FeaturesPageView {
 
         let mut text_editing_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
             vec![Box::new(AutocompleteSymbolsWidget::default())];
-        if app_editor_settings
-            .code_editor_line_number_mode
-            .is_supported_on_current_platform()
+        if !cfg!(feature = "warp_lite")
+            && app_editor_settings
+                .code_editor_line_number_mode
+                .is_supported_on_current_platform()
         {
             text_editing_widgets.push(Box::new(CodeEditorLineNumberModeWidget::default()));
         }
@@ -2956,14 +3009,16 @@ impl FeaturesPageView {
             editor_widgets.push(Box::new(AutosuggestionIgnoreButtonWidget::default()));
         }
 
-        if input_settings
-            .at_context_menu_in_terminal_mode
-            .is_supported_on_current_platform()
+        if !cfg!(feature = "warp_lite")
+            && input_settings
+                .at_context_menu_in_terminal_mode
+                .is_supported_on_current_platform()
         {
             editor_widgets.push(Box::new(AtContextMenuInTerminalModeWidget::default()));
         }
 
-        if FeatureFlag::AgentView.is_enabled()
+        if !cfg!(feature = "warp_lite")
+            && FeatureFlag::AgentView.is_enabled()
             && input_settings
                 .enable_slash_commands_in_terminal
                 .is_supported_on_current_platform()
@@ -2971,9 +3026,10 @@ impl FeaturesPageView {
             editor_widgets.push(Box::new(SlashCommandsInTerminalModeWidget::default()));
         }
 
-        if input_settings
-            .outline_codebase_symbols_for_at_context_menu
-            .is_supported_on_current_platform()
+        if !cfg!(feature = "warp_lite")
+            && input_settings
+                .outline_codebase_symbols_for_at_context_menu
+                .is_supported_on_current_platform()
             && FeatureFlag::AIContextMenuCode.is_enabled()
         {
             editor_widgets.push(Box::new(
@@ -2981,7 +3037,7 @@ impl FeaturesPageView {
             ));
         }
 
-        if FeatureFlag::AgentView.is_enabled() {
+        if !cfg!(feature = "warp_lite") && FeatureFlag::AgentView.is_enabled() {
             editor_widgets.push(Box::new(ShowTerminalInputMessageLineWidget::default()));
         }
 
@@ -3025,7 +3081,7 @@ impl FeaturesPageView {
             terminal_widgets.push(Box::new(AudibleBellWidget::default()));
         }
 
-        if FeatureFlag::AgentView.is_enabled() {
+        if !cfg!(feature = "warp_lite") && FeatureFlag::AgentView.is_enabled() {
             terminal_widgets.push(Box::new(ShowTerminalZeroStateBlockWidget::default()));
         }
 
@@ -3066,7 +3122,7 @@ impl FeaturesPageView {
             }
         }
 
-        let categories = vec![
+        let mut categories = vec![
             Category::new("General", general_widgets),
             Category::new("Session", session_widgets),
             Category::new("Keys", keys_widgets),
@@ -3074,19 +3130,80 @@ impl FeaturesPageView {
             Category::new("Terminal Input", editor_widgets),
             Category::new("Terminal", terminal_widgets),
             Category::new("Notifications", notifications_widgets),
+            Category::new("System", system_widgets),
         ];
-        let mut categories = categories;
         if !cfg!(feature = "warp_lite") {
-            categories.push(Category::new(
-                "Workflows",
-                vec![Box::new(WorkflowsInCommandSearch::default())],
-            ));
+            categories.insert(
+                categories.len() - 1,
+                Category::new(
+                    "Workflows",
+                    vec![Box::new(WorkflowsInCommandSearch::default())],
+                ),
+            );
         }
-        categories.push(Category::new("System", system_widgets));
 
         PageType::new_categorized(categories, None)
     }
 
+    fn build_lite_page(ctx: &mut ViewContext<Self>) -> PageType<Self> {
+        let mut session: Vec<Box<dyn SettingsWidget<View = Self>>> =
+            vec![Box::new(SessionRestorationWidget::default())];
+        #[cfg(feature = "local_tty")]
+        {
+            session.push(Box::new(StartupShellWidget::default()));
+            session.push(Box::new(WorkingDirectoryWidget::default()));
+        }
+        if UndoCloseSettings::as_ref(ctx)
+            .enabled
+            .is_supported_on_current_platform()
+        {
+            session.push(Box::new(UndoCloseWidget::default()));
+        }
+        session.push(Box::new(BlockLimitWidget::default()));
+
+        let mut input: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![
+            Box::new(SyntaxHighlightingWidget::default()),
+            Box::new(CompletionsMenuWhileTypingWidget::default()),
+            Box::new(TabKeyBehaviorWidget::default()),
+        ];
+        if KeysSettings::as_ref(ctx)
+            .ctrl_tab_behavior
+            .is_supported_on_current_platform()
+        {
+            input.push(Box::new(CtrlTabBehaviorWidget::default()));
+        }
+
+        let mut selection: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![
+            Box::new(SmartSelectWidget::default()),
+            Box::new(CopyOnSelectWidget::default()),
+        ];
+        if SelectionSettings::as_ref(ctx)
+            .middle_click_paste_enabled
+            .is_supported_on_current_platform()
+        {
+            selection.push(Box::new(MiddleClickPasteWidget::default()));
+        }
+        let mut terminal: Vec<Box<dyn SettingsWidget<View = Self>>> =
+            vec![Box::new(MouseScrollMultiplierWidget::default())];
+        if TerminalSettings::as_ref(ctx)
+            .use_audible_bell
+            .is_supported_on_current_platform()
+        {
+            terminal.push(Box::new(AudibleBellWidget::default()));
+        }
+
+        PageType::new_categorized(
+            vec![
+                Category::new("会话与历史", session),
+                Category::new("命令输入与切换", input),
+                Category::new("选择与复制", selection),
+                Category::new("滚动与提示", terminal),
+            ],
+            Some("终端"),
+        )
+    }
+
+    #[cfg(feature = "agent_runtime")]
     fn update_code_editor_line_number_mode_dropdown(
         dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
         ctx: &mut ViewContext<Self>,
@@ -3150,7 +3267,7 @@ impl FeaturesPageView {
                     .into_iter()
                     .map(|val| {
                         DropdownItem::new(
-                            val.as_dropdown_label(),
+                            super::lite_i18n::text(val.as_dropdown_label()),
                             FeaturesPageAction::SetCtrlTabBehavior(val),
                         )
                     })
@@ -3565,11 +3682,11 @@ impl FeaturesPageView {
         self.tab_behavior_dropdown.update(ctx, |dropdown, ctx| {
             let mut items = vec![
                 DropdownItem::new(
-                    TabBehavior::Completions.dropdown_item_label(),
+                    super::lite_i18n::text(TabBehavior::Completions.dropdown_item_label()),
                     FeaturesPageAction::SetTabBehavior(TabBehavior::Completions),
                 ),
                 DropdownItem::new(
-                    TabBehavior::Autosuggestions.dropdown_item_label(),
+                    super::lite_i18n::text(TabBehavior::Autosuggestions.dropdown_item_label()),
                     FeaturesPageAction::SetTabBehavior(TabBehavior::Autosuggestions),
                 ),
             ];
@@ -3578,12 +3695,15 @@ impl FeaturesPageView {
             // selectable option from the dropdown.
             if matches!(*self.tab_behavior, TabBehavior::UserDefined) {
                 items.push(DropdownItem::new(
-                    TabBehavior::UserDefined.dropdown_item_label(),
+                    super::lite_i18n::text(TabBehavior::UserDefined.dropdown_item_label()),
                     FeaturesPageAction::SetTabBehavior(TabBehavior::UserDefined),
                 ));
             }
             dropdown.set_items(items, ctx);
-            dropdown.set_selected_by_name(self.tab_behavior.dropdown_item_label(), ctx);
+            dropdown.set_selected_by_name(
+                super::lite_i18n::text(self.tab_behavior.dropdown_item_label()),
+                ctx,
+            );
         });
     }
 
@@ -3694,6 +3814,7 @@ impl FeaturesPageView {
         });
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn update_default_session_mode_dropdown(
         dropdown: ViewHandle<FilterableDropdown<FeaturesPageAction>>,
         ctx: &mut ViewContext<Self>,
@@ -4672,7 +4793,7 @@ impl SettingsWidget for SessionRestorationWidget {
 
         if app.is_wayland() {
             let message = Text::new_inline(
-                "Window positions won't be restored on Wayland. ",
+                super::lite_i18n::text("Window positions won't be restored on Wayland. "),
                 appearance.ui_font_family(),
                 CONTENT_FONT_SIZE,
             )
@@ -4681,7 +4802,7 @@ impl SettingsWidget for SessionRestorationWidget {
 
             let link = ui_builder
                 .link(
-                    "See docs.".to_owned(),
+                    super::lite_i18n::label("See docs."),
                     Some("https://docs.warp.dev/terminal/sessions/session-restoration".to_owned()),
                     None,
                     self.docs_link.clone(),
@@ -4828,7 +4949,12 @@ impl SettingsWidget for ExternalEditorWidget {
         _appearance: &Appearance,
         _app: &AppContext,
     ) -> Box<dyn Element> {
-        ChildView::new(&view.external_editor_view).finish()
+        ChildView::new(
+            view.external_editor_view
+                .as_ref()
+                .expect("external editor settings are initialized"),
+        )
+        .finish()
     }
 }
 
@@ -5071,7 +5197,7 @@ impl SettingsWidget for MouseScrollMultiplierWidget {
                 } else {
                     appearance
                         .ui_builder()
-                        .wrappable_text("Allowed Values: 1-20", true)
+                        .wrappable_text(super::lite_i18n::text("Allowed Values: 1-20"), true)
                         .with_style(UiComponentStyles {
                             font_color: Some(themes::theme::Fill::error().into_solid()),
                             ..Default::default()
@@ -5897,7 +6023,9 @@ impl SettingsWidget for CodeEditorLineNumberModeWidget {
                         app,
                     ),
                     None,
-                    &view.code_editor_line_number_mode_dropdown,
+                    view.code_editor_line_number_mode_dropdown
+                        .as_ref()
+                        .expect("agent settings dropdown is initialized"),
                 )
             },
         );
@@ -6674,6 +6802,9 @@ impl TabKeyBehaviorWidget {
         appearance: &Appearance,
         app: &AppContext,
     ) -> Box<dyn Element> {
+        if cfg!(feature = "warp_lite") {
+            return Empty::new().finish();
+        }
         let input_settings = InputSettings::as_ref(app);
         let other_keybinding_info = match *view.tab_behavior {
             TabBehavior::Completions if view.autosuggestions_keystroke.is_empty() => {
@@ -6761,7 +6892,7 @@ impl SettingsWidget for TabKeyBehaviorWidget {
             .with_child(
                 appearance
                     .ui_builder()
-                    .span("Tab key behavior")
+                    .span(super::lite_i18n::text("Tab key behavior"))
                     .with_style(UiComponentStyles {
                         font_size: Some(CONTENT_FONT_SIZE + 1.),
                         ..Default::default()
@@ -6769,7 +6900,9 @@ impl SettingsWidget for TabKeyBehaviorWidget {
                     .build()
                     .finish(),
             );
-        if *CloudPreferencesSettings::as_ref(app).settings_sync_enabled {
+        if !cfg!(feature = "warp_lite")
+            && *CloudPreferencesSettings::as_ref(app).settings_sync_enabled
+        {
             tab_key_span.add_child(render_local_only_icon(
                 appearance,
                 view.button_mouse_states
@@ -7391,7 +7524,14 @@ impl SettingsWidget for DefaultSessionModeWidget {
                 )
                 .finish(),
             )
-            .with_child(ChildView::new(&view.default_session_mode_dropdown).finish())
+            .with_child(
+                ChildView::new(
+                    view.default_session_mode_dropdown
+                        .as_ref()
+                        .expect("agent settings dropdown is initialized"),
+                )
+                .finish(),
+            )
             .finish()
     }
 }

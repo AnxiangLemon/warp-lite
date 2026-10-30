@@ -181,6 +181,6 @@ impl CloudProvider for GcpCloudProvider {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "gcp_tests.rs"]
 mod tests;

@@ -122,10 +122,7 @@ static DEFAULT_TIPS: LazyLock<Vec<AgentTip>> = LazyLock::new(|| {
             description: "Store reusable workflows, notebooks, and prompts in your".to_string(),
             link: Some("https://docs.warp.dev/knowledge-and-collaboration/warp-drive".to_string()),
             binding_name: None,
-            #[cfg(not(feature = "warp_lite"))]
             action: Some(WorkspaceAction::OpenWarpDrive),
-            #[cfg(feature = "warp_lite")]
-            action: None,
             kind: AgentTipKind::WarpDrive,
         },
         AgentTip {
@@ -442,7 +439,6 @@ impl WorkspaceAction {
     pub fn display_text(&self) -> Option<String> {
         match self {
             WorkspaceAction::OpenPalette { .. } => Some("Open palette".to_string()),
-            #[cfg(not(feature = "warp_lite"))]
             WorkspaceAction::OpenWarpDrive => Some("Warp Drive.".to_string()),
             WorkspaceAction::ToggleRightPanel => Some("Show diff view".to_string()),
             _ => None,

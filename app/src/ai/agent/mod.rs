@@ -33,7 +33,6 @@ use serde::{Deserialize, Serialize};
 use session_sharing_protocol::common::ParticipantId;
 use task::TaskId;
 pub use telemetry::AIIdentifiers;
-use uuid::Uuid;
 use warp_core::channel::ChannelState;
 use warp_core::features::FeatureFlag;
 use warp_editor::render::model::LineCount;
@@ -1036,42 +1035,7 @@ pub struct SuggestedAgentModeWorkflow {
     pub logging_id: SuggestedLoggingId,
 }
 
-/// A ID for an AI action generated as part of an [`AIAgentOutput`].
-///
-/// The internal ID itself should be opaque to all callers. This ID may be relayed back to the AI with
-/// the `AIAgentActionResult` from the action.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct AIAgentActionId(String);
-
-impl From<String> for AIAgentActionId {
-    fn from(value: String) -> Self {
-        AIAgentActionId(value)
-    }
-}
-
-impl From<AIAgentActionId> for String {
-    fn from(value: AIAgentActionId) -> Self {
-        value.0
-    }
-}
-
-impl Display for AIAgentActionId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl From<crate::persistence::model::AIAgentActionId> for AIAgentActionId {
-    fn from(value: crate::persistence::model::AIAgentActionId) -> Self {
-        Self(value.0)
-    }
-}
-
-impl From<AIAgentActionId> for crate::persistence::model::AIAgentActionId {
-    fn from(value: AIAgentActionId) -> Self {
-        crate::persistence::model::AIAgentActionId(value.0)
-    }
-}
+pub use crate::terminal::session_types::AIAgentActionId;
 
 /// An "action" included in an AI output.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -2207,9 +2171,9 @@ impl AIAgentOutputMessage {
 pub struct MCPContext {
     // Old flat structure (deprecated but kept for backward compatibility)
     #[deprecated]
-    pub resources: Vec<crate::ai::mcp::Resource>,
+    pub resources: Vec<rmcp::model::Resource>,
     #[deprecated]
-    pub tools: Vec<crate::ai::mcp::Tool>,
+    pub tools: Vec<rmcp::model::Tool>,
     // New grouped structure
     pub servers: Vec<MCPServer>,
 }
@@ -2220,8 +2184,8 @@ pub struct MCPServer {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub resources: Vec<crate::ai::mcp::Resource>,
-    pub tools: Vec<crate::ai::mcp::Tool>,
+    pub resources: Vec<rmcp::model::Resource>,
+    pub tools: Vec<rmcp::model::Tool>,
 }
 
 /// Contains context that may be attached to a user query.
@@ -3123,35 +3087,7 @@ impl AIAgentInput {
     }
 }
 
-/// A globally unique ID for an `AIAgentExchange`.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct AIAgentExchangeId(Uuid);
-
-impl Display for AIAgentExchangeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl AIAgentExchangeId {
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-}
-
-impl Default for AIAgentExchangeId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl TryFrom<String> for AIAgentExchangeId {
-    type Error = anyhow::Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        Ok(Self(Uuid::try_parse(&value)?))
-    }
-}
+pub use crate::terminal::session_types::AIAgentExchangeId;
 
 /// Represents a single user input/AI output pair. Each exchange corresponds to a request to an AI
 /// backend model and its response.
@@ -3376,6 +3312,6 @@ impl Suggestions {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "mod_tests.rs"]
 mod tests;

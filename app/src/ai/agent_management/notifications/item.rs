@@ -214,6 +214,6 @@ impl NotificationItems {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "item_tests.rs"]
 mod tests;

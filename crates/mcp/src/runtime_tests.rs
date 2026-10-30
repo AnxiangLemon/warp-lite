@@ -5,19 +5,12 @@ use rmcp::model::{ErrorCode, ErrorData, Resource, ServerCapabilities, Tool};
 
 use super::{query_resources_for, query_tools_for, should_query_resources, should_query_tools};
 
-/// Build a `ServerCapabilities` with selected capability flags toggled on.
-/// Each `Some(default)` mirrors how rmcp deserializes a capability the
-/// server advertised with no inner flags set.
 fn caps(tools: bool, resources: bool) -> ServerCapabilities {
-    match (tools, resources) {
-        (true, true) => ServerCapabilities::builder()
-            .enable_tools()
-            .enable_resources()
-            .build(),
-        (true, false) => ServerCapabilities::builder().enable_tools().build(),
-        (false, true) => ServerCapabilities::builder().enable_resources().build(),
-        (false, false) => ServerCapabilities::builder().build(),
-    }
+    serde_json::from_value(serde_json::json!({
+        "tools": tools.then(|| serde_json::json!({})),
+        "resources": resources.then(|| serde_json::json!({})),
+    }))
+    .expect("Server capability deserialization")
 }
 
 fn test_tool(name: &str) -> Tool {

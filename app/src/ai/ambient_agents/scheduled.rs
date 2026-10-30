@@ -17,7 +17,7 @@ use crate::cloud_object::{
     CloudObjectLookup as _, GenericStringObjectFormat, GenericStringObjectUniqueKey,
     JsonObjectType, Owner, Revision,
 };
-use crate::cloud_object::CloudObjectTypeAndId;
+use crate::drive::CloudObjectTypeAndId;
 use crate::server::cloud_objects::update_manager::{
     ObjectOperation, OperationSuccessType, UpdateManager, UpdateManagerEvent,
 };

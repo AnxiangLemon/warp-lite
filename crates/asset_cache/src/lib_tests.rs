@@ -76,3 +76,16 @@ fn data_uri_exceeds_limit_flags_only_oversized_base64_payloads() {
     assert!(!data_uri_exceeds_limit("https://example.com/a.png"));
     assert!(!data_uri_exceeds_limit("relative/path.png"));
 }
+
+#[cfg(not(feature = "network_assets"))]
+#[test]
+fn remote_asset_fetch_fails_without_a_network_transport() {
+    let source = url_source("https://example.invalid/unused.png");
+
+    let error = fetch_bytes(&source).expect_err("offline assets must never start HTTP requests");
+
+    assert_eq!(
+        error.to_string(),
+        "Network assets are unavailable in this build"
+    );
+}

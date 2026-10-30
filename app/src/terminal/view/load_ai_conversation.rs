@@ -1,58 +1,88 @@
+#[cfg(feature = "agent_runtime")]
 use std::ops::Not;
+#[cfg(feature = "agent_runtime")]
 use std::path::Path;
+#[cfg(feature = "agent_runtime")]
 use std::rc::Rc;
+#[cfg(feature = "agent_runtime")]
 use std::sync::Arc;
 
+#[cfg(feature = "agent_runtime")]
 use ai::document::DEFAULT_PLANNING_DOCUMENT_TITLE;
+#[cfg(feature = "agent_runtime")]
 use itertools::Itertools;
+#[cfg(feature = "agent_runtime")]
 use prost::Message;
 use vec1::Vec1;
+#[cfg(feature = "agent_runtime")]
 use warp_core::channel::ChannelState;
 use warp_core::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use warp_errors::report_error;
+#[cfg(feature = "agent_runtime")]
 use warp_multi_agent_api as api;
+#[cfg(feature = "agent_runtime")]
 use warpui::units::IntoPixels;
-use warpui::{EntityId, ModelHandle, SingletonEntity, ViewContext};
+use warpui::{EntityId, ModelHandle};
+#[cfg(feature = "agent_runtime")]
+use warpui::{SingletonEntity, ViewContext};
 
+#[cfg(feature = "agent_runtime")]
 use super::DEFAULT_AI_BLOCK_HEIGHT;
+#[cfg(feature = "agent_runtime")]
 use super::blocklist_filter::exchanges_for_blocklist;
-use crate::ai::agent::conversation::{AIConversation, AIConversationId};
+use crate::ai::agent::AIAgentExchange;
+use crate::ai::agent::conversation::AIConversation;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::{
-    AIAgentAction, AIAgentActionResultType, AIAgentActionType, AIAgentExchange, AIAgentExchangeId,
-    AIAgentOutput, AIAgentOutputMessage, AIAgentOutputMessageType, CreateDocumentsRequest,
-    CreateDocumentsResult, EditDocumentsResult,
+    AIAgentAction, AIAgentActionResultType, AIAgentActionType, AIAgentOutput, AIAgentOutputMessage,
+    AIAgentOutputMessageType, CreateDocumentsRequest, CreateDocumentsResult, EditDocumentsResult,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::{
     AgentViewEntryBlockParams, AgentViewEntryOrigin, DismissalStrategy, EphemeralMessage,
 };
 use crate::ai::blocklist::block::cli_controller::CLISubagentController;
-use crate::ai::blocklist::history_model::{
-    BlocklistAIHistoryModel, CLIAgentConversation, CloudConversationData,
-};
+use crate::ai::blocklist::history_model::CLIAgentConversation;
+#[cfg(feature = "agent_runtime")]
+use crate::ai::blocklist::history_model::{BlocklistAIHistoryModel, CloudConversationData};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::model::AIBlockModelImpl;
+#[cfg(feature = "agent_runtime")]
+use crate::ai::blocklist::{AIBlock, ClientIdentifiers};
 use crate::ai::blocklist::{
-    AIBlock, BlocklistAIActionModel, BlocklistAIContextModel, BlocklistAIController,
-    ClientIdentifiers,
+    BlocklistAIActionModel, BlocklistAIContextModel, BlocklistAIController,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::document::ai_document_model::AIDocumentModel;
 use crate::ai::get_relevant_files::controller::GetRelevantFilesController;
+#[cfg(feature = "agent_runtime")]
 use crate::persistence::model::AgentConversationData;
+#[cfg(feature = "agent_runtime")]
 use crate::server::server_api::ServerApiProvider;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::conversation_restoration::{
     command_block_indices_for_exchanges, prepare_conversation_block_restoration,
 };
 use crate::terminal::find::TerminalFindModel;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::message_bar::{Message as InputMessage, MessageItem};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::model::block::SerializedBlock;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::model::blocks::RichContentItem;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::model::rich_content::RichContentType;
 use crate::terminal::model::session::active_session::ActiveSession;
 use crate::terminal::model::terminal_model::BlockIndex;
 use crate::terminal::model_events::ModelEventDispatcher;
+use crate::terminal::session_types::{AIAgentExchangeId, AIConversationId};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::{
     AIBlockMetadata, Event, RichContent, RichContentInsertionPosition, RichContentMetadata,
     TerminalView,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::util::bindings::keybinding_name_to_keystroke;
 
 /// Describes restore-context setup state for directory reconciliation and hinting.
@@ -235,6 +265,7 @@ pub enum RestoreConversationEntryBehavior {
     PreserveAgentViewState,
 }
 
+#[cfg(feature = "agent_runtime")]
 impl TerminalView {
     /// Determine the directory state for restoring the conversation: whether it's missing, we're
     /// already in the right directory, or we need to cd.

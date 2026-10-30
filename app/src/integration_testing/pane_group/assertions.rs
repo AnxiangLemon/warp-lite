@@ -3,6 +3,7 @@ use warpui::integration::{AssertionCallback, AssertionOutcome};
 
 use crate::integration_testing::view_getters::pane_group_view;
 
+#[cfg(feature = "agent_runtime")]
 pub fn assert_num_shared_sessions_in_pane_group(
     tab_index: usize,
     num_shared_sessions: usize,

@@ -1,11 +1,20 @@
 #!/bin/bash
-set -e
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+set -euo pipefail
+cd -- "$(dirname "${BASH_SOURCE[0]}")/.."
 
+CARGO_COMMAND=run
 PROFILE_ARGS=()
-if [[ "${1:-}" == "--release" ]]; then
-  PROFILE_ARGS=(--release)
-  shift
-fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --release) PROFILE_ARGS=(--profile lite); shift ;;
+        --build-only) CARGO_COMMAND=build; shift ;;
+        --) shift; break ;;
+        *) break ;;
+    esac
+done
 
-exec cargo run "${PROFILE_ARGS[@]}" --bin warp-lite --no-default-features --features "warp_lite" -- "$@"
+CARGO_ARGS=("$CARGO_COMMAND" "${PROFILE_ARGS[@]}" --bin warp-lite --no-default-features --features warp_lite --locked)
+if [[ "$CARGO_COMMAND" == run ]]; then
+    CARGO_ARGS+=(-- "$@")
+fi
+exec cargo "${CARGO_ARGS[@]}"

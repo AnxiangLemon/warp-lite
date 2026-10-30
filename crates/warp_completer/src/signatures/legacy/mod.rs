@@ -1,5 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
+#[cfg(feature = "cli_signatures")]
 use warp_core::channel::Channel;
 
 pub mod registry;
@@ -43,6 +44,7 @@ impl CommandRegistry {
             warp_command_signatures::dynamic_command_signature_data(),
         );
 
+        #[cfg(feature = "cli_signatures")]
         Self::register_warp_signatures(&registry);
 
         registry
@@ -52,6 +54,7 @@ impl CommandRegistry {
     ///
     /// Ideally this would be done outside of the `warp_completer` crate, but it's not currently
     /// possible to configure the shared [`Self::global_instance`].
+    #[cfg(feature = "cli_signatures")]
     fn register_warp_signatures(registry: &Self) {
         // We use the current instance's signature for each channel. This is not entirely accurate - for example:
         // * The user might be SSHed into a host with a different version of the CLI

@@ -16,7 +16,7 @@ use session_sharing_protocol::common::SessionId;
 use warpui::r#async::{SpawnedFutureHandle, Timer};
 use warpui::{Entity, EntityId, ModelContext, SingletonEntity, WeakViewHandle};
 
-use crate::ai::agent::conversation::{AIConversationId, ConversationStatus};
+use crate::ai::agent::conversation::ConversationStatus;
 use crate::ai::ambient_agents::{AmbientAgentTask, AmbientAgentTaskId, AmbientAgentTaskState};
 use crate::ai::blocklist::BlocklistAIHistoryModel;
 use crate::ai::blocklist::history_model::BlocklistAIHistoryEvent;
@@ -24,6 +24,7 @@ use crate::ai::blocklist::orchestration_event_streamer::{
     OrchestrationEventStreamer, OrchestrationEventStreamerEvent,
 };
 use crate::server::server_api::ServerApiProvider;
+use crate::terminal::session_types::AIConversationId;
 use crate::terminal::{Event as TerminalViewEvent, TerminalView};
 
 /// Refetch cadence for children whose claim-time `session_id` is not yet known.

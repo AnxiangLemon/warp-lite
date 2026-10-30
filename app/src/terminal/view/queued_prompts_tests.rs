@@ -16,7 +16,7 @@ use super::TerminalView;
 use super::queued_prompts_panel::{
     QueuedPromptsPanelAction, QueuedPromptsPanelEvent, QueuedPromptsPanelView,
 };
-use crate::ai::agent::conversation::{AIConversationId, ConversationStatus};
+use crate::ai::agent::conversation::ConversationStatus;
 use crate::ai::agent::{ImageContext, UserQueryMode};
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
@@ -30,6 +30,7 @@ use crate::features::FeatureFlag;
 use crate::search::slash_command_menu::static_commands::commands;
 use crate::server::server_api::ai::SpawnAgentRequest;
 use crate::terminal::input::{Event as InputEvent, Input};
+use crate::terminal::session_types::AIConversationId;
 use crate::terminal::shared_session::SharedSessionStatus;
 use crate::terminal::view::ambient_agent::AmbientAgentViewModelEvent;
 use crate::test_util::settings::initialize_settings_for_tests;

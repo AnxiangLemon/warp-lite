@@ -26,6 +26,7 @@ use crate::appearance::Appearance;
 use crate::pane_group::focus_state::{PaneFocusHandle, PaneGroupFocusEvent};
 use crate::pane_group::pane::ActionOrigin;
 use crate::pane_group::{Direction, SplitPaneState, TabBarHoverIndex};
+#[cfg(feature = "agent_runtime")]
 use crate::server::telemetry::SharingDialogSource;
 use crate::settings::{PaneSettings, PaneSettingsChangedEvent};
 use crate::util::bindings::CustomAction;
@@ -248,21 +249,44 @@ impl<P: BackingView> PaneView<P> {
                 });
                 ctx.notify();
             }
-            #[cfg(not(feature = "warp_lite"))]
             PaneConfigurationEvent::ShareableObjectChanged(object) => {
-                self.header.update(ctx, |header, ctx| {
-                    header.set_shareable_object(object.clone(), ctx);
-                });
+                #[cfg(not(feature = "agent_runtime"))]
+                let _ = (&object,);
+
+                #[cfg(feature = "agent_runtime")]
+                {
+                    {
+                        self.header.update(ctx, |header, ctx| {
+                            header.set_shareable_object(object.clone(), ctx);
+                        });
+                    }
+                }
             }
             PaneConfigurationEvent::ToggleSharingDialog(source) => {
-                self.header.update(ctx, |header, ctx| {
-                    header.share_pane_contents(*source, ctx);
-                });
+                #[cfg(not(feature = "agent_runtime"))]
+                let _ = (&source,);
+
+                #[cfg(feature = "agent_runtime")]
+                {
+                    {
+                        self.header.update(ctx, |header, ctx| {
+                            header.share_pane_contents(*source, ctx);
+                        });
+                    }
+                }
             }
             PaneConfigurationEvent::OpenSharingQrCode(source) => {
-                self.header.update(ctx, |header, ctx| {
-                    header.open_shared_session_qr_code(*source, ctx);
-                });
+                #[cfg(not(feature = "agent_runtime"))]
+                let _ = (&source,);
+
+                #[cfg(feature = "agent_runtime")]
+                {
+                    {
+                        self.header.update(ctx, |header, ctx| {
+                            header.open_shared_session_qr_code(*source, ctx);
+                        });
+                    }
+                }
             }
             _ => {}
         }
@@ -470,10 +494,18 @@ impl<P: BackingView> TypedActionView for PaneView<P> {
     type Action = PaneAction;
 
     fn handle_action(&mut self, action: &Self::Action, ctx: &mut ViewContext<Self>) {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&ctx,);
+
         match action {
-            PaneAction::ShareContents => self.header.update(ctx, |header, ctx| {
-                header.share_pane_contents(SharingDialogSource::CommandPalette, ctx);
-            }),
+            PaneAction::ShareContents => {
+                #[cfg(feature = "agent_runtime")]
+                {
+                    self.header.update(ctx, |header, ctx| {
+                        header.share_pane_contents(SharingDialogSource::CommandPalette, ctx);
+                    })
+                }
+            }
         }
     }
 }

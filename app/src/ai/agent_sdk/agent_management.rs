@@ -557,6 +557,6 @@ impl warpui::Entity for AgentManagementRunner {
 
 impl SingletonEntity for AgentManagementRunner {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "agent_management_tests.rs"]
 mod tests;

@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
+#[cfg(feature = "cloud_services")]
+use serde_json::json;
 use session_sharing_protocol::common::{ParticipantId, Role, SessionId as SharedSessionId};
 use session_sharing_protocol::sharer::{SessionEndedReason, SessionSourceType};
 use strum_macros::{EnumDiscriminants, EnumIter};
@@ -40,13 +42,11 @@ use crate::cloud_object::model::generic_string_model::GenericStringObjectId;
 use crate::cloud_object::{GenericStringObjectFormat, ObjectType, Space};
 #[cfg(feature = "local_fs")]
 use crate::code::editor_management::CodeSource;
-use crate::cloud_object::CloudObjectTypeAndId;
-use crate::settings::DriveSortOrder;
+use crate::drive::{CloudObjectTypeAndId, DriveSortOrder};
 use crate::features::FeatureFlag;
 use crate::launch_configs::save_modal::SaveState;
-#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::telemetry::NotebookTelemetryAction;
-use crate::cloud_object::{NotebookId, NotebookLocation};
+use crate::notebooks::{NotebookId, NotebookLocation};
 use crate::palette::PaletteMode;
 use crate::pane_group::PaneDragDropLocation;
 use crate::prompt::editor_modal::OpenSource as PromptEditorOpenSource;
@@ -256,7 +256,6 @@ impl NotebookTelemetryMetadata {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg(not(feature = "warp_lite"))]
 pub struct NotebookActionEvent {
     #[serde(flatten)]
     pub action: NotebookTelemetryAction,
@@ -325,12 +324,11 @@ pub enum MCPServerTelemetryError {
     TransportError(String),
 }
 
-#[cfg(feature = "mcp_client")]
+#[cfg(not(target_family = "wasm"))]
 impl From<rmcp::RmcpError> for MCPServerTelemetryError {
     fn from(err: rmcp::RmcpError) -> Self {
         match err {
             rmcp::RmcpError::ClientInitialize(err) => Self::Initialization(err.to_string()),
-            rmcp::RmcpError::ServerInitialize(err) => Self::Initialization(err.to_string()),
             rmcp::RmcpError::TransportCreation { error, .. } => {
                 Self::TransportError(error.to_string())
             }
@@ -1565,7 +1563,6 @@ pub enum TelemetryEvent {
         metadata: NotebookTelemetryMetadata,
         meaningful_change: bool,
     },
-    #[cfg(not(feature = "warp_lite"))]
     NotebookAction(NotebookActionEvent),
     OpenedAltScreenFind,
     UserInitiatedClose {
@@ -2934,10 +2931,25 @@ impl TelemetryEvent {
     }
 
     pub fn enablement_state(&self) -> EnablementState {
-        let discriminant: TelemetryEventDiscriminants = self.into();
-        discriminant.enablement_state()
+        #[cfg(not(feature = "cloud_services"))]
+        {
+            EnablementState::ChannelSpecific {
+                channels: Vec::new(),
+            }
+        }
+        #[cfg(feature = "cloud_services")]
+        {
+            let discriminant: TelemetryEventDiscriminants = self.into();
+            discriminant.enablement_state()
+        }
     }
 
+    #[cfg(not(feature = "cloud_services"))]
+    pub fn payload(&self) -> Option<Value> {
+        None
+    }
+
+    #[cfg(feature = "cloud_services")]
     pub fn payload(&self) -> Option<Value> {
         match self {
             TelemetryEvent::ShowedSuggestedAgentModeWorkflowChip { logging_id } => Some(json!({
@@ -3175,7 +3187,6 @@ impl TelemetryEvent {
                 "team_uid": metadata.team_uid,
                 "meaningful_change": meaningful_change,
             })),
-            #[cfg(not(feature = "warp_lite"))]
             TelemetryEvent::NotebookAction(event) => Some(json!(event)),
             TelemetryEvent::UserInitiatedClose { initiated_on } => {
                 Some(json!({ "initiated_on": initiated_on }))
@@ -4839,6 +4850,7 @@ impl TelemetryEvent {
             | TelemetryEvent::AICommandSearchOpened { .. }
             | TelemetryEvent::OpenNotebook(_)
             | TelemetryEvent::EditNotebook { .. }
+            | TelemetryEvent::NotebookAction(_)
             | TelemetryEvent::OpenedAltScreenFind
             | TelemetryEvent::UserInitiatedClose { .. }
             | TelemetryEvent::QuitModalShown { .. }
@@ -5123,8 +5135,6 @@ impl TelemetryEvent {
             | TelemetryEvent::RemoteServerReconnectExhausted { .. }
             | TelemetryEvent::RemoteCodebaseIndexStatusChanged { .. }
             | TelemetryEvent::RemoteCodebaseAutoIndexRequested { .. } => false,
-            #[cfg(not(feature = "warp_lite"))]
-            TelemetryEvent::NotebookAction(_) => false,
             #[cfg(feature = "local_fs")]
             TelemetryEvent::CodePaneOpened { .. }
             | TelemetryEvent::CodePanelsFileOpened { .. }
@@ -5251,9 +5261,9 @@ impl TelemetryEventDesc for TelemetryEventDiscriminants {
                 EnablementState::Flag(FeatureFlag::CreatingSharedSessions)
             }
             Self::JoinedSharedSession => EnablementState::Flag(FeatureFlag::ViewingSharedSessions),
-            Self::OpenNotebook | Self::EditNotebook => EnablementState::Always,
-            #[cfg(not(feature = "warp_lite"))]
-            Self::NotebookAction => EnablementState::Always,
+            Self::OpenNotebook | Self::EditNotebook | Self::NotebookAction => {
+                EnablementState::Always
+            }
             Self::ToggleSettingsSync { .. } => EnablementState::Always,
             Self::AgentTipShown | Self::AgentTipClicked | Self::ToggleShowAgentTips => {
                 EnablementState::Flag(FeatureFlag::AgentTips)
@@ -5854,7 +5864,6 @@ impl TelemetryEventDesc for TelemetryEventDiscriminants {
             Self::AICommandSearchOpened => "AI Command Search opened",
             Self::OpenNotebook => "Notebook Opened",
             Self::EditNotebook => "Notebook Edited",
-            #[cfg(not(feature = "warp_lite"))]
             Self::NotebookAction => "Notebook Action",
             Self::OpenedAltScreenFind => "Opened alt screen find bar",
             Self::UserInitiatedClose => "User Initiated Closing Something",
@@ -6457,7 +6466,6 @@ impl TelemetryEventDesc for TelemetryEventDiscriminants {
             }
             Self::OpenNotebook => "Opened a notebook",
             Self::EditNotebook => "Edited a notebook",
-            #[cfg(not(feature = "warp_lite"))]
             Self::NotebookAction => {
                 "Took an action on a notebook: edit, delete, modified font size, etc."
             }

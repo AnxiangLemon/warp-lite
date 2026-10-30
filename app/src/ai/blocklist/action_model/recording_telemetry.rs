@@ -120,6 +120,6 @@ impl TelemetryEventDesc for RecordingTelemetryEventDiscriminants {
 
 warp_core::register_telemetry_event!(RecordingTelemetryEvent);
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "recording_telemetry_tests.rs"]
 mod tests;

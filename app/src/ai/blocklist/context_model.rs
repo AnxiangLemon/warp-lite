@@ -24,7 +24,7 @@ use crate::ai::agent::{
     AIAgentAttachment, AIAgentContext, AnyFileContent, FileContext, ImageContext,
 };
 use crate::ai::block_context::BlockContext;
-use ai::document::AIDocumentId;
+use crate::ai::document::ai_document_model::AIDocumentId;
 use crate::ai::llms::{LLMPreferences, LLMPreferencesEvent};
 use crate::ai::outline::RepoOutlines;
 use crate::code_review::github_repo_model::GitHubRepoModel;
@@ -918,6 +918,6 @@ impl Entity for BlocklistAIContextModel {
     type Event = BlocklistAIContextEvent;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "context_model_tests.rs"]
 mod tests;

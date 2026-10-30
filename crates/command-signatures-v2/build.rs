@@ -33,7 +33,17 @@ If you continue to encounter issues, ensure you don't have conflicting Node inst
 }
 
 fn build_command_signatures() -> anyhow::Result<()> {
-    match Command::new("yarn")
+    let mut yarn = if cfg!(windows) {
+        let mut command = Command::new("cmd.exe");
+        command.args(["/d", "/c", "yarn.cmd"]);
+        command
+    } else {
+        Command::new("yarn")
+    };
+    // Cargo's job must own build helpers; Windows CI hosts can prohibit job breakaway.
+    #[cfg(windows)]
+    yarn.creation_flags(0);
+    match yarn
         .arg("build")
         .current_dir(format!("{}/js", env!("CARGO_MANIFEST_DIR")))
         .output()

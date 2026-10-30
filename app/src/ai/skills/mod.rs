@@ -54,6 +54,7 @@ impl ActiveSkillLookupError {
 #[cfg(not(target_family = "wasm"))]
 mod global_skills;
 #[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "agent_runtime")]
 pub use global_skills::{filter_skills_by_spec, resolve_skill_repos};
 
 mod listed_skill;
@@ -89,15 +90,16 @@ impl SkillPathQuery for PathBuf {
 #[cfg(not(target_family = "wasm"))]
 mod resolve_skill_spec;
 #[cfg(not(target_family = "wasm"))]
-pub use resolve_skill_spec::{
-    ResolveSkillError, ResolvedSkill, clone_repo_for_skill, resolve_skill_spec,
-};
+pub use resolve_skill_spec::resolve_skill_spec;
+#[cfg(not(target_family = "wasm"))]
+#[cfg(feature = "agent_runtime")]
+pub use resolve_skill_spec::{ResolveSkillError, ResolvedSkill, clone_repo_for_skill};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "local_fs")] {
         mod skill_manager;
-        pub use skill_manager::{
-            read_skills_from_directories, SkillManager, SkillWatcher,
-        };
+        pub use skill_manager::SkillManager;
+        #[cfg(feature = "agent_runtime")]
+        pub use skill_manager::{read_skills_from_directories, SkillWatcher};
     }
 }

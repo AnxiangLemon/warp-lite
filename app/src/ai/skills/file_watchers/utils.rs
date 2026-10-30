@@ -186,6 +186,6 @@ pub fn is_home_provider_path(path: &Path) -> bool {
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "utils_tests.rs"]
 mod tests;

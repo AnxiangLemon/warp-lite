@@ -1,8 +1,16 @@
 #[cfg(not(target_family = "wasm"))]
+mod credential_storage;
+#[cfg(all(not(target_family = "wasm"), feature = "transports"))]
 pub mod oauth;
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), not(feature = "transports")))]
+#[path = "oauth_disabled.rs"]
+pub mod oauth;
+#[cfg(all(not(target_family = "wasm"), feature = "transports"))]
 pub mod runtime;
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), not(feature = "transports")))]
+#[path = "runtime_disabled.rs"]
+pub mod runtime;
+#[cfg(all(not(target_family = "wasm"), feature = "transports"))]
 pub mod sse_transport;
 
 use uuid::Uuid;

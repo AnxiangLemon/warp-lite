@@ -31,10 +31,13 @@ use super::{
     ChipResult, ChipValue, ContextChipKind, agent_view_chip_color, github_pr_display_text_from_url,
     render_text_from_kind,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewController;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::prompt::plan_and_todo_list::{PlanAndTodoListEvent, PlanAndTodoListView};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{BlocklistAIContextModel, BlocklistAIInputModel};
-use ai::document::{AIDocumentId, AIDocumentVersion};
+use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
 use crate::appearance::Appearance;
 use crate::code::editor::{add_color, remove_color};
 use crate::code_review::code_review_view::CODE_REVIEW_TOOLTIP_TEXT;
@@ -45,18 +48,22 @@ use crate::context_chips::git_branch_on_click::{
 };
 use crate::context_chips::node_version_popup::{NodeVersionPopupEvent, NodeVersionPopupView};
 use crate::context_chips::spacing;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::{AISettings, AISettingsChangedEvent};
 use crate::settings_view::keybindings::{KeybindingChangedEvent, KeybindingChangedNotifier};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
 use crate::terminal::input::{MenuPositioning, MenuPositioningProvider};
 use crate::terminal::model::session::SessionType;
 use crate::terminal::model_events::ModelEventDispatcher;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::ambient_agent::AmbientAgentViewModel;
 use crate::ui_components::blended_colors;
 use crate::ui_components::icons::Icon;
 use crate::util::bindings::keybinding_name_to_display_string;
 use crate::util::truncation::truncate_from_beginning;
 use crate::view_components::action_button::{ActionButtonTheme, NakedTheme};
+#[cfg(feature = "agent_runtime")]
 use crate::view_components::{FeaturePopup, NewFeaturePopupEvent, NewFeaturePopupLabel};
 use crate::workspace::view::TOGGLE_RIGHT_PANEL_BINDING_NAME;
 
@@ -351,12 +358,15 @@ pub struct DisplayChip {
     display_chip_kind: DisplayChipKind,
     next_chip_kind: Option<ContextChipKind>,
     on_click_values: Vec<String>,
+    #[cfg(feature = "agent_runtime")]
     quota_reset_popup: ViewHandle<FeaturePopup>,
     session_context: Option<SessionContext>,
     menu_positioning_provider: Arc<dyn MenuPositioningProvider>,
+    #[cfg(feature = "agent_runtime")]
     agent_view_controller: ModelHandle<AgentViewController>,
     is_shared_session_viewer: bool,
     is_in_agent_view: bool,
+    #[cfg(feature = "agent_runtime")]
     /// Optional because `DisplayChip` sometimes should be disabled, depending on if it is in an ambient agent view.
     ambient_agent_view_model: Option<ModelHandle<AmbientAgentViewModel>>,
     /// Cached display string for the code review keybinding.
@@ -629,6 +639,7 @@ pub enum DisplayChipKind {
         popup_open: bool,
         popup: ViewHandle<crate::context_chips::node_version_popup::NodeVersionPopupView>,
     },
+    #[cfg(feature = "agent_runtime")]
     AgentPlanAndTodoList {
         plan_and_todo_list: ViewHandle<PlanAndTodoListView>,
     },
@@ -660,8 +671,9 @@ impl DisplayChipKind {
             | DisplayChipKind::Ssh
             | DisplayChipKind::Subshell
             | DisplayChipKind::VirtualEnvironment
-            | DisplayChipKind::CondaEnvironment
-            | DisplayChipKind::AgentPlanAndTodoList { .. } => false,
+            | DisplayChipKind::CondaEnvironment => false,
+            #[cfg(feature = "agent_runtime")]
+            DisplayChipKind::AgentPlanAndTodoList { .. } => false,
         }
     }
 }
@@ -690,7 +702,9 @@ pub struct MenuItem {
 /// Configuration for creating a DisplayChip
 #[derive(Clone)]
 pub struct DisplayChipConfig {
+    #[cfg(feature = "agent_runtime")]
     pub ai_input_model: ModelHandle<BlocklistAIInputModel>,
+    #[cfg(feature = "agent_runtime")]
     pub ai_context_model: ModelHandle<BlocklistAIContextModel>,
     pub terminal_view_id: EntityId,
     pub menu_positioning_provider: Arc<dyn MenuPositioningProvider>,
@@ -698,7 +712,9 @@ pub struct DisplayChipConfig {
     pub current_repo_path: Option<PathBuf>,
     pub model_events: ModelHandle<ModelEventDispatcher>,
     pub is_shared_session_viewer: bool,
+    #[cfg(feature = "agent_runtime")]
     pub agent_view_controller: ModelHandle<AgentViewController>,
+    #[cfg(feature = "agent_runtime")]
     /// Optional because `DisplayChip` sometimes should be disabled, depending on if it is in an ambient agent view.
     pub ambient_agent_view_model: Option<ModelHandle<AmbientAgentViewModel>>,
 }
@@ -888,11 +904,13 @@ impl DisplayChip {
     ) -> Self {
         // Re-render this chip whenever Agent Mode state changes so UDI font/color updates
         // immediately on enter/exit.
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(&config.agent_view_controller, |_me, _model, _event, ctx| {
             ctx.notify();
         });
 
         let display_chip_kind = match chip_result.kind {
+            #[cfg(feature = "agent_runtime")]
             ContextChipKind::AgentPlanAndTodoList => {
                 let context_model = config.ai_context_model.clone();
                 let view_id = config.terminal_view_id;
@@ -952,7 +970,11 @@ impl DisplayChip {
                     DisplayChipMenu::new(
                         Vec::<DirectoryItem>::new(),
                         Some(FixedFooter::new(Arc::new(DirectoryItem {
-                            name: ".. (Parent Directory)".to_string(),
+                            name: crate::lite_i18n::choose(
+                                ".. (Parent Directory)",
+                                "..（上级目录）",
+                            )
+                            .to_string(),
                             directory_type: DirectoryType::NavigateToParent,
                         }))), // Show parent directory option
                         ChipMenuType::Directories,
@@ -1104,12 +1126,14 @@ impl DisplayChip {
             _ => DisplayChipKind::Text,
         };
 
+        #[cfg(feature = "agent_runtime")]
         let quota_reset_popup = ctx.add_typed_action_view(|_| {
             FeaturePopup::alert_icon(NewFeaturePopupLabel::FromString(
                 "Monthly AI credits reset!".to_string(),
             ))
         });
 
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_view(&quota_reset_popup, |_, _, event, ctx| match event {
             NewFeaturePopupEvent::Dismissed => {
                 AISettings::handle(ctx).update(ctx, |ai_settings, ctx| {
@@ -1120,6 +1144,7 @@ impl DisplayChip {
             }
         });
 
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(&AISettings::handle(ctx), |_, _, event, ctx| {
             if matches!(
                 event,
@@ -1130,6 +1155,7 @@ impl DisplayChip {
         });
 
         // Subscribe to ambient agent model changes to re-render when the state changes
+        #[cfg(feature = "agent_runtime")]
         if let Some(ref ambient_agent_model) = config.ambient_agent_view_model {
             ctx.subscribe_to_model(ambient_agent_model, |_, _, _, ctx| {
                 ctx.notify();
@@ -1166,12 +1192,15 @@ impl DisplayChip {
             display_chip_kind,
             next_chip_kind,
             on_click_values: chip_result.on_click_values,
+            #[cfg(feature = "agent_runtime")]
             quota_reset_popup,
             session_context: config.session_context,
             menu_positioning_provider: config.menu_positioning_provider,
             is_shared_session_viewer: config.is_shared_session_viewer,
+            #[cfg(feature = "agent_runtime")]
             agent_view_controller: config.agent_view_controller.clone(),
             is_in_agent_view,
+            #[cfg(feature = "agent_runtime")]
             ambient_agent_view_model: config.ambient_agent_view_model,
             code_review_keybinding,
             terminal_view_id: config.terminal_view_id,
@@ -1181,9 +1210,17 @@ impl DisplayChip {
     /// Returns `true` when a CLI agent session is active for this chip's terminal,
     /// meaning interactive behaviors (menus, hover, click) should be suppressed.
     fn is_cli_agent_session_active(&self, app: &AppContext) -> bool {
-        CLIAgentSessionsModel::as_ref(app)
-            .session(self.terminal_view_id)
-            .is_some()
+        #[cfg(feature = "agent_runtime")]
+        {
+            CLIAgentSessionsModel::as_ref(app)
+                .session(self.terminal_view_id)
+                .is_some()
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = app;
+            false
+        }
     }
 
     fn close_node_version_popup(&mut self, ctx: &mut ViewContext<'_, DisplayChip>) {
@@ -1266,8 +1303,9 @@ impl DisplayChip {
             | DisplayChipKind::VirtualEnvironment
             | DisplayChipKind::CondaEnvironment
             | DisplayChipKind::NodeVersion { .. }
-            | DisplayChipKind::AgentPlanAndTodoList { .. }
             | DisplayChipKind::GithubPullRequest => {}
+            #[cfg(feature = "agent_runtime")]
+            DisplayChipKind::AgentPlanAndTodoList { .. } => {}
         }
         false
     }
@@ -1364,7 +1402,10 @@ impl DisplayChip {
     }
 
     pub fn should_render(&self, app: &AppContext) -> bool {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = app;
         match &self.display_chip_kind {
+            #[cfg(feature = "agent_runtime")]
             DisplayChipKind::AgentPlanAndTodoList { plan_and_todo_list } => {
                 plan_and_todo_list.as_ref(app).should_render(app)
             }
@@ -1771,6 +1812,7 @@ impl DisplayChip {
 
         // Check if we're in an ambient agent conversation.
         // If so, the directory chip should be non-interactive.
+        #[cfg(feature = "agent_runtime")]
         let is_in_active_ambient_agent = self
             .ambient_agent_view_model
             .as_ref()
@@ -1779,6 +1821,9 @@ impl DisplayChip {
                 m.is_ambient_agent() && !m.is_configuring_ambient_agent()
             })
             .unwrap_or(false);
+
+        #[cfg(not(feature = "agent_runtime"))]
+        let is_in_active_ambient_agent = false;
 
         let mut stack = Stack::new();
 
@@ -2029,6 +2074,7 @@ impl DisplayChip {
                 Some(self.node_version_chip(popup, *popup_open, app))
             }
             DisplayChipKind::CondaEnvironment => Some(self.conda_environment_chip(app)),
+            #[cfg(feature = "agent_runtime")]
             DisplayChipKind::AgentPlanAndTodoList { plan_and_todo_list } => {
                 Some(ChildView::new(plan_and_todo_list).finish())
             }
@@ -2159,10 +2205,11 @@ impl TypedActionView for DisplayChip {
                 | DisplayChipKind::Subshell
                 | DisplayChipKind::VirtualEnvironment
                 | DisplayChipKind::CondaEnvironment
-                | DisplayChipKind::AgentPlanAndTodoList { .. }
                 | DisplayChipKind::Text
                 | DisplayChipKind::GithubPullRequest
                 | DisplayChipKind::GitDiffStats { .. } => {}
+                #[cfg(feature = "agent_runtime")]
+                DisplayChipKind::AgentPlanAndTodoList { .. } => {}
                 DisplayChipKind::NodeVersion { popup_open, .. } => {
                     *popup_open = false;
                     ctx.notify();

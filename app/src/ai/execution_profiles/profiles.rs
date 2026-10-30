@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::Context as _;
 // Only the legacy import, which eval builds compile out, materializes an ordered collection.
 #[cfg(not(feature = "agent_mode_evals"))]
+#[cfg(feature = "agent_runtime")]
 use indexmap::IndexMap;
 use settings::Setting as _;
 use uuid::Uuid;
@@ -23,17 +24,21 @@ use crate::ai::mcp::templatable_manager::TemplatableMCPServerManagerEvent;
 use crate::auth::AuthStateProvider;
 // The auth-completion trigger for the legacy import is compiled out for eval builds.
 #[cfg(not(feature = "agent_mode_evals"))]
+#[cfg(feature = "agent_runtime")]
 use crate::auth::auth_manager::{AuthManager, AuthManagerEvent};
 use crate::cloud_object::model::generic_string_model::GenericStringObjectId;
 use crate::cloud_object::model::persistence::{CloudModelEvent, UpdateSource};
 use crate::cloud_object::{CloudObject as _, GenericStringObjectFormat, JsonObjectType};
-use crate::cloud_object::CloudObjectTypeAndId;
+use crate::drive::CloudObjectTypeAndId;
 use crate::server::cloud_objects::update_manager::UpdateManager;
 use crate::server::ids::{ClientId, SyncId};
+#[cfg(feature = "agent_runtime")]
 use crate::settings::cloud_preferences::CloudPreferencesSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::cloud_preferences_syncer::CloudPreferencesSyncer;
 // The syncer's initial-load trigger for the legacy import is compiled out for eval builds.
 #[cfg(not(feature = "agent_mode_evals"))]
+#[cfg(feature = "agent_runtime")]
 use crate::settings::cloud_preferences_syncer::CloudPreferencesSyncerEvent;
 use crate::settings::{
     AISettings, AISettingsChangedEvent, AgentModeCommandExecutionPredicate, ExecutionProfiles,
@@ -253,6 +258,7 @@ impl AIExecutionProfilesModel {
         // Resolve the persistence backend before constructing any source-specific state.
         let source = ProfileSource::for_launch_mode(launch_mode);
         let uses_file_backed_profiles = source.is_settings_collection();
+        #[cfg(feature = "agent_runtime")]
         let imports_legacy_profiles = source.imports_legacy_profiles();
 
         // A TUI with no explicit collection seeds its default from the existing
@@ -407,6 +413,7 @@ impl AIExecutionProfilesModel {
 
             // Eval builds never import legacy cloud profiles into settings.
             #[cfg(not(feature = "agent_mode_evals"))]
+            #[cfg(feature = "agent_runtime")]
             if imports_legacy_profiles {
                 if ctx.has_singleton_model::<AuthManager>() {
                     ctx.subscribe_to_model(&AuthManager::handle(ctx), |me, _, event, ctx| {
@@ -514,6 +521,7 @@ impl AIExecutionProfilesModel {
         // cannot reach this subscription, so run migration from the already-completed state.
         // Eval builds never import legacy cloud profiles into settings.
         #[cfg(not(feature = "agent_mode_evals"))]
+        #[cfg(feature = "agent_runtime")]
         if uses_file_backed_profiles
             && imports_legacy_profiles
             && ctx.has_singleton_model::<CloudPreferencesSyncer>()
@@ -564,6 +572,7 @@ impl AIExecutionProfilesModel {
     ///
     /// Deferring in this state prevents stale legacy or local values from overwriting a newer
     /// collection received from another client.
+    #[cfg(feature = "agent_runtime")]
     fn cloud_collection_awaiting_reconciliation(ctx: &AppContext) -> bool {
         *CloudPreferencesSettings::as_ref(ctx)
             .settings_sync_enabled
@@ -588,6 +597,7 @@ impl AIExecutionProfilesModel {
             return false;
         }
 
+        #[cfg(feature = "agent_runtime")]
         if Self::cloud_collection_awaiting_reconciliation(ctx) {
             return false;
         }
@@ -654,6 +664,7 @@ impl AIExecutionProfilesModel {
     ///
     /// Eval builds never import legacy profiles, so this is compiled out for them.
     #[cfg(not(feature = "agent_mode_evals"))]
+    #[cfg(feature = "agent_runtime")]
     pub(crate) fn migrate_settings_profiles(&mut self, ctx: &mut ModelContext<Self>) {
         if !self.source.imports_legacy_profiles()
             || self.settings_migration_state == SettingsMigrationState::Complete
@@ -682,6 +693,7 @@ impl AIExecutionProfilesModel {
             self.settings_migration_state = SettingsMigrationState::Complete;
             return;
         }
+        #[cfg(feature = "agent_runtime")]
         if Self::cloud_collection_awaiting_reconciliation(ctx) {
             return;
         }
@@ -778,6 +790,7 @@ impl AIExecutionProfilesModel {
     ///
     /// Only the legacy import calls this, so eval builds compile it out.
     #[cfg(not(feature = "agent_mode_evals"))]
+    #[cfg(feature = "agent_runtime")]
     fn sync_explicit_settings_collection(ctx: &mut ModelContext<Self>) {
         if !ctx.has_singleton_model::<CloudPreferencesSyncer>() {
             return;
@@ -2460,6 +2473,6 @@ impl Entity for AIExecutionProfilesModel {
 
 impl SingletonEntity for AIExecutionProfilesModel {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "profiles_tests.rs"]
 mod tests;

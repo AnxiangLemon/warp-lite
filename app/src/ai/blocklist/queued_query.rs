@@ -840,6 +840,6 @@ pub(crate) fn is_lrc_auto_queue_active(
         && active_block.ai_conversation_id() == Some(conversation_id)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "queued_query_tests.rs"]
 mod tests;

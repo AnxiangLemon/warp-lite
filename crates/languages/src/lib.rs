@@ -1,23 +1,34 @@
+#[cfg(feature = "parsing")]
 use std::borrow::Cow;
+#[cfg(feature = "parsing")]
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(feature = "parsing")]
+use std::sync::Mutex;
 
+#[cfg(feature = "parsing")]
 use arborium::tree_sitter::{Language as ParserGrammar, Query};
+#[cfg(feature = "parsing")]
 use lazy_static::lazy_static;
+#[cfg(feature = "parsing")]
 use rust_embed::RustEmbed;
+#[cfg(feature = "parsing")]
 use serde::{Deserialize, Serialize};
 use warp_editor::content::text::IndentUnit;
 use warp_util::standardized_path::StandardizedPath;
 
+#[cfg(feature = "parsing")]
 #[derive(RustEmbed)]
 #[folder = "grammars"]
 struct Grammars;
 
+#[cfg(feature = "parsing")]
 lazy_static! {
     static ref LANGUAGE_REGISTRY: LanguageRegistry = LanguageRegistry::new();
 }
 
+#[cfg(feature = "all_languages")]
 pub const SUPPORTED_LANGUAGES: [&str; 35] = [
     "rust",
     "golang",
@@ -56,13 +67,18 @@ pub const SUPPORTED_LANGUAGES: [&str; 35] = [
     "markdown",
 ];
 
+#[cfg(not(feature = "all_languages"))]
+pub const SUPPORTED_LANGUAGES: [&str; 0] = [];
+
 /// Registry that holds all of the supported languages.
+#[cfg(feature = "parsing")]
 pub struct LanguageRegistry {
     /// List of languages we support mapped from their display name. They are hold in Arc so they could be shared
     /// between different editors.
     languages: Mutex<HashMap<String, Arc<Language>>>,
 }
 
+#[cfg(feature = "parsing")]
 impl LanguageRegistry {
     fn new() -> Self {
         Self {
@@ -124,7 +140,15 @@ fn normalize_language_name(name: &str) -> &str {
 
 pub fn language_by_name(name: &str) -> Option<Arc<Language>> {
     let normalized = normalize_language_name(name);
-    LANGUAGE_REGISTRY.language_by_name(normalized)
+    #[cfg(feature = "parsing")]
+    {
+        LANGUAGE_REGISTRY.language_by_name(normalized)
+    }
+    #[cfg(not(feature = "parsing"))]
+    {
+        let _ = normalized;
+        None
+    }
 }
 
 fn language_by_filename_parts(
@@ -204,10 +228,13 @@ fn language_by_filename_parts(
 /// bracket pairing. In the future, this will also be the entry point for LSP.
 pub struct Language {
     /// Tree-sitter parser grammar.
+    #[cfg(feature = "parsing")]
     pub grammar: ParserGrammar,
     /// Query for syntax highlighting.
+    #[cfg(feature = "parsing")]
     pub highlight_query: Query,
     /// Query for auto indent.
+    #[cfg(feature = "parsing")]
     pub indents_query: Option<Query>,
     /// Unit for each indent action.
     pub indent_unit: IndentUnit,
@@ -216,6 +243,7 @@ pub struct Language {
     /// Language-specific bracket pairs.
     pub bracket_pairs: Vec<(char, char)>,
     /// Query for parsing symbols.
+    #[cfg(feature = "parsing")]
     pub symbols_query: Option<Query>,
     /// Display name for the language.
     pub display_name: String,
@@ -228,6 +256,7 @@ impl Language {
     }
 }
 
+#[cfg(feature = "parsing")]
 #[derive(Serialize, Deserialize, Debug)]
 struct LanguageConfig {
     display_name: String,
@@ -237,6 +266,7 @@ struct LanguageConfig {
     brackets: Vec<BracketPair>,
 }
 
+#[cfg(feature = "parsing")]
 #[derive(Serialize, Deserialize, Debug)]
 struct BracketPair {
     start: String,
@@ -244,6 +274,7 @@ struct BracketPair {
 }
 
 /// Map our internal language name to the canonical arborium language name.
+#[cfg(feature = "parsing")]
 fn to_arborium_name(lang: &str) -> &str {
     match lang {
         "golang" => "go",
@@ -257,6 +288,7 @@ fn to_arborium_name(lang: &str) -> &str {
 }
 
 /// Get the bundled highlight query from arborium for a given language.
+#[cfg(feature = "all_languages")]
 fn get_arborium_highlight_query(lang: &str) -> Option<&str> {
     match lang {
         "rust" => Some(arborium::lang_rust::HIGHLIGHTS_QUERY),
@@ -298,6 +330,13 @@ fn get_arborium_highlight_query(lang: &str) -> Option<&str> {
     }
 }
 
+#[cfg(all(feature = "parsing", not(feature = "all_languages")))]
+fn get_arborium_highlight_query(lang: &str) -> Option<&str> {
+    let _ = lang;
+    None
+}
+
+#[cfg(feature = "parsing")]
 fn load_language(lang: &str) -> Option<Language> {
     let arborium_name = to_arborium_name(lang);
     let grammar = arborium::get_language(arborium_name)?;
@@ -338,6 +377,7 @@ fn load_language(lang: &str) -> Option<Language> {
     })
 }
 
+#[cfg(feature = "parsing")]
 fn load_yaml(path: &str) -> LanguageConfig {
     match <Grammars as RustEmbed>::get(path) {
         Some(file) => {
@@ -351,6 +391,7 @@ fn load_yaml(path: &str) -> LanguageConfig {
     }
 }
 
+#[cfg(feature = "parsing")]
 fn load_query(path: &str, grammar: &ParserGrammar) -> Option<Query> {
     let file = <Grammars as RustEmbed>::get(path)?;
     let query_content = match file.data {
@@ -364,6 +405,6 @@ fn load_query(path: &str, grammar: &ParserGrammar) -> Option<Query> {
     )
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "all_languages"))]
 #[path = "lib_tests.rs"]
 mod tests;

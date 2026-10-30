@@ -1,5 +1,4 @@
 pub use cloud_object_models::{AIFact, AIMemory, CloudAIFact, CloudAIFactModel};
-#[cfg(not(feature = "warp_lite"))]
 use warp_core::ui::appearance::Appearance;
 
 use crate::cloud_object::model::generic_string_model::StringModel;
@@ -7,25 +6,19 @@ use crate::cloud_object::model::json_model::JsonModel;
 use crate::cloud_object::{
     GenericStringObjectFormat, GenericStringObjectUniqueKey, JsonObjectType, Revision,
 };
-#[cfg(not(feature = "warp_lite"))]
-use crate::cloud_object::CloudObjectTypeAndId;
-#[cfg(not(feature = "warp_lite"))]
+use crate::drive::CloudObjectTypeAndId;
 use crate::drive::items::WarpDriveItem;
-#[cfg(not(feature = "warp_lite"))]
 use crate::drive::items::ai_fact::WarpDriveAIFact;
-#[cfg(not(feature = "warp_lite"))]
 use crate::server::ids::SyncId;
 use crate::server::sync_queue::QueueItem;
 
-#[cfg(not(feature = "warp_lite"))]
-#[path = "manager.rs"]
-pub mod manager;
-#[cfg(feature = "warp_lite")]
-#[path = "manager_lite.rs"]
 pub mod manager;
 pub mod view;
+#[cfg(feature = "agent_runtime")]
 pub use manager::AIFactManager;
-pub use view::{AIFactView, AIFactViewEvent};
+pub use view::AIFactView;
+#[cfg(feature = "agent_runtime")]
+pub use view::AIFactViewEvent;
 
 impl StringModel for AIFact {
     type CloudObjectType = CloudAIFact;
@@ -72,12 +65,10 @@ impl StringModel for AIFact {
         None
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn renders_in_warp_drive(&self) -> bool {
         false
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     fn to_warp_drive_item(
         &self,
         id: SyncId,

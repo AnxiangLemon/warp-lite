@@ -71,6 +71,7 @@ pub mod rich_history;
 pub mod safe_mode_settings;
 mod secret_regex_updater;
 pub mod session_settings;
+pub mod session_types;
 pub mod settings;
 mod share_block_modal;
 pub mod shared_session;

@@ -181,6 +181,10 @@ impl LanguageServerCandidate for ClangdCandidate {
         metadata: LanguageServerMetadata,
         _executor: &CommandBuilder,
     ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            cfg!(feature = "managed_downloads"),
+            "Managed language-server installation is disabled in this build"
+        );
         let binary_path = install_from_github(
             &self.client,
             &metadata,

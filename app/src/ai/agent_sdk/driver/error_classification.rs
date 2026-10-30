@@ -379,6 +379,6 @@ pub fn classify_driver_error(error: &AgentDriverError) -> (AgentTaskState, TaskS
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "error_classification_tests.rs"]
 mod tests;

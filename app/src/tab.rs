@@ -24,6 +24,7 @@ use warpui::ui_components::components::{Coords, UiComponent, UiComponentStyles};
 use warpui::ui_components::text_input::TextInput;
 use warpui::{AppContext, SingletonEntity, ViewHandle};
 
+#[cfg(feature = "agent_runtime")]
 use crate::BlocklistAIHistoryModel;
 use crate::ai::agent::conversation::ConversationStatus;
 use crate::ai::conversation_status_ui::{STATUS_ELEMENT_PADDING, render_status_element};
@@ -33,9 +34,11 @@ use crate::appearance::Appearance;
 use crate::editor::EditorView;
 use crate::features::FeatureFlag;
 use crate::launch_configs::launch_config::LaunchConfig;
+use crate::lite_i18n::choose;
 use crate::menu::{MenuAction, MenuItem, MenuItemFields};
 use crate::pane_group::{PaneGroup, PaneId};
 use crate::shell_indicator::ShellIndicatorType;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::manager::Manager;
 use crate::terminal::shared_session::render_util::shared_session_indicator_color;
 use crate::terminal::view::TerminalViewState;
@@ -44,6 +47,7 @@ use crate::ui_components::buttons::icon_button;
 use crate::ui_components::color_dot::{TAB_COLOR_OPTIONS, render_color_dot};
 use crate::ui_components::icons::{ICON_DIMENSIONS, Icon};
 use crate::util::color::{Opacity, coloru_with_opacity};
+#[cfg(feature = "agent_runtime")]
 use crate::util::truncation::truncate_from_end;
 use crate::window_settings::WindowSettings;
 use crate::workspace::sync_inputs::SyncedInputState;
@@ -59,7 +63,7 @@ pub const TAB_BAR_BORDER_HEIGHT: f32 = 1.0;
 pub(crate) const TAB_INDICATOR_HEIGHT: f32 = 14.0;
 
 /// Label for the tab right-click menu's "Move to group" submenu parent.
-pub const MOVE_TO_GROUP_LABEL: &str = "Move to group";
+pub const MOVE_TO_GROUP_LABEL: &str = choose("Move to group", "移动到分组");
 
 /// Decides which tab-group context-menu entries apply to a tab, based on its
 /// group membership, whether it is the sole member of that group, and whether
@@ -87,15 +91,7 @@ fn tab_group_menu_entry_flags(
 /// Exposed so binding-description overrides in `workspace/mod.rs` and context-
 /// menu builders here can share a single predicate.
 pub fn uses_vertical_tabs(ctx: &AppContext) -> bool {
-    if !FeatureFlag::VerticalTabs.is_enabled() {
-        return false;
-    }
-    // Warp Lite is built around the left vertical-tabs layout; ignore a stale
-    // persisted `false` from earlier non-lite runs.
-    if cfg!(feature = "warp_lite") {
-        return true;
-    }
-    *TabSettings::as_ref(ctx).use_vertical_tabs
+    FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs
 }
 
 const WARP_2_TAB_COLOR_OPACITY: Opacity = 25;
@@ -307,6 +303,7 @@ impl TabData {
         menu_items
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn session_sharing_menu_items(
         &self,
         index: usize,
@@ -378,7 +375,7 @@ impl TabData {
                 .as_ref()
                 .is_some_and(|view| Manager::as_ref(ctx).has_session_link(&view.id()));
             menu_items.push(
-                MenuItemFields::new("Copy link")
+                MenuItemFields::new(choose("Copy link", "复制链接"))
                     .with_on_select_action(WorkspaceAction::CopySharedSessionLinkFromTab {
                         tab_index: index,
                     })
@@ -405,6 +402,16 @@ impl TabData {
         })
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    fn session_sharing_menu_items(
+        &self,
+        index: usize,
+        ctx: &AppContext,
+    ) -> Vec<MenuItem<WorkspaceAction>> {
+        let _ = (index, ctx);
+        Vec::new()
+    }
+
     fn copy_metadata_menu_items(
         &self,
         pane_name_target: Option<PaneNameMenuTarget>,
@@ -414,7 +421,11 @@ impl TabData {
         let mut menu_items = vec![];
         let tab_title = Self::copyable_metadata_value(Some(pane_group.display_title(ctx)));
         if !uses_vertical_tabs(ctx) {
-            Self::push_copy_metadata_menu_item(&mut menu_items, "Copy tab title", tab_title);
+            Self::push_copy_metadata_menu_item(
+                &mut menu_items,
+                choose("Copy tab title", "复制标签页标题"),
+                tab_title,
+            );
             return menu_items;
         }
 
@@ -434,7 +445,7 @@ impl TabData {
                 })
                 .unwrap_or_else(|| pane_group.focused_pane_id(ctx));
             (
-                "Copy pane title",
+                choose("Copy pane title", "复制面板标题"),
                 Self::copyable_pane_title(pane_group, pane_id, ctx),
                 pane_group.terminal_view_from_pane_id(pane_id, ctx),
             )
@@ -445,20 +456,24 @@ impl TabData {
                     pane_group.terminal_view_from_pane_id(target.locator.pane_id, ctx)
                 })
                 .or_else(|| pane_group.focused_session_view(ctx));
-            ("Copy tab title", tab_title, terminal_view)
+            (
+                choose("Copy tab title", "复制标签页标题"),
+                tab_title,
+                terminal_view,
+            )
         };
 
         if let Some(terminal_view) = terminal_view {
             let terminal_view = terminal_view.as_ref(ctx);
             Self::push_copy_metadata_menu_item(
                 &mut menu_items,
-                "Copy branch",
+                choose("Copy branch", "复制分支"),
                 Self::copyable_metadata_value(terminal_view.current_git_branch(ctx)),
             );
             Self::push_copy_metadata_menu_item(&mut menu_items, title_label, title);
             Self::push_copy_metadata_menu_item(
                 &mut menu_items,
-                "Copy working directory",
+                choose("Copy working directory", "复制工作目录"),
                 Self::copyable_metadata_value(
                     terminal_view
                         .pwd()
@@ -467,7 +482,7 @@ impl TabData {
             );
             Self::push_copy_metadata_menu_item(
                 &mut menu_items,
-                "Copy pull request link",
+                choose("Copy pull request link", "复制 pull request 链接"),
                 Self::copyable_metadata_value(terminal_view.current_pull_request_url(ctx)),
             );
         } else {
@@ -513,7 +528,7 @@ impl TabData {
             // TODO add option to show the keybinding once we figure out a nice API to retrieve
             // the actual keybinding (based on the user's preferences etc.)
             menu_items.append(&mut vec![
-                MenuItemFields::new("Rename tab")
+                MenuItemFields::new(choose("Rename tab", "重命名标签页"))
                     .with_on_select_action(WorkspaceAction::RenameTab(index))
                     .into_item(),
             ]);
@@ -522,7 +537,7 @@ impl TabData {
             let title = self.pane_group.as_ref(ctx).custom_title(ctx);
             if title.is_some() {
                 menu_items.push(
-                    MenuItemFields::new("Reset tab name")
+                    MenuItemFields::new(choose("Reset tab name", "恢复标签页名称"))
                         .with_on_select_action(WorkspaceAction::ResetTabName(index))
                         .into_item(),
                 );
@@ -537,9 +552,9 @@ impl TabData {
         if can_move_right {
             menu_items.push(
                 MenuItemFields::new(if uses_vertical_tabs {
-                    "Move Tab Down"
+                    choose("Move Tab Down", "向下移动标签页")
                 } else {
-                    "Move Tab Right"
+                    choose("Move Tab Right", "向右移动标签页")
                 })
                 .with_on_select_action(WorkspaceAction::MoveTabRight(index))
                 .into_item(),
@@ -548,9 +563,9 @@ impl TabData {
         if can_move_left {
             menu_items.push(
                 MenuItemFields::new(if uses_vertical_tabs {
-                    "Move Tab Up"
+                    choose("Move Tab Up", "向上移动标签页")
                 } else {
-                    "Move Tab Left"
+                    choose("Move Tab Left", "向左移动标签页")
                 })
                 .with_on_select_action(WorkspaceAction::MoveTabLeft(index))
                 .into_item(),
@@ -603,14 +618,14 @@ impl TabData {
 
         if ContextFlag::CloseWindow.is_enabled() || tabs_len != 1 {
             menu_items.push(
-                MenuItemFields::new("Close tab")
+                MenuItemFields::new(choose("Close tab", "关闭标签页"))
                     .with_on_select_action(WorkspaceAction::CloseTab(index))
                     .into_item(),
             );
         }
         if tabs_len > 1 {
             menu_items.push(
-                MenuItemFields::new("Close other tabs")
+                MenuItemFields::new(choose("Close other tabs", "关闭其他标签页"))
                     .with_on_select_action(WorkspaceAction::CloseOtherTabs(index))
                     .into_item(),
             );
@@ -619,9 +634,9 @@ impl TabData {
         if not_last_tab {
             menu_items.push(
                 MenuItemFields::new(if uses_vertical_tabs {
-                    "Close Tabs Below"
+                    choose("Close Tabs Below", "关闭下方标签页")
                 } else {
-                    "Close Tabs to the Right"
+                    choose("Close Tabs to the Right", "关闭右侧标签页")
                 })
                 .with_on_select_action(WorkspaceAction::CloseTabsRight(index))
                 .into_item(),
@@ -635,7 +650,7 @@ impl TabData {
             return vec![];
         }
         vec![
-            MenuItemFields::new("Save as new config")
+            MenuItemFields::new(choose("Save as new config", "另存为终端配置"))
                 .with_on_select_action(WorkspaceAction::SaveCurrentTabAsNewConfig(index))
                 .into_item(),
         ]
@@ -648,9 +663,15 @@ impl TabData {
         }
 
         let (label, action) = if self.pinned {
-            ("Unpin tab", WorkspaceAction::UnpinTab(index))
+            (
+                choose("Unpin tab", "取消固定标签页"),
+                WorkspaceAction::UnpinTab(index),
+            )
         } else {
-            ("Pin tab", WorkspaceAction::PinTab(index))
+            (
+                choose("Pin tab", "固定标签页"),
+                WorkspaceAction::PinTab(index),
+            )
         };
         vec![
             MenuItemFields::new(label)
@@ -681,7 +702,7 @@ impl TabData {
         let mut menu_items = vec![];
         if show_new_group {
             menu_items.push(
-                MenuItemFields::new("New group with tab")
+                MenuItemFields::new(choose("New group with tab", "将标签页加入新分组"))
                     .with_on_select_action(WorkspaceAction::NewTabGroupFromTab(index))
                     .into_item(),
             );
@@ -691,7 +712,7 @@ impl TabData {
         }
         if show_remove_from_group {
             menu_items.push(
-                MenuItemFields::new("Remove from group")
+                MenuItemFields::new(choose("Remove from group", "从分组移除"))
                     .with_on_select_action(WorkspaceAction::RemoveTabFromGroup(index))
                     .into_item(),
             );
@@ -806,7 +827,7 @@ pub(crate) fn color_picker_menu_items(
                         Some(id) => id.to_ansi_color(&terminal_colors).into(),
                     };
                     let tooltip = match ansi_id {
-                        None => "Default (no color)".to_string(),
+                        None => choose("Default (no color)", "默认（无颜色）").to_string(),
                         Some(id) => id.to_string(),
                     };
 
@@ -1123,6 +1144,7 @@ impl<'a> TabComponent<'a> {
     /// or `None` if there is no non-empty, non-passive conversation to display.
     /// When a shell command is long-running the status is overridden to
     /// `InProgress`, matching vertical-tab behavior.
+    #[cfg(feature = "agent_runtime")]
     fn agent_indicator(tab: &TabData, app: &AppContext) -> Option<Indicator> {
         let terminal_view = tab.pane_group.as_ref(app).focused_session_view(app)?;
         let terminal_view_ref = terminal_view.as_ref(app);
@@ -1146,6 +1168,12 @@ impl<'a> TabComponent<'a> {
         Some(Indicator::Agent {
             conversation_status,
         })
+    }
+
+    #[cfg(not(feature = "agent_runtime"))]
+    fn agent_indicator(tab: &TabData, app: &AppContext) -> Option<Indicator> {
+        let _ = (tab, app);
+        None
     }
 
     /// Determine if this tab is the active tab.
@@ -1201,6 +1229,7 @@ impl<'a> TabComponent<'a> {
 
     /// Get the task description for the tooltip if this is an agent task
     /// and the tooltip content would be different from what's displayed in the tab
+    #[cfg(feature = "agent_runtime")]
     fn get_agent_task_tooltip_message(tab: &TabData, ctx: &AppContext) -> Option<String> {
         let terminal_view_id = tab
             .pane_group
@@ -1222,6 +1251,12 @@ impl<'a> TabComponent<'a> {
         let truncated_name = truncate_from_end(&trimmed_title, MAX_TOOLTIP_LENGTH);
 
         Some(truncated_name)
+    }
+
+    #[cfg(not(feature = "agent_runtime"))]
+    fn get_agent_task_tooltip_message(tab: &TabData, ctx: &AppContext) -> Option<String> {
+        let _ = (tab, ctx);
+        None
     }
 
     /// Check if the given indicator is an agent task indicator

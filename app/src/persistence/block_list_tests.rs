@@ -1,22 +1,29 @@
 //! Unit tests for the `ai_queries` persistence layer in [`super`].
 //!
-//! Covers the FIFO eviction cap added to [`super::upsert_ai_query`] and the empty-input filter
+//! Covers the FIFO eviction cap for AI queries and the empty-input filter
 //! that drives the persistence skip in `handle_ai_history_event`.
 
+#[cfg(feature = "agent_runtime")]
 use std::sync::Arc;
 
+#[cfg(feature = "agent_runtime")]
 use chrono::{DateTime, Duration, Local};
 use diesel::sqlite::SqliteConnection;
 use diesel::{Connection, ExpressionMethods, QueryDsl, RunQueryDsl};
 use diesel_migrations::MigrationHarness;
 
+#[cfg(feature = "agent_runtime")]
 use super::{
     process_ai_queries_for_nld_history_match, process_ai_queries_for_uparrow_prompt,
     read_recent_ai_queries, upsert_ai_query_with_limit,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::conversation::AIConversationId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::{AIAgentExchangeId, AIAgentInput, UserQueryMode};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{AIQueryHistoryOutputStatus, PersistedAIInput, PersistedAIInputType};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::llms::LLMId;
 
 /// Builds an in-memory SQLite database with all migrations applied.
@@ -29,6 +36,7 @@ fn test_connection() -> SqliteConnection {
 }
 
 /// Builds a query-bearing [`PersistedAIInput`] with a fresh, unique `exchange_id`.
+#[cfg(feature = "agent_runtime")]
 fn make_query(text: &str) -> Arc<PersistedAIInput> {
     Arc::new(PersistedAIInput {
         exchange_id: AIAgentExchangeId::new(),
@@ -49,6 +57,7 @@ fn make_query(text: &str) -> Arc<PersistedAIInput> {
 /// Clones `query` with an explicit `start_ts` so ordering-sensitive tests are deterministic
 /// (the NLD reader orders by `start_ts`, which `make_query`'s `Local::now()` cannot guarantee
 /// across rapid inserts).
+#[cfg(feature = "agent_runtime")]
 fn with_start_ts(query: Arc<PersistedAIInput>, start_ts: DateTime<Local>) -> Arc<PersistedAIInput> {
     Arc::new(PersistedAIInput {
         start_ts,
@@ -56,6 +65,7 @@ fn with_start_ts(query: Arc<PersistedAIInput>, start_ts: DateTime<Local>) -> Arc
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 fn ai_query_count(conn: &mut SqliteConnection) -> i64 {
     use crate::persistence::schema::ai_queries::dsl::ai_queries;
     ai_queries
@@ -65,6 +75,7 @@ fn ai_query_count(conn: &mut SqliteConnection) -> i64 {
 }
 
 /// Returns the persisted `exchange_id`s ordered by `id` ascending (i.e. insertion / FIFO order).
+#[cfg(feature = "agent_runtime")]
 fn remaining_exchange_ids(conn: &mut SqliteConnection) -> Vec<String> {
     use crate::persistence::schema::ai_queries::dsl::{ai_queries, exchange_id, id};
     ai_queries
@@ -74,6 +85,7 @@ fn remaining_exchange_ids(conn: &mut SqliteConnection) -> Vec<String> {
         .expect("load query should succeed")
 }
 
+#[cfg(feature = "agent_runtime")]
 fn input_json_for_exchange(conn: &mut SqliteConnection, exchange: &str) -> String {
     use crate::persistence::schema::ai_queries::dsl::{ai_queries, exchange_id, input};
     ai_queries
@@ -84,6 +96,7 @@ fn input_json_for_exchange(conn: &mut SqliteConnection, exchange: &str) -> Strin
 }
 
 /// Returns the text of the first query input on a [`PersistedAIInput`].
+#[cfg(feature = "agent_runtime")]
 fn first_query_text(query: &PersistedAIInput) -> &str {
     match query.inputs.first().expect("query should have an input") {
         PersistedAIInputType::Query { text, .. } => text,
@@ -91,6 +104,7 @@ fn first_query_text(query: &PersistedAIInput) -> &str {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn upsert_ai_query_caps_table_and_evicts_oldest_first() {
     let mut conn = test_connection();
     let limit = 3;
@@ -115,6 +129,7 @@ fn upsert_ai_query_caps_table_and_evicts_oldest_first() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn upsert_ai_query_stays_below_limit_without_evicting() {
     let mut conn = test_connection();
     let limit = 3;
@@ -133,6 +148,7 @@ fn upsert_ai_query_stays_below_limit_without_evicting() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn upsert_ai_query_updates_existing_exchange_without_evicting() {
     let mut conn = test_connection();
     let limit = 2;
@@ -179,6 +195,7 @@ fn upsert_ai_query_updates_existing_exchange_without_evicting() {
 
 /// Builds a [`PersistedAIInput`] whose inputs serialize to `[]`, mirroring legacy rows
 /// written before empty inputs were skipped at write time.
+#[cfg(feature = "agent_runtime")]
 fn make_empty_input_query() -> Arc<PersistedAIInput> {
     Arc::new(PersistedAIInput {
         inputs: vec![],
@@ -187,6 +204,7 @@ fn make_empty_input_query() -> Arc<PersistedAIInput> {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn process_ai_queries_for_nld_history_match_filters_empty_and_whitespace_inputs_oldest_first() {
     let mut conn = test_connection();
 
@@ -209,6 +227,7 @@ fn process_ai_queries_for_nld_history_match_filters_empty_and_whitespace_inputs_
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn process_ai_queries_for_uparrow_prompt_keeps_newest_capped_oldest_first() {
     // Build 150 oldest-first queries; only the newest 100 should survive, order preserved.
     let queries: Vec<PersistedAIInput> = (0..150)
@@ -224,6 +243,7 @@ fn process_ai_queries_for_uparrow_prompt_keeps_newest_capped_oldest_first() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn process_ai_queries_for_uparrow_prompt_keeps_all_when_under_cap() {
     // Fewer than the cap: everything is kept, order preserved.
     let queries: Vec<PersistedAIInput> = (0..3)
@@ -237,6 +257,7 @@ fn process_ai_queries_for_uparrow_prompt_keeps_all_when_under_cap() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn empty_input_skip_filters_out_non_query_inputs() {
     // Mirrors the filter in `handle_ai_history_event`: only query-bearing inputs are persisted.
     // An exchange whose inputs are all non-query types collapses to an empty `inputs` vec, which
@@ -273,4 +294,78 @@ fn empty_input_skip_filters_out_non_query_inputs() {
         .filter_map(|input| PersistedAIInputType::try_from(input).ok())
         .collect();
     assert_eq!(persisted.len(), 1);
+}
+
+#[cfg(feature = "warp_lite")]
+#[test]
+fn lite_terminal_history_keeps_the_latest_thousand_blocks() {
+    use super::{get_all_restored_blocks, save_block};
+    use crate::app_state::PaneUuid;
+    use crate::persistence::schema::{
+        blocks, pane_leaves, pane_nodes, tabs, terminal_panes, windows,
+    };
+    use crate::terminal::model::block::SerializedBlock;
+
+    let mut conn = test_connection();
+    diesel::insert_into(windows::table)
+        .values((
+            windows::id.eq(1),
+            windows::active_tab_index.eq(0),
+            windows::quake_mode.eq(false),
+            windows::fullscreen_state.eq(0),
+        ))
+        .execute(&mut conn)
+        .expect("window should save");
+    diesel::insert_into(tabs::table)
+        .values((
+            tabs::id.eq(1),
+            tabs::window_id.eq(1),
+            tabs::pinned.eq(false),
+        ))
+        .execute(&mut conn)
+        .expect("tab should save");
+    diesel::insert_into(pane_nodes::table)
+        .values((
+            pane_nodes::id.eq(1),
+            pane_nodes::tab_id.eq(1),
+            pane_nodes::is_leaf.eq(true),
+        ))
+        .execute(&mut conn)
+        .expect("pane node should save");
+    diesel::insert_into(pane_leaves::table)
+        .values((
+            pane_leaves::pane_node_id.eq(1),
+            pane_leaves::kind.eq("terminal"),
+            pane_leaves::is_focused.eq(true),
+        ))
+        .execute(&mut conn)
+        .expect("pane leaf should save");
+    diesel::insert_into(terminal_panes::table)
+        .values((
+            terminal_panes::id.eq(1),
+            terminal_panes::kind.eq("terminal"),
+            terminal_panes::uuid.eq(vec![1]),
+            terminal_panes::is_active.eq(true),
+        ))
+        .execute(&mut conn)
+        .expect("terminal pane should save");
+    for index in 0..=1000 {
+        let block = SerializedBlock {
+            id: format!("block-{index}").into(),
+            ..Default::default()
+        };
+        save_block(&mut conn, vec![1], &block, true).expect("terminal block should save");
+    }
+
+    let saved_ids = blocks::table
+        .select(blocks::block_id)
+        .order(blocks::id.asc())
+        .load::<String>(&mut conn)
+        .expect("terminal blocks should load");
+    let restored = get_all_restored_blocks(&mut conn).expect("terminal history should restore");
+
+    assert_eq!(saved_ids.len(), 1000);
+    assert_eq!(saved_ids.first().map(String::as_str), Some("block-1"));
+    assert_eq!(saved_ids.last().map(String::as_str), Some("block-1000"));
+    assert_eq!(restored[&PaneUuid(vec![1])].len(), 1000);
 }

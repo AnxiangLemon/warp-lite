@@ -145,7 +145,7 @@ impl FindableRichContentView for AIBlock {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "find_tests.rs"]
 mod tests;
 

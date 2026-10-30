@@ -1,22 +1,34 @@
-//! Manages how we write to and read from our SQLite database for our AI features.
+//! SQLite persistence for terminal blocks and optional AI queries.
 
 use std::collections::HashMap;
+#[cfg(feature = "agent_runtime")]
 use std::sync::Arc;
 
+#[cfg(feature = "agent_runtime")]
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 use diesel::prelude::*;
 use diesel::result::Error;
 use diesel::sqlite::SqliteConnection;
+#[cfg(feature = "agent_runtime")]
 use itertools::Itertools;
 
 use super::model::Block;
 use super::{model, schema};
-use crate::ai::blocklist::{PersistedAIInput, PersistedAIInputType, SerializedBlockListItem};
+use crate::ai::blocklist::SerializedBlockListItem;
+#[cfg(feature = "agent_runtime")]
+use crate::ai::blocklist::{PersistedAIInput, PersistedAIInputType};
 use crate::app_state::PaneUuid;
+#[cfg(feature = "agent_runtime")]
 use crate::persistence::schema::ai_queries;
-use crate::terminal::model::block::{SerializedAgentViewVisibility, SerializedBlock};
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::model::block::SerializedAgentViewVisibility;
+use crate::terminal::model::block::SerializedBlock;
 
-const MAX_TERMINAL_BLOCKS_TO_PERSIST_PER_SESSION: i64 = 100;
+const MAX_TERMINAL_BLOCKS_TO_PERSIST_PER_SESSION: i64 = if cfg!(feature = "warp_lite") {
+    1000
+} else {
+    100
+};
 
 type PersistedBlocks = HashMap<PaneUuid, Vec<SerializedBlockListItem>>;
 
@@ -24,6 +36,7 @@ type PersistedBlocks = HashMap<PaneUuid, Vec<SerializedBlockListItem>>;
 #[derive(Identifiable, Insertable, Queryable, Selectable)]
 #[diesel(table_name = ai_queries)]
 #[diesel(primary_key(id))]
+#[cfg(feature = "agent_runtime")]
 pub(super) struct AIQuery {
     pub(super) id: i32,
     pub(super) exchange_id: String,
@@ -40,6 +53,7 @@ pub(super) struct AIQuery {
     pub(super) planning_model_id: String,
 }
 
+#[cfg(feature = "agent_runtime")]
 impl TryFrom<AIQuery> for PersistedAIInput {
     type Error = anyhow::Error;
 
@@ -61,6 +75,7 @@ impl TryFrom<AIQuery> for PersistedAIInput {
 #[derive(Insertable, AsChangeset)]
 #[diesel(table_name = ai_queries)]
 #[diesel(treat_none_as_null = true)]
+#[cfg(feature = "agent_runtime")]
 pub(super) struct NewAIQuery {
     pub(super) exchange_id: String,
     pub(super) conversation_id: String,
@@ -71,6 +86,7 @@ pub(super) struct NewAIQuery {
     pub(super) model_id: String,
 }
 
+#[cfg(feature = "agent_runtime")]
 impl TryFrom<&PersistedAIInput> for NewAIQuery {
     type Error = anyhow::Error;
 
@@ -88,17 +104,21 @@ impl TryFrom<&PersistedAIInput> for NewAIQuery {
 }
 
 /// Fixed cap on how many recent AI query rows we read from SQLite at startup for performance
+#[cfg(feature = "agent_runtime")]
 const MAX_AI_QUERIES_READ_LIMIT: i64 = 2000;
 
 /// Maximum number of recent AI queries kept for up-arrow prompt history.
 /// TODO(alokedesai): Consider loading all AI queries by paginating the SQL query.
+#[cfg(feature = "agent_runtime")]
 const MAX_AI_QUERIES_FOR_UPARROW: usize = 100;
 
 /// Maximum number of recent AI queries scanned for NLD prompt-history matching.
+#[cfg(feature = "agent_runtime")]
 const MAX_AI_QUERIES_FOR_NLD: usize = 2000;
 
 /// Reads the most recent [`MAX_AI_QUERIES_READ_LIMIT`] AI queries from the `ai_queries` table,
 /// oldest-first (ascending by submission).
+#[cfg(feature = "agent_runtime")]
 pub(super) fn read_recent_ai_queries(
     conn: &mut SqliteConnection,
 ) -> Result<Vec<PersistedAIInput>, diesel::result::Error> {
@@ -117,6 +137,7 @@ pub(super) fn read_recent_ai_queries(
 /// the newest [`MAX_AI_QUERIES_FOR_UPARROW`] entries, kept oldest-first. Equivalent to the former
 /// `read_ai_queries_for_uparrow_prompt_history` as long as the input holds at least that many of
 /// the newest queries.
+#[cfg(feature = "agent_runtime")]
 pub(super) fn process_ai_queries_for_uparrow_prompt(
     mut recent_ai_queries: Vec<PersistedAIInput>,
 ) -> Vec<PersistedAIInput> {
@@ -128,6 +149,7 @@ pub(super) fn process_ai_queries_for_uparrow_prompt(
 
 /// Extracts NLD prompt-history candidates (prompt text and submission time) from the newest
 /// [`MAX_AI_QUERIES_FOR_NLD`] of `recent_ai_queries` (ordered oldest-first)
+#[cfg(feature = "agent_runtime")]
 pub(super) fn process_ai_queries_for_nld_history_match(
     recent_ai_queries: &[PersistedAIInput],
 ) -> Vec<(String, DateTime<Local>)> {
@@ -148,8 +170,10 @@ pub(super) fn process_ai_queries_for_nld_history_match(
         .collect_vec()
 }
 
+#[cfg(feature = "agent_runtime")]
 const AI_QUERIES_COUNT_LIMIT: i64 = 10_000;
 
+#[cfg(feature = "agent_runtime")]
 pub(super) fn upsert_ai_query(
     conn: &mut SqliteConnection,
     query: Arc<PersistedAIInput>,
@@ -160,6 +184,7 @@ pub(super) fn upsert_ai_query(
 /// Upserts an AI query while keeping the `ai_queries` table capped at `limit` rows by evicting
 /// the oldest queries (FIFO by `id`). Split out from [`upsert_ai_query`] so tests can exercise the
 /// eviction path with a small limit instead of inserting `AI_QUERIES_COUNT_LIMIT` rows.
+#[cfg(feature = "agent_runtime")]
 fn upsert_ai_query_with_limit(
     conn: &mut SqliteConnection,
     query: Arc<PersistedAIInput>,
@@ -206,8 +231,8 @@ fn upsert_ai_query_with_limit(
     })?)
 }
 
-/// Returns the most recent [`MAX_BLOCK_COUNT_PER_SESSION`] block list items for each session. The
-/// items are in chronological order.
+/// Returns the most recent [`MAX_TERMINAL_BLOCKS_TO_PERSIST_PER_SESSION`] block list items for each
+/// session, in chronological order.
 pub(super) fn get_all_restored_blocks(
     conn: &mut SqliteConnection,
 ) -> Result<PersistedBlocks, diesel::result::Error> {
@@ -341,6 +366,7 @@ pub(super) fn delete_blocks(conn: &mut SqliteConnection, pane_id: Vec<u8>) -> Re
     })
 }
 
+#[cfg(feature = "agent_runtime")]
 pub(super) fn update_block_agent_view_visibility(
     conn: &mut SqliteConnection,
     target_block_id: &str,
@@ -354,6 +380,7 @@ pub(super) fn update_block_agent_view_visibility(
     Ok(())
 }
 
+#[cfg(feature = "agent_runtime")]
 pub(super) fn delete_ai_conversation(
     conn: &mut SqliteConnection,
     conversation_id_str: &str,

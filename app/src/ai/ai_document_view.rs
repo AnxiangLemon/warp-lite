@@ -23,6 +23,7 @@ use warpui::{
 };
 
 use crate::ai::agent::conversation::AIConversationId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
 use crate::ai::document::ai_document_model::{
     AIDocumentId, AIDocumentInstance, AIDocumentModel, AIDocumentModelEvent, AIDocumentSaveStatus,
@@ -30,7 +31,7 @@ use crate::ai::document::ai_document_model::{
 };
 use crate::ai::document::orchestration_config_block::OrchestrationConfigBlockView;
 use crate::appearance::Appearance;
-use crate::cloud_object::CloudObjectTypeAndId;
+use crate::drive::CloudObjectTypeAndId;
 use crate::drive::items::WarpDriveItemId;
 use crate::drive::sharing::ShareableObject;
 use crate::editor::InteractionState;
@@ -229,16 +230,20 @@ impl AIDocumentView {
                 }
                 AIDocumentModelEvent::DocumentUserEditStatusUpdated {
                     document_id: id,
+                    #[cfg(feature = "agent_runtime")]
                     status,
+                    ..
                 } => {
                     if *id != document_id {
                         return;
                     }
 
                     // Auto-set pending document ID when document becomes dirty
+                    #[cfg(feature = "agent_runtime")]
                     if status.is_dirty()
                         && let Some(terminal_view) = &me.original_terminal_view
                     {
+                        #[cfg(feature = "agent_runtime")]
                         terminal_view.update(ctx, |terminal_view, ctx| {
                             terminal_view
                                 .ai_context_model()
@@ -1206,6 +1211,9 @@ impl TypedActionView for AIDocumentView {
                     }
                 }
             }
+            #[cfg(not(feature = "agent_runtime"))]
+            AIDocumentAction::SendUpdatedPlan => {}
+            #[cfg(feature = "agent_runtime")]
             AIDocumentAction::SendUpdatedPlan => {
                 let Some(terminal_view) = &self.original_terminal_view else {
                     log::warn!("Cannot send updated plan: no terminal view associated");
@@ -1222,6 +1230,7 @@ impl TypedActionView for AIDocumentView {
                     return;
                 };
 
+                #[cfg(feature = "agent_runtime")]
                 terminal_view.update(ctx, |terminal_view, ctx| {
                     let history_model = BlocklistAIHistoryModel::handle(ctx);
                     let history_model_ref = history_model.as_ref(ctx);

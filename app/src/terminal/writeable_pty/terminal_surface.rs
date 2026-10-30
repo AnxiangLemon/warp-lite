@@ -1,11 +1,11 @@
 use std::borrow::Cow;
 
+use ::ai::pty::PtyWriteMode as AIAgentPtyWriteMode;
 use async_channel::Sender;
 #[cfg(unix)]
 use warpui::AppContext;
 use warpui::{Entity, ViewContext};
 
-use crate::ai::agent::AIAgentPtyWriteMode;
 #[cfg(unix)]
 use crate::terminal::event::AfterBlockCompletedEvent;
 use crate::terminal::model::completions::ShellCompletion;

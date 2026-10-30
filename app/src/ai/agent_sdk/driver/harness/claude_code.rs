@@ -815,6 +815,6 @@ pub(crate) fn serialize_claude_mcp_config(
     serde_json::to_string_pretty(&config).context("Failed to serialize Claude MCP config")
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "claude_code_tests.rs"]
 mod tests;

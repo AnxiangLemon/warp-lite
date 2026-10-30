@@ -86,8 +86,7 @@ use crate::ai::loading::shimmering_warp_loading_text;
 use crate::ai::mcp::TemplatableMCPServerManager;
 use crate::code::editor::view::CodeEditorView;
 use crate::code::editor_management::CodeSource;
-use crate::code::editor::text_styles::rich_text_styles;
-use crate::code::editor::text_styles::markdown_table_appearance;
+use crate::notebooks::editor::{markdown_table_appearance, rich_text_styles};
 use crate::search::slash_command_menu::static_commands::commands;
 use crate::settings::{FontSettings, InputSettings};
 use crate::settings_view::SettingsSection;
@@ -2861,18 +2860,11 @@ pub fn render_code_output_section<A: Action>(
                     _ => None,
                 },
                 on_execute: if allow_execution {
-                    #[cfg(not(feature = "warp_lite"))]
-                    {
-                        Some(Box::new(|code_snippet, ctx| {
-                            ctx.dispatch_typed_action(WorkspaceAction::RunAISuggestedCommand(
-                                code_snippet,
-                            ));
-                        }))
-                    }
-                    #[cfg(feature = "warp_lite")]
-                    {
-                        None
-                    }
+                    Some(Box::new(|code_snippet, ctx| {
+                        ctx.dispatch_typed_action(WorkspaceAction::RunAISuggestedCommand(
+                            code_snippet,
+                        ));
+                    }))
                 } else {
                     None
                 },
@@ -2937,18 +2929,11 @@ pub fn render_code_output_section<A: Action>(
                         _ => None,
                     },
                     on_execute: if allow_execution {
-                        #[cfg(not(feature = "warp_lite"))]
-                        {
-                            Some(Box::new(|code_snippet, ctx| {
-                                ctx.dispatch_typed_action(WorkspaceAction::RunAISuggestedCommand(
-                                    code_snippet,
-                                ));
-                            }))
-                        }
-                        #[cfg(feature = "warp_lite")]
-                        {
-                            None
-                        }
+                        Some(Box::new(|code_snippet, ctx| {
+                            ctx.dispatch_typed_action(WorkspaceAction::RunAISuggestedCommand(
+                                code_snippet,
+                            ));
+                        }))
                     } else {
                         None
                     },
@@ -3778,6 +3763,6 @@ pub(crate) fn render_scrollable_collapsible_content(
     )
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "common_tests.rs"]
 mod tests;

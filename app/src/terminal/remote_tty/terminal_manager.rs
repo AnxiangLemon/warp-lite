@@ -7,7 +7,6 @@ use parking_lot::FairMutex;
 use pathfinder_geometry::vector::Vector2F;
 use warpui::{AppContext, ModelHandle, ViewHandle, WindowId};
 
-use crate::ai::blocklist::InputConfig;
 use crate::context_chips::prompt_type::PromptType;
 use crate::pane_group::TerminalViewResources;
 use crate::persistence::ModelEvent;
@@ -15,6 +14,7 @@ use crate::terminal::event_listener::ChannelEventListener;
 use crate::terminal::model::session::Sessions;
 use crate::terminal::model_events::ModelEventDispatcher;
 use crate::terminal::remote_tty::event_loop::EventLoop;
+use crate::terminal::session_types::InputConfig;
 use crate::terminal::shell::{ShellName, ShellType};
 use crate::terminal::terminal_manager::BlockSpacing;
 use crate::terminal::writeable_pty::pty_controller::{EventLoopSendError, EventLoopSender};

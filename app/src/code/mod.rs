@@ -116,6 +116,7 @@ pub enum SaveOutcome {
     Succeeded,
 }
 
+#[cfg(not(feature = "warp_lite"))]
 pub mod file_tree;
 pub mod footer;
 mod icon;
@@ -130,6 +131,7 @@ pub mod view;
 
 pub fn init(app: &mut AppContext) {
     self::view::init(app);
+    #[cfg(not(feature = "warp_lite"))]
     self::file_tree::init(app);
     #[cfg(not(target_family = "wasm"))]
     self::find_references_view::init(app);

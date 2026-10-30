@@ -1,13 +1,16 @@
 pub mod iap;
 
+use std::fmt;
+#[cfg(feature = "network_transport")]
+use std::future;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{fmt, future};
 
 #[cfg(not(target_family = "wasm"))]
 use async_compat::{Compat, CompatExt};
+#[cfg(feature = "network_transport")]
 use async_stream::stream;
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
@@ -16,6 +19,7 @@ pub use http::header::AUTHORIZATION;
 use http::header::HeaderName;
 pub use http::{HeaderMap, StatusCode};
 use reqwest::IntoUrl;
+#[cfg(feature = "network_transport")]
 use reqwest_eventsource::RequestBuilderExt;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -63,7 +67,7 @@ const EXTRA_HTTP_HEADERS_ENV_VAR: &str = "WARP_EXTRA_HTTP_HEADERS";
 /// that ensures any call to the underlying `reqwest::Client` are properly adapted so that they can
 /// run outside of a Tokio context.
 pub struct Client {
-    wrapped: reqwest::Client,
+    wrapped: Option<reqwest::Client>,
 
     /// A callback that is executed before every request is sent with a cloned
     /// version of the outbound request.  If for some reason the request cannot be
@@ -110,7 +114,7 @@ cfg_if::cfg_if! {
 /// call to the underyling `reqwest::RequestBuilder` are properly adapted to run outside of a Tokio
 /// context via a call to `compat`.
 pub struct RequestBuilder<'a> {
-    wrapped: reqwest::RequestBuilder,
+    wrapped: Option<reqwest::RequestBuilder>,
     client: &'a Client,
 
     // The JSON payload of the request, if any, serialized to a pretty-printed String.
@@ -120,8 +124,11 @@ pub struct RequestBuilder<'a> {
 }
 
 pub struct Request {
+    #[cfg(feature = "network_transport")]
     wrapped: reqwest::Request,
+    #[cfg(feature = "network_transport")]
     serialized_payload: Option<String>,
+    #[cfg(feature = "network_transport")]
     prevent_sleep_reason: Option<&'static str>,
 }
 
@@ -136,6 +143,26 @@ impl Default for Client {
 }
 
 impl Client {
+    /// Creates an inert client without initializing HTTP, TLS, proxies, or connection pools.
+    pub fn new_offline() -> Self {
+        Self {
+            wrapped: None,
+            before_request_sent: None,
+            after_response_received: None,
+            iap_token_provider: None,
+        }
+    }
+
+    pub fn is_offline(&self) -> bool {
+        self.wrapped.is_none()
+    }
+
+    #[cfg(not(feature = "network_transport"))]
+    pub fn new() -> Self {
+        Self::new_offline()
+    }
+
+    #[cfg(feature = "network_transport")]
     pub fn new() -> Self {
         #[cfg_attr(target_family = "wasm", expect(unused_mut))]
         let mut builder = reqwest::Client::builder();
@@ -155,7 +182,12 @@ impl Client {
         Self::from_client_builder(builder).expect("should not fail to create client")
     }
 
-    #[cfg(feature = "test-util")]
+    #[cfg(all(feature = "test-util", not(feature = "network_transport")))]
+    pub fn new_for_test() -> Self {
+        Self::new_offline()
+    }
+
+    #[cfg(all(feature = "test-util", feature = "network_transport"))]
     pub fn new_for_test() -> Self {
         let client_builder = reqwest::ClientBuilder::new()
             // Don't load any SSL/TLS certificates, as doing so can be slow and we should
@@ -167,9 +199,16 @@ impl Client {
         Self::from_client_builder(client_builder).expect("should not fail to create client")
     }
 
+    #[cfg(not(feature = "network_transport"))]
+    pub fn from_client_builder(client_builder: reqwest::ClientBuilder) -> reqwest::Result<Self> {
+        let _ = client_builder;
+        Ok(Self::new_offline())
+    }
+
+    #[cfg(feature = "network_transport")]
     pub fn from_client_builder(client_builder: reqwest::ClientBuilder) -> reqwest::Result<Self> {
         client_builder.build().map(|client| Self {
-            wrapped: client,
+            wrapped: Some(client),
             before_request_sent: None,
             after_response_received: None,
             iap_token_provider: None,
@@ -190,7 +229,7 @@ impl Client {
 
     fn builder(
         &self,
-        wrapped: reqwest::RequestBuilder,
+        wrapped: Option<reqwest::RequestBuilder>,
         include_warp_headers: bool,
         iap_token: Option<String>,
     ) -> RequestBuilder<'_> {
@@ -201,6 +240,9 @@ impl Client {
             prevent_sleep_reason: None,
         };
 
+        if builder.wrapped.is_none() {
+            return builder;
+        }
         if include_warp_headers {
             builder = Self::add_warp_http_headers(builder);
         }
@@ -213,38 +255,94 @@ impl Client {
         builder
     }
 
+    #[cfg(not(feature = "network_transport"))]
+    pub fn get<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
+        let _ = url;
+        self.builder(None, false, None)
+    }
+
+    #[cfg(feature = "network_transport")]
     pub fn get<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
         let include_warp_headers = Self::include_warp_http_headers(url.clone());
         let iap_token = self.iap_token_for(url.clone());
-        self.builder(self.wrapped.get(url), include_warp_headers, iap_token)
+        self.builder(
+            self.wrapped.as_ref().map(|client| client.get(url)),
+            include_warp_headers,
+            iap_token,
+        )
     }
 
+    #[cfg(not(feature = "network_transport"))]
+    pub fn post<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
+        let _ = url;
+        self.builder(None, false, None)
+    }
+
+    #[cfg(feature = "network_transport")]
     pub fn post<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
         let include_warp_headers = Self::include_warp_http_headers(url.clone());
         let iap_token = self.iap_token_for(url.clone());
-        self.builder(self.wrapped.post(url), include_warp_headers, iap_token)
+        self.builder(
+            self.wrapped.as_ref().map(|client| client.post(url)),
+            include_warp_headers,
+            iap_token,
+        )
     }
 
+    #[cfg(not(feature = "network_transport"))]
+    pub fn put<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
+        let _ = url;
+        self.builder(None, false, None)
+    }
+
+    #[cfg(feature = "network_transport")]
     pub fn put<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
         let include_warp_headers = Self::include_warp_http_headers(url.clone());
         let iap_token = self.iap_token_for(url.clone());
-        self.builder(self.wrapped.put(url), include_warp_headers, iap_token)
+        self.builder(
+            self.wrapped.as_ref().map(|client| client.put(url)),
+            include_warp_headers,
+            iap_token,
+        )
     }
 
+    #[cfg(not(feature = "network_transport"))]
+    pub fn patch<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
+        let _ = url;
+        self.builder(None, false, None)
+    }
+
+    #[cfg(feature = "network_transport")]
     pub fn patch<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
         let include_warp_headers = Self::include_warp_http_headers(url.clone());
         let iap_token = self.iap_token_for(url.clone());
-        self.builder(self.wrapped.patch(url), include_warp_headers, iap_token)
+        self.builder(
+            self.wrapped.as_ref().map(|client| client.patch(url)),
+            include_warp_headers,
+            iap_token,
+        )
     }
 
+    #[cfg(not(feature = "network_transport"))]
+    pub fn delete<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
+        let _ = url;
+        self.builder(None, false, None)
+    }
+
+    #[cfg(feature = "network_transport")]
     pub fn delete<U: IntoUrl + Clone>(&self, url: U) -> RequestBuilder<'_> {
         let include_warp_headers = Self::include_warp_http_headers(url.clone());
         let iap_token = self.iap_token_for(url.clone());
-        self.builder(self.wrapped.delete(url), include_warp_headers, iap_token)
+        self.builder(
+            self.wrapped.as_ref().map(|client| client.delete(url)),
+            include_warp_headers,
+            iap_token,
+        )
     }
 
     /// Returns the IAP bearer token to attach to a request targeting
     /// `url`, scoped to the Warp server's origin.
+    #[cfg(feature = "network_transport")]
     fn iap_token_for<U: IntoUrl>(&self, url: U) -> Option<String> {
         let provider = self.iap_token_provider.as_ref()?;
         let url = url.into_url().ok()?;
@@ -257,7 +355,7 @@ impl Client {
     /// Helper method to determine if the request should include warp-specific headers. The only case
     /// where we should include custom headers is if the request is same-origin and is targetted to our server.
     /// For example, app.warp.dev --> app.warp.dev.
-    #[cfg(target_family = "wasm")]
+    #[cfg(all(feature = "network_transport", target_family = "wasm"))]
     fn include_warp_http_headers<U: IntoUrl + Clone>(url: U) -> bool {
         url.into_url().is_ok_and(|url| {
             url.host_str().is_some_and(|dest_host| {
@@ -275,7 +373,7 @@ impl Client {
         })
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(feature = "network_transport", not(target_family = "wasm")))]
     fn include_warp_http_headers<U: IntoUrl + Clone>(_url: U) -> bool {
         true
     }
@@ -366,8 +464,19 @@ impl Client {
         self.execute_inner(request).await
     }
 
-    /// Core request execution logic shared by all platforms.
+    #[cfg(not(feature = "network_transport"))]
     async fn execute_inner(&self, request: Request) -> reqwest::Result<Response> {
+        let _ = request;
+        Err(unavailable_transport_error())
+    }
+
+    /// Core request execution logic shared by all platforms.
+    #[cfg(feature = "network_transport")]
+    async fn execute_inner(&self, request: Request) -> reqwest::Result<Response> {
+        let client = self
+            .wrapped
+            .as_ref()
+            .ok_or_else(unavailable_transport_error)?;
         let Request {
             wrapped: request,
             serialized_payload,
@@ -382,13 +491,13 @@ impl Client {
 
         cfg_if::cfg_if! {
             if #[cfg(target_family = "wasm")] {
-                let result = self.wrapped.execute(request).await?;
+                let result = client.execute(request).await?;
             } else {
                 // Explicitly await the future before converting from tokio -> futures. This is because
                 // certain calls to tokio (such as tokio::time::sleep) will panic upon creation if they
                 // are not in a tokio runtime. Wrapping the call in an async block first makes sure that it
                 // is lazily evaluated, ensuring that it is created within a tokio runtime.
-                let result = Compat::new(async { self.wrapped.execute(request).await }).await?;
+                let result = Compat::new(async { client.execute(request).await }).await?;
             }
         }
 
@@ -400,6 +509,31 @@ impl Client {
     }
 }
 
+fn unavailable_transport_error() -> reqwest::Error {
+    fn invalid_url_error(url: impl IntoUrl) -> reqwest::Error {
+        url.into_url().expect_err("relative URLs cannot be sent")
+    }
+
+    invalid_url_error("HTTP transport is unavailable in this build")
+}
+
+fn unavailable_eventsource() -> EventSourceStream {
+    let stream = futures::stream::once(async {
+        Err(reqwest_eventsource::Error::Transport(
+            unavailable_transport_error(),
+        ))
+    });
+    #[cfg(target_family = "wasm")]
+    {
+        stream.boxed_local()
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        stream.boxed()
+    }
+}
+
+#[cfg(any(feature = "network_transport", test))]
 fn is_warp_server_origin(url: &reqwest::Url) -> bool {
     [
         ChannelState::server_root_url(),
@@ -447,12 +581,22 @@ impl<'a> RequestBuilder<'a> {
         self.build_split().1
     }
 
+    #[cfg(not(feature = "network_transport"))]
     pub fn build_split(self) -> (&'a Client, reqwest::Result<Request>) {
-        let request = self.wrapped.build().map(|request| Request {
-            wrapped: request,
-            serialized_payload: self.serialized_payload,
-            prevent_sleep_reason: self.prevent_sleep_reason,
-        });
+        (self.client, Err(unavailable_transport_error()))
+    }
+
+    #[cfg(feature = "network_transport")]
+    pub fn build_split(self) -> (&'a Client, reqwest::Result<Request>) {
+        let request = self
+            .wrapped
+            .ok_or_else(unavailable_transport_error)
+            .and_then(|builder| builder.build())
+            .map(|request| Request {
+                wrapped: request,
+                serialized_payload: self.serialized_payload,
+                prevent_sleep_reason: self.prevent_sleep_reason,
+            });
         (self.client, request)
     }
 
@@ -471,7 +615,7 @@ impl<'a> RequestBuilder<'a> {
                 }
             };
         Self {
-            wrapped: self.wrapped.json(json),
+            wrapped: self.wrapped.map(|builder| builder.json(json)),
             serialized_payload,
             ..self
         }
@@ -482,13 +626,14 @@ impl<'a> RequestBuilder<'a> {
         let serialized = String::from_utf8(bytes.clone());
 
         Self {
-            wrapped: self
-                .wrapped
-                .header(
-                    http::header::CONTENT_TYPE,
-                    HeaderValue::from_static("application/x-protobuf"),
-                )
-                .body(bytes),
+            wrapped: self.wrapped.map(|builder| {
+                builder
+                    .header(
+                        http::header::CONTENT_TYPE,
+                        HeaderValue::from_static("application/x-protobuf"),
+                    )
+                    .body(bytes)
+            }),
             serialized_payload: serialized.ok(),
             ..self
         }
@@ -496,12 +641,19 @@ impl<'a> RequestBuilder<'a> {
 
     /// Sends the request to the endpoint, which is assumed to be a streaming server-sent-events
     /// endpoint, and returns a corresponding `EventSource`.
+    #[cfg(not(feature = "network_transport"))]
     pub fn eventsource(self) -> EventSourceStream {
+        unavailable_eventsource()
+    }
+
+    #[cfg(feature = "network_transport")]
+    pub fn eventsource(self) -> EventSourceStream {
+        let Some(builder) = self.wrapped else {
+            return unavailable_eventsource();
+        };
         cfg_if::cfg_if! {
             if #[cfg(target_family = "wasm")] {
-                let mut stream = self
-                    .wrapped
-                    .eventsource()
+                let mut stream = builder.eventsource()
                     .expect("Request type for SSE endpoint must be cloneable.");
 
                 let stream = stream! {
@@ -520,9 +672,7 @@ impl<'a> RequestBuilder<'a> {
                     }
                 };
             } else {
-                let mut stream = self
-                    .wrapped
-                    .eventsource()
+                let mut stream = builder.eventsource()
                     .expect("Request type for SSE endpoint must be cloneable.");
 
                 let stream = stream! {
@@ -571,7 +721,9 @@ impl<'a> RequestBuilder<'a> {
         P: fmt::Display,
     {
         Self {
-            wrapped: self.wrapped.basic_auth(username, password),
+            wrapped: self
+                .wrapped
+                .map(|builder| builder.basic_auth(username, password)),
             ..self
         }
     }
@@ -581,7 +733,7 @@ impl<'a> RequestBuilder<'a> {
         T: fmt::Display,
     {
         Self {
-            wrapped: self.wrapped.bearer_auth(token),
+            wrapped: self.wrapped.map(|builder| builder.bearer_auth(token)),
             ..self
         }
     }
@@ -596,7 +748,7 @@ impl<'a> RequestBuilder<'a> {
                 self
             } else {
                 Self {
-                    wrapped: self.wrapped.timeout(timeout),
+                    wrapped: self.wrapped.map(|builder| builder.timeout(timeout)),
                     ..self
                 }
             }
@@ -611,14 +763,14 @@ impl<'a> RequestBuilder<'a> {
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
         Self {
-            wrapped: self.wrapped.header(key, value),
+            wrapped: self.wrapped.map(|builder| builder.header(key, value)),
             ..self
         }
     }
 
     pub fn body<T: Into<reqwest::Body>>(self, body: T) -> RequestBuilder<'a> {
         Self {
-            wrapped: self.wrapped.body(body),
+            wrapped: self.wrapped.map(|builder| builder.body(body)),
             ..self
         }
     }
@@ -633,7 +785,7 @@ impl<'a> RequestBuilder<'a> {
                 }
             };
         Self {
-            wrapped: self.wrapped.form(form),
+            wrapped: self.wrapped.map(|builder| builder.form(form)),
             serialized_payload,
             ..self
         }
@@ -644,7 +796,7 @@ impl<'a> RequestBuilder<'a> {
     #[cfg(not(target_family = "wasm"))]
     pub fn multipart(self, form: reqwest::multipart::Form) -> RequestBuilder<'a> {
         Self {
-            wrapped: self.wrapped.multipart(form),
+            wrapped: self.wrapped.map(|builder| builder.multipart(form)),
             ..self
         }
     }
@@ -782,18 +934,29 @@ impl<'c> oauth2::AsyncHttpClient<'c> for Client {
     type Future =
         Pin<Box<dyn Future<Output = Result<oauth2::HttpResponse, Self::Error>> + Send + 'c>>;
 
+    #[cfg(not(feature = "network_transport"))]
+    fn call(&'c self, request: oauth2::HttpRequest) -> Self::Future {
+        let _ = request;
+        Box::pin(async { Err(Box::new(unavailable_transport_error()).into()) })
+    }
+
+    #[cfg(feature = "network_transport")]
     fn call(&'c self, request: oauth2::HttpRequest) -> Self::Future {
         Box::pin(async move {
             let uri = request.uri().to_string();
             let include_warp_headers = Self::include_warp_http_headers(uri.clone());
             let iap_token = self.iap_token_for(uri);
+            let client = self
+                .wrapped
+                .as_ref()
+                .ok_or_else(|| Box::new(unavailable_transport_error()))?;
             let builder = reqwest::RequestBuilder::from_parts(
-                self.wrapped.clone(),
+                client.clone(),
                 request.try_into().map_err(Box::new)?,
             );
 
             let response = self
-                .builder(builder, include_warp_headers, iap_token)
+                .builder(Some(builder), include_warp_headers, iap_token)
                 .send()
                 .await
                 .map_err(Box::new)?;
@@ -841,6 +1004,10 @@ mod origin_tests {
     }
 }
 
-#[cfg(all(test, not(target_family = "wasm")))]
+#[cfg(all(test, feature = "network_transport", not(target_family = "wasm")))]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "offline_tests.rs"]
+mod offline_tests;

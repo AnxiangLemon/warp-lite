@@ -62,9 +62,10 @@ use super::git_dialog::{GitDialog, GitDialogEvent, GitDialogKind};
 use super::{GlobalCodeReviewEvent, GlobalCodeReviewModel};
 #[cfg(feature = "local_fs")]
 use crate::TelemetryEvent;
-use crate::ai::agent::{
-    AIAgentAttachment, AgentReviewCommentBatch, CurrentHead, DiffBase, DiffSetHunk,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::ai::agent::AIAgentAttachment;
+use crate::ai::agent::{AgentReviewCommentBatch, CurrentHead, DiffBase, DiffSetHunk};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
 use crate::appearance::Appearance;
 use crate::code::ShowCommentEditorProvider;
@@ -91,9 +92,11 @@ use crate::code_review::comments::{
 };
 use crate::code_review::context::convert_file_diffs_to_diffset_hunks;
 #[cfg(feature = "local_fs")]
-use crate::code_review::context::{
-    create_attachment_reference_and_key, register_diffset_attachment,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::code_review::context::create_attachment_reference_and_key;
+#[cfg(feature = "local_fs")]
+#[cfg(feature = "agent_runtime")]
+use crate::code_review::context::register_diffset_attachment;
 use crate::code_review::diff_selector::{DiffSelector, DiffSelectorEvent, DiffTarget};
 use crate::code_review::diff_state::{
     DiffHunk, DiffLineType, DiffMode, DiffState, DiffStateModel, DiffStateModelEvent, DiffStats,
@@ -105,10 +108,12 @@ use crate::code_review::git_repo_model::{GitRepoModels, GitRepoStatusEvent, GitR
 use crate::code_review::github_repo_model::{GitHubRepoEvent, GitHubRepoModel};
 use crate::code_review::hidden_lines::calculate_hidden_lines;
 #[cfg(feature = "local_fs")]
+#[cfg(feature = "agent_runtime")]
 use crate::code_review::telemetry_event::DiffSetContextScope;
+#[cfg(feature = "agent_runtime")]
+use crate::code_review::telemetry_event::{AddToContextOrigin, CodeReviewContextDestination};
 use crate::code_review::telemetry_event::{
-    AddToContextOrigin, CodeReviewContextDestination, CodeReviewTelemetryEvent, GitButtonKind,
-    PaneStateChange,
+    CodeReviewTelemetryEvent, GitButtonKind, PaneStateChange,
 };
 use crate::coding_panel_enablement_state::CodingPanelEnablementState;
 use crate::editor::InteractionState;
@@ -122,11 +127,14 @@ use crate::send_telemetry_from_ctx;
 use crate::server::telemetry::CodePanelsFileOpenEntrypoint;
 use crate::settings::{AISettings, CodeSettings};
 use crate::settings_view::SettingsSection;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent::{
     build_selection_line_range_prompt, build_selection_substring_prompt,
 };
 use crate::terminal::input::MenuPositioning;
-use crate::terminal::view::{CliAgentRouting, InitProjectModel, TerminalAction, TerminalView};
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::view::CliAgentRouting;
+use crate::terminal::view::{InitProjectModel, TerminalAction, TerminalView};
 use crate::themes::theme::WarpTheme;
 use crate::ui_components::blended_colors::{neutral_2, neutral_3};
 use crate::ui_components::buttons::icon_button_with_color;
@@ -1726,7 +1734,6 @@ impl CodeReviewView {
 
         if let Some(comment) = &existing_comment {
             composer.update(ctx, |editor, ctx| {
-                #[cfg(not(feature = "warp_lite"))]
                 editor.reopen_saved_comment(
                     &comment.id,
                     None,
@@ -1734,13 +1741,10 @@ impl CodeReviewView {
                     &comment.origin,
                     ctx,
                 );
-                #[cfg(feature = "warp_lite")]
-                let _ = (editor, comment, ctx);
             });
         }
 
         ctx.subscribe_to_view(&composer, |me, _, event, ctx| match event {
-            #[cfg(not(feature = "warp_lite"))]
             CommentEditorEvent::CommentSaved {
                 id, comment_text, ..
             } => {
@@ -1768,17 +1772,8 @@ impl CodeReviewView {
                     me.update_review_comment(new_comment, ctx);
                 }
             }
-            #[cfg(feature = "warp_lite")]
-            CommentEditorEvent::CommentSaved { .. } => {}
-            #[cfg(not(feature = "warp_lite"))]
             CommentEditorEvent::DeleteComment { id } => {
                 me.delete_comment_by_id(*id, ctx);
-                me.comment_composer = None;
-                me.update_header_dropdown_active_state(ctx);
-                ctx.notify();
-            }
-            #[cfg(feature = "warp_lite")]
-            CommentEditorEvent::DeleteComment { .. } => {
                 me.comment_composer = None;
                 me.update_header_dropdown_active_state(ctx);
                 ctx.notify();
@@ -3226,6 +3221,7 @@ impl CodeReviewView {
                 self.mark_editor_loaded_for_file(file_location, ctx);
                 ctx.notify();
             }
+            #[cfg(feature = "agent_runtime")]
             LocalCodeEditorEvent::SelectionAddedAsContext {
                 relative_file_path,
                 line_range,
@@ -3238,6 +3234,10 @@ impl CodeReviewView {
                     selected_text.clone(),
                     ctx,
                 );
+            }
+            #[cfg(not(feature = "agent_runtime"))]
+            LocalCodeEditorEvent::SelectionAddedAsContext { .. } => {
+                self.show_context_unavailable(ctx)
             }
             LocalCodeEditorEvent::DiscardUnsavedChanges { path: _path } => {
                 #[cfg(feature = "local_fs")]
@@ -5658,9 +5658,12 @@ impl CodeReviewView {
         ctx: &mut ViewContext<Self>,
     ) {
         match event {
+            #[cfg(feature = "agent_runtime")]
             CodeEditorEvent::DiffHunkContextAdded { line_range } => {
                 self.insert_diff_hunk_as_context(file_path, line_range.clone(), ctx);
             }
+            #[cfg(not(feature = "agent_runtime"))]
+            CodeEditorEvent::DiffHunkContextAdded { .. } => self.show_context_unavailable(ctx),
             CodeEditorEvent::DiffReverted => {
                 send_telemetry_from_ctx!(
                     CodeReviewTelemetryEvent::RevertHunkClicked {
@@ -5734,6 +5737,25 @@ impl CodeReviewView {
         }
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    fn show_context_unavailable(&self, ctx: &mut ViewContext<Self>) {
+        let window_id = self.window_id;
+        ToastStack::handle(ctx).update(ctx, |toast_stack, ctx| {
+            toast_stack.add_ephemeral_toast(
+                DismissibleToast::error(
+                    crate::lite_i18n::choose(
+                        "AI context attachments are unavailable in this build",
+                        "此精简版本不支持 AI 上下文附件",
+                    )
+                    .to_owned(),
+                ),
+                window_id,
+                ctx,
+            );
+        });
+    }
+
+    #[cfg(feature = "agent_runtime")]
     fn insert_selection_as_context(
         &mut self,
         file_path: String,
@@ -5796,6 +5818,7 @@ impl CodeReviewView {
                 },
                 ctx
             );
+            #[cfg(feature = "agent_runtime")]
             terminal_view.update(ctx, |terminal_view, ctx| {
                 terminal_view.input().update(ctx, |input, ctx| {
                     input.append_to_buffer(&location, ctx);
@@ -5831,6 +5854,7 @@ impl CodeReviewView {
 
     /// Insert diff set as context in the terminal input (either all files or a specific file)
     #[cfg(feature = "local_fs")]
+    #[cfg(feature = "agent_runtime")]
     fn insert_diff_as_context(&mut self, scope: DiffSetScope, ctx: &mut ViewContext<Self>) {
         if let Some(terminal_view) = self.attach_target_terminal(ctx) {
             let active_cli_agent = terminal_view.read(ctx, |tv, ctx| tv.active_cli_agent(ctx));
@@ -5938,6 +5962,7 @@ impl CodeReviewView {
                 );
 
                 // Insert the reference into the terminal input
+                #[cfg(feature = "agent_runtime")]
                 terminal_view.update(ctx, |terminal_view, ctx| {
                     terminal_view.input().update(ctx, |input, ctx| {
                         input.append_to_buffer(&format!("{attachment_reference} "), ctx);
@@ -5957,6 +5982,7 @@ impl CodeReviewView {
 
                 // Register the DiffSet attachment in the terminal view's AI context model.
                 let current = self.get_current_head(ctx);
+                #[cfg(feature = "agent_runtime")]
                 terminal_view.update(ctx, |terminal_view, ctx| {
                     register_diffset_attachment(
                         terminal_view.ai_context_model(),
@@ -5986,6 +6012,7 @@ impl CodeReviewView {
     }
 
     #[cfg(not(feature = "local_fs"))]
+    #[cfg(feature = "agent_runtime")]
     fn insert_diff_as_context(&mut self, _scope: DiffSetScope, _ctx: &mut ViewContext<Self>) {
         report_error!("insert_diff_as_context is not supported without the local_fs feature");
     }
@@ -6034,6 +6061,7 @@ impl CodeReviewView {
     }
 
     /// Insert diff hunk as an inline attachment in the terminal input
+    #[cfg(feature = "agent_runtime")]
     fn insert_diff_hunk_as_context(
         &mut self,
         file_path: String,
@@ -6119,6 +6147,7 @@ impl CodeReviewView {
                 let attachment_reference = format!("<change:{diff_hunk_key}>",);
 
                 // Insert the reference into the terminal input and lock into agent mode
+                #[cfg(feature = "agent_runtime")]
                 terminal_view.update(ctx, |terminal_view, ctx| {
                     terminal_view.input().update(ctx, |input, ctx| {
                         input.append_to_buffer(&format!("{attachment_reference} "), ctx);
@@ -6174,6 +6203,7 @@ impl CodeReviewView {
                 };
 
                 // Register the attachment with the terminal's AI controller using the new key format
+                #[cfg(feature = "agent_runtime")]
                 terminal_view.update(ctx, |terminal_view, ctx| {
                     terminal_view
                         .ai_context_model()
@@ -7502,9 +7532,12 @@ impl TypedActionView for CodeReviewView {
                     ctx.notify();
                 }
             }
+            #[cfg(feature = "agent_runtime")]
             CodeReviewAction::AddDiffSetAsContext(scope) => {
                 self.insert_diff_as_context(scope.clone(), ctx);
             }
+            #[cfg(not(feature = "agent_runtime"))]
+            CodeReviewAction::AddDiffSetAsContext(..) => self.show_context_unavailable(ctx),
             CodeReviewAction::CopyFilePath(path) => {
                 if let Some(repo_path) = self.repo_path() {
                     let absolute_path = repo_path.join(path);
@@ -7761,9 +7794,10 @@ use scroll_preservation::RelocatableScrollContext;
 mod code_review_view_integration;
 
 #[cfg(feature = "integration_tests")]
+#[cfg(feature = "agent_runtime")]
 pub use code_review_view_integration::CodeReviewVisibleAnchorForTest;
 use warp_errors::report_error;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "code_review_view_tests.rs"]
 mod tests;

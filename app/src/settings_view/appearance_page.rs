@@ -45,11 +45,14 @@ use super::{
 };
 use crate::appearance::{Appearance, AppearanceEvent};
 use crate::channel::{Channel, ChannelState};
+#[cfg(feature = "agent_runtime")]
 use crate::context_chips::ChipAvailability;
-use crate::context_chips::prompt::{Prompt, PromptEvent};
+#[cfg(feature = "agent_runtime")]
+use crate::context_chips::prompt::Prompt;
+#[cfg(feature = "agent_runtime")]
+use crate::context_chips::prompt::PromptEvent;
 use crate::context_chips::renderer::{ChipDragState, Renderer as ContextChipRenderer};
-#[cfg(not(feature = "warp_lite"))]
-use crate::settings::WarpDriveSettings;
+use crate::drive::settings::WarpDriveSettings;
 use crate::editor::{
     EditOrigin, EditorView, Event as EditorEvent, InteractionState, SingleLineEditorOptions,
     TextOptions,
@@ -120,11 +123,12 @@ const MIN_NEW_WINDOW_ROWS_OR_COLS: u16 = 5;
 const MAX_NEW_WINDOW_ROWS_OR_COLS: u16 = 2000;
 
 fn default_font_label(is_ai_font: bool) -> String {
-    if is_ai_font {
+    let label = if is_ai_font {
         format!("{} (default)", AIFontName::default_value())
     } else {
         format!("{} (default)", MonospaceFontName::default_value())
-    }
+    };
+    super::lite_i18n::label(label)
 }
 
 pub fn init_actions_from_parent_view<T: Action + Clone>(
@@ -536,7 +540,6 @@ pub enum AppearancePageAction {
     ToggleLeftPanelVisibility,
     ToggleToolsPanelProjectExplorer,
     ToggleToolsPanelGlobalSearch,
-    #[cfg(not(feature = "warp_lite"))]
     ToggleToolsPanelWarpDrive,
     ToggleToolsPanelConversationHistory,
     SetEnforceMinimumContrast(EnforceMinimumContrast),
@@ -588,7 +591,7 @@ pub struct AppearanceSettingsPageView {
     alt_screen_padding_editor: ViewHandle<EditorView>,
     color_picker_dot_states: Vec<Vec<MouseStateHandle>>,
     directory_tab_color_delete_buttons: Vec<ViewHandle<ActionButton>>,
-    header_toolbar_inline_editor: ViewHandle<HeaderToolbarInlineEditor>,
+    header_toolbar_inline_editor: Option<ViewHandle<HeaderToolbarInlineEditor>>,
 
     /// The context chip renderers based on the most recently
     /// selected Warp prompt configuration.
@@ -678,7 +681,6 @@ impl TypedActionView for AppearanceSettingsPageView {
                 });
                 ctx.notify();
             }
-            #[cfg(not(feature = "warp_lite"))]
             ToggleToolsPanelWarpDrive => {
                 WarpDriveSettings::handle(ctx).update(ctx, |settings, ctx| {
                     report_if_error!(settings.enable_warp_drive.toggle_and_save_value(ctx));
@@ -971,7 +973,10 @@ impl AppearanceSettingsPageView {
             ctx.notify();
         });
 
-        ctx.subscribe_to_model(&Prompt::handle(ctx), Self::handle_prompt_update);
+        #[cfg(feature = "agent_runtime")]
+        if !cfg!(feature = "warp_lite") {
+            ctx.subscribe_to_model(&Prompt::handle(ctx), Self::handle_prompt_update);
+        }
 
         let ligature_settings_handle = LigatureSettings::handle(ctx);
         ctx.subscribe_to_model(&ligature_settings_handle, |_, _, _, ctx| ctx.notify());
@@ -1066,9 +1071,12 @@ impl AppearanceSettingsPageView {
         });
 
         // we need to update the switch if the setting gets changed elsewhere, like command palette
-        ctx.subscribe_to_model(&AppEditorSettings::handle(ctx), |_, _, _, ctx| {
-            ctx.notify();
-        });
+        #[cfg(feature = "agent_runtime")]
+        if !cfg!(feature = "warp_lite") {
+            ctx.subscribe_to_model(&AppEditorSettings::handle(ctx), |_, _, _, ctx| {
+                ctx.notify();
+            });
+        }
 
         let line_height_editor = Self::editor(
             |me, event, ctx| me.handle_line_editor_event(event, ctx),
@@ -1127,6 +1135,7 @@ impl AppearanceSettingsPageView {
         }
         let font_family_dropdown = ctx.add_typed_action_view(|ctx| {
             let mut dropdown = FilterableDropdown::new(ctx);
+            dropdown.set_placeholder(super::lite_i18n::text("Search fonts"), ctx);
             dropdown.set_top_bar_max_width(FONT_FAMILY_DROPDOWN_WIDTH);
             dropdown.set_menu_width(FONT_FAMILY_DROPDOWN_WIDTH, ctx);
 
@@ -1157,13 +1166,16 @@ impl AppearanceSettingsPageView {
                 .iter()
                 .map(|weight| {
                     DropdownItem::new(
-                        weight.to_string(),
+                        super::lite_i18n::label(weight.to_string()),
                         AppearancePageAction::SetFontWeight(*weight),
                     )
                 })
                 .collect();
             dropdown.add_items(items, ctx);
-            dropdown.set_selected_by_name(monospace_font_weight.to_string(), ctx);
+            dropdown.set_selected_by_name(
+                super::lite_i18n::label(monospace_font_weight.to_string()),
+                ctx,
+            );
             dropdown
         });
 
@@ -1332,8 +1344,11 @@ impl AppearanceSettingsPageView {
         let input_type = InputSettings::as_ref(ctx).input_type(ctx);
         let input_type_radio_state = RadioButtonStateHandle::default();
         input_type_radio_state.set_selected_idx(input_type as usize);
-        let header_toolbar_inline_editor =
-            ctx.add_typed_action_view(HeaderToolbarInlineEditor::new);
+        #[cfg(feature = "agent_runtime")]
+        let header_toolbar_inline_editor = (!cfg!(feature = "warp_lite"))
+            .then(|| ctx.add_typed_action_view(HeaderToolbarInlineEditor::new));
+        #[cfg(not(feature = "agent_runtime"))]
+        let header_toolbar_inline_editor = None;
 
         AppearanceSettingsPageView {
             page: Self::build_page(ctx),
@@ -1380,6 +1395,9 @@ impl AppearanceSettingsPageView {
     }
 
     fn build_page(ctx: &mut ViewContext<Self>) -> PageType<Self> {
+        if cfg!(feature = "warp_lite") || !cfg!(feature = "agent_runtime") {
+            return Self::build_lite_page();
+        }
         let mut categories = vec![Category::new(
             "Themes",
             vec![
@@ -1446,23 +1464,21 @@ impl AppearanceSettingsPageView {
         // Each toggle is gated only on compile-time / feature-flag availability
         // of the corresponding tab (not on transient login/AI state), so the
         // section stays stable regardless of when the page is built.
-        // Warp Lite has no tools panel (Drive / explorer / AI history).
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            let mut tools_panel_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![];
-            if cfg!(feature = "local_fs") {
-                tools_panel_widgets.push(Box::new(ToolsPanelProjectExplorerWidget::default()));
-            }
-            if FeatureFlag::AgentViewConversationListView.is_enabled() {
-                tools_panel_widgets.push(Box::new(ToolsPanelConversationHistoryWidget::default()));
-            }
-            if cfg!(feature = "local_fs") && FeatureFlag::GlobalSearch.is_enabled() {
-                tools_panel_widgets.push(Box::new(ToolsPanelGlobalSearchWidget::default()));
-            }
+        let mut tools_panel_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![];
+        if cfg!(feature = "local_fs") {
+            tools_panel_widgets.push(Box::new(ToolsPanelProjectExplorerWidget::default()));
+        }
+        if !cfg!(feature = "warp_lite") && FeatureFlag::AgentViewConversationListView.is_enabled() {
+            tools_panel_widgets.push(Box::new(ToolsPanelConversationHistoryWidget::default()));
+        }
+        if cfg!(feature = "local_fs") && FeatureFlag::GlobalSearch.is_enabled() {
+            tools_panel_widgets.push(Box::new(ToolsPanelGlobalSearchWidget::default()));
+        }
+        if !cfg!(feature = "warp_lite") {
             tools_panel_widgets.push(Box::new(ToolsPanelWarpDriveWidget::default()));
-            if !tools_panel_widgets.is_empty() {
-                categories.push(Category::new("Tools panel", tools_panel_widgets));
-            }
+        }
+        if !tools_panel_widgets.is_empty() {
+            categories.push(Category::new("Tools panel", tools_panel_widgets));
         }
 
         // Create the Input category with all widgets
@@ -1585,6 +1601,51 @@ impl AppearanceSettingsPageView {
         PageType::new_categorized(categories, None)
     }
 
+    fn build_lite_page() -> PageType<Self> {
+        let mut tabs: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![
+            Box::new(TabIndicatorWidget::default()),
+            Box::new(TabCloseButtonPositionWidget::default()),
+            Box::new(PreserveActiveTabColorWidget::default()),
+        ];
+        if FeatureFlag::VerticalTabs.is_enabled() {
+            tabs.push(Box::new(VerticalTabsWidget::default()));
+            tabs.push(Box::new(
+                ShowVerticalTabPanelInRestoredWindowsWidget::default(),
+            ));
+        }
+        PageType::new_categorized(
+            vec![
+                Category::new("主题", vec![Box::new(ThemeSelectWidget::default())]),
+                Category::new("字体与字号", vec![Box::new(TerminalFontWidget::default())]),
+                Category::new("输入位置", vec![Box::new(InputModeWidget::default())]),
+                Category::new("标签页", tabs),
+                Category::new(
+                    "分屏",
+                    vec![
+                        Box::new(DimInactivePanesWidget::default()),
+                        Box::new(FocusFollowsMouseWidget::default()),
+                    ],
+                ),
+                Category::new(
+                    "命令块",
+                    vec![
+                        Box::new(CompactModeWidget::default()),
+                        Box::new(ShowBlockDividersWidget::default()),
+                        Box::new(JumpToBottomOfBlockWidget::default()),
+                    ],
+                ),
+                Category::new(
+                    "光标",
+                    vec![
+                        Box::new(CursorTypeWidget::default()),
+                        Box::new(BlinkingCursorWidget::default()),
+                    ],
+                ),
+            ],
+            Some("外观"),
+        )
+    }
+
     fn set_alt_screen_padding_editor_text(&mut self, ctx: &mut ViewContext<Self>) {
         if let AltScreenPaddingMode::Custom { uniform_padding } =
             *TerminalSettings::as_ref(ctx).alt_screen_padding
@@ -1616,7 +1677,10 @@ impl AppearanceSettingsPageView {
             AppearanceEvent::MonospaceFontWeightChanged { .. } => {
                 let font_weight = handle.as_ref(ctx).monospace_font_weight();
                 self.font_weight_dropdown.update(ctx, |dropdown, ctx| {
-                    dropdown.set_selected_by_name(font_weight.to_string(), ctx);
+                    dropdown.set_selected_by_name(
+                        super::lite_i18n::label(font_weight.to_string()),
+                        ctx,
+                    );
                 });
             }
             AppearanceEvent::LineHeightRatioChanged { .. } => {
@@ -1636,7 +1700,11 @@ impl AppearanceSettingsPageView {
         ctx.notify();
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn get_context_chip_renderers(app: &AppContext) -> Vec<ContextChipRenderer> {
+        if cfg!(feature = "warp_lite") {
+            return Vec::new();
+        }
         let appearance = Appearance::as_ref(app);
         let prompt = Prompt::as_ref(app);
         prompt
@@ -1648,6 +1716,13 @@ impl AppearanceSettingsPageView {
             .collect()
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    fn get_context_chip_renderers(app: &AppContext) -> Vec<ContextChipRenderer> {
+        let _ = app;
+        Vec::new()
+    }
+
+    #[cfg(feature = "agent_runtime")]
     fn handle_prompt_update(
         &mut self,
         _prompt: ModelHandle<Prompt>,
@@ -1691,11 +1766,11 @@ impl AppearanceSettingsPageView {
     }
 
     fn input_mode_dropdown_item_label(val: InputMode) -> &'static str {
-        match val {
+        super::lite_i18n::text(match val {
             InputMode::PinnedToBottom => "Pin to the bottom (Warp mode)",
             InputMode::PinnedToTop => "Pin to the top (Reverse mode)",
             InputMode::Waterfall => "Start at the top (Classic mode)",
-        }
+        })
     }
 
     fn app_icon_dropdown_item_label(val: AppIcon) -> &'static str {
@@ -1750,10 +1825,10 @@ impl AppearanceSettingsPageView {
     fn tab_close_button_position_dropdown_item_label(
         value: TabCloseButtonPosition,
     ) -> &'static str {
-        match value {
+        super::lite_i18n::text(match value {
             TabCloseButtonPosition::Right => "Right",
             TabCloseButtonPosition::Left => "Left",
-        }
+        })
     }
 
     fn handle_alt_screen_padding_editor_event(
@@ -2880,8 +2955,9 @@ impl ThemeSelectWidget {
             ThemeChooserMode::SystemDark => "Dark",
             ThemeChooserMode::SystemAgnostic => "Current theme",
         };
+        let mode_ui_label = super::lite_i18n::text(mode_ui_label);
 
-        ConstrainedBox::new(
+        let option = ConstrainedBox::new(
             Hoverable::new(state, |hover_state| {
                 let (border_color, border_width) = match hover_state.is_hovered() {
                     true => (theme.accent(), 1.0),
@@ -2947,7 +3023,18 @@ impl ThemeSelectWidget {
         )
         .with_min_height(70.)
         .with_min_width(450.)
-        .finish()
+        .finish();
+        #[cfg(feature = "integration_tests")]
+        let option = warpui::elements::SavePosition::new(
+            option,
+            match theme_chooser_mode {
+                ThemeChooserMode::SystemAgnostic => "appearance-theme-current",
+                ThemeChooserMode::SystemLight => "appearance-theme-light",
+                ThemeChooserMode::SystemDark => "appearance-theme-dark",
+            },
+        )
+        .finish();
+        option
     }
 }
 
@@ -2955,7 +3042,11 @@ impl SettingsWidget for ThemeSelectWidget {
     type View = AppearanceSettingsPageView;
 
     fn search_terms(&self) -> &str {
-        "sync with os theme themes background backgrounds color colors customize"
+        if cfg!(feature = "warp_lite") {
+            "sync with os theme themes color colors customize"
+        } else {
+            "sync with os theme themes background backgrounds color colors customize"
+        }
     }
 
     fn render(
@@ -2994,7 +3085,7 @@ impl SettingsWidget for ThemeSelectWidget {
                 .finish(),
         };
 
-        Flex::column()
+        let mut content = Flex::column()
             .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
             .with_child(render_body_item::<AppearancePageAction>(
                 "Sync with OS".into(),
@@ -3020,26 +3111,28 @@ impl SettingsWidget for ThemeSelectWidget {
                     })
                     .finish(),
                 None,
-            ))
-            .with_child(
+            ));
+        if !cfg!(feature = "warp_lite") {
+            content.add_child(
                 appearance
                     .ui_builder()
-                    .span(
-                        "Automatically switch between light and dark themes when your system does."
-                            .to_string(),
-                    )
+                    .span(super::lite_i18n::label(
+                        "Automatically switch between light and dark themes when your system does.",
+                    ))
                     .with_style(
                         UiComponentStyles::default().set_margin(Coords::default().bottom(10.)),
                     )
                     .build()
                     .finish(),
-            )
-            .with_child(
-                Container::new(theme_picker)
-                    .with_margin_bottom(25.)
-                    .finish(),
-            )
-            .finish()
+            );
+        }
+        content.add_child(
+            Container::new(theme_picker)
+                .with_margin_top(if cfg!(feature = "warp_lite") { 12. } else { 0. })
+                .with_margin_bottom(25.)
+                .finish(),
+        );
+        content.finish()
     }
 }
 
@@ -3709,13 +3802,11 @@ impl SettingsWidget for ToolsPanelGlobalSearchWidget {
     }
 }
 
-#[cfg(not(feature = "warp_lite"))]
 #[derive(Default)]
 struct ToolsPanelWarpDriveWidget {
     switch_state: SwitchStateHandle,
 }
 
-#[cfg(not(feature = "warp_lite"))]
 impl SettingsWidget for ToolsPanelWarpDriveWidget {
     type View = AppearanceSettingsPageView;
 
@@ -4247,7 +4338,7 @@ impl TerminalFontWidget {
         line_height.add_child(
             appearance
                 .ui_builder()
-                .label("Line height".to_string())
+                .label(super::lite_i18n::label("Line height"))
                 .with_style(UiComponentStyles {
                     margin: Some(Coords {
                         left: 12.,
@@ -4314,7 +4405,7 @@ impl TerminalFontWidget {
                     font_size: Some(appearance.ui_font_size() * 0.8),
                     ..Default::default()
                 })
-                .with_text_label("Reset to default".to_string());
+                .with_text_label(super::lite_i18n::label("Reset to default"));
 
             button
                 .build()
@@ -4388,7 +4479,7 @@ impl SettingsWidget for TerminalFontWidget {
                             1.,
                             appearance
                                 .ui_builder()
-                                .span("View all available system fonts".to_string())
+                                .span(super::lite_i18n::label("View all available system fonts"))
                                 .build()
                                 .with_margin_left(2.)
                                 .finish(),
@@ -4409,7 +4500,7 @@ impl SettingsWidget for TerminalFontWidget {
         font_weight.add_child(
             appearance
                 .ui_builder()
-                .label("Font weight".to_string())
+                .label(super::lite_i18n::label("Font weight"))
                 .with_style(UiComponentStyles {
                     font_size: Some(CONTENT_FONT_SIZE),
                     ..Default::default()
@@ -4432,7 +4523,7 @@ impl SettingsWidget for TerminalFontWidget {
         font_size.add_child(
             appearance
                 .ui_builder()
-                .label("Font size (px)".to_string())
+                .label(super::lite_i18n::label("Font size (px)"))
                 .with_style(UiComponentStyles {
                     margin: Some(Coords {
                         left: 2.,
@@ -4751,7 +4842,9 @@ impl SettingsWidget for CursorTypeWidget {
                     .with_child(
                         appearance
                             .ui_builder()
-                            .span("Cursor type is disabled in Vim mode".to_string())
+                            .span(super::lite_i18n::label(
+                                "Cursor type is disabled in Vim mode",
+                            ))
                             .build()
                             .finish(),
                     )
@@ -4762,7 +4855,7 @@ impl SettingsWidget for CursorTypeWidget {
                         self.radio_buttons_states.clone(),
                         cursor_display_types
                             .iter()
-                            .map(|x| RadioButtonItem::text(x.to_string()))
+                            .map(|x| RadioButtonItem::text(super::lite_i18n::label(x.to_string())))
                             .collect(),
                         self.radio_state.clone(),
                         Some(cursor_display_type.value().to_index()),
@@ -5219,9 +5312,16 @@ impl SettingsWidget for EditToolbarWidget {
             ToggleState::Enabled,
             appearance,
         );
-        let editor = Container::new(ChildView::new(&view.header_toolbar_inline_editor).finish())
-            .with_padding_bottom(HEADER_PADDING)
-            .finish();
+        let editor = Container::new(
+            ChildView::new(
+                view.header_toolbar_inline_editor
+                    .as_ref()
+                    .expect("toolbar settings require agent settings"),
+            )
+            .finish(),
+        )
+        .with_padding_bottom(HEADER_PADDING)
+        .finish();
 
         Flex::column()
             .with_child(Container::new(label).with_margin_bottom(4.).finish())
@@ -5670,3 +5770,7 @@ impl From<ViewHandle<AppearanceSettingsPageView>> for SettingsPageViewHandle {
         SettingsPageViewHandle::Appearance(view_handle)
     }
 }
+
+#[cfg(all(test, feature = "warp_lite"))]
+#[path = "appearance_page_tests.rs"]
+mod tests;

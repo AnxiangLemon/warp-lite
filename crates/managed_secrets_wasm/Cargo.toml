@@ -10,7 +10,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-warp_managed_secrets.workspace = true
+warp_managed_secrets = { workspace = true, features = ["runtime"] }
 wasm-bindgen.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -11,8 +11,10 @@ use fuzzy_match::FuzzyMatchResult;
 use ordered_float::OrderedFloat;
 use warpui::{AppContext, Entity, EntityId, ModelHandle, SingletonEntity};
 
-use crate::ai::agent::conversation::{AIConversationId, ConversationStatus};
+use crate::ai::agent::conversation::ConversationStatus;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::BlocklistAIHistoryModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewController;
 use crate::input_suggestions::{HistoryInputSuggestion, HistoryOrder};
 use crate::search::SyncDataSource;
@@ -23,8 +25,10 @@ use crate::terminal::input::inline_history::search_item::InlineHistoryItem;
 use crate::terminal::input::inline_menu::{
     InlineMenuAction, InlineMenuClickBehavior, InlineMenuType,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::model::session::SessionId;
 use crate::terminal::model::session::active_session::ActiveSession;
+use crate::terminal::session_types::AIConversationId;
 
 #[derive(Clone, Debug)]
 pub enum AcceptHistoryItem {
@@ -68,6 +72,7 @@ impl InlineMenuAction for AcceptHistoryItem {
 pub struct InlineHistoryMenuDataSource {
     terminal_view_id: EntityId,
     active_session: ModelHandle<ActiveSession>,
+    #[cfg(feature = "agent_runtime")]
     agent_view_controller: ModelHandle<AgentViewController>,
 }
 
@@ -75,15 +80,17 @@ impl InlineHistoryMenuDataSource {
     pub fn new(
         terminal_view_id: EntityId,
         active_session: ModelHandle<ActiveSession>,
-        agent_view_controller: ModelHandle<AgentViewController>,
+        #[cfg(feature = "agent_runtime")] agent_view_controller: ModelHandle<AgentViewController>,
     ) -> Self {
         Self {
             terminal_view_id,
             active_session,
+            #[cfg(feature = "agent_runtime")]
             agent_view_controller,
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn build_agent_view_results(
         &self,
         query: &Query,
@@ -143,6 +150,7 @@ impl InlineHistoryMenuDataSource {
         results
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn build_conversation_entries(&self, trimmed_query: &str, app: &AppContext) -> Vec<MenuEntry> {
         let mut conversation_entries: Vec<MenuEntry> = Vec::new();
         let history_model = BlocklistAIHistoryModel::handle(app).as_ref(app);
@@ -253,14 +261,21 @@ impl SyncDataSource for InlineHistoryMenuDataSource {
         let prefix_match_len = trimmed_query.len();
 
         let session_id = self.active_session.as_ref(app).session(app).map(|s| s.id());
-        let is_agent_view = self.agent_view_controller.as_ref(app).is_active();
+        #[cfg(feature = "agent_runtime")]
+        let is_agent_view = crate::terminal::input::inline_menu::agent_view_is_active(
+            #[cfg(feature = "agent_runtime")]
+            &self.agent_view_controller,
+            app,
+        );
 
+        #[cfg(feature = "agent_runtime")]
         if is_agent_view {
             return Ok(self.build_agent_view_results(query, prefix_match_len, session_id, app));
         }
 
         let include_commands =
             query.filters.is_empty() || query.filters.contains(&QueryFilter::Commands);
+        #[cfg(feature = "agent_runtime")]
         let include_conversations =
             query.filters.is_empty() || query.filters.contains(&QueryFilter::Conversations);
 
@@ -308,6 +323,9 @@ impl SyncDataSource for InlineHistoryMenuDataSource {
             Vec::new()
         };
 
+        #[cfg(not(feature = "agent_runtime"))]
+        let conversation_entries = Vec::new();
+        #[cfg(feature = "agent_runtime")]
         let conversation_entries = if include_conversations {
             self.build_conversation_entries(trimmed_query, app)
         } else {

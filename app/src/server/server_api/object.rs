@@ -1,163 +1,231 @@
 use std::collections::HashMap;
 
+#[cfg(feature = "cloud_services")]
 use anyhow::{Context, Result, anyhow};
+#[cfg(feature = "cloud_services")]
 use async_channel::Sender;
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use chrono::{DateTime, Utc};
 // #[cfg(any(test, feature = "test-util"))]
 // pub use cloud_object_client::MockObjectClient;
+#[cfg(feature = "cloud_services")]
 use cloud_object_client::{
     GetCloudObjectResponse, InitialLoadResponse, ObjectActionHistory, ObjectActionType,
     ObjectDeleteResult, ObjectMetadataUpdateResult, ObjectPermissionUpdateResult,
     ObjectPermissionsUpdateData, ObjectUpdateMessage,
 };
 pub use cloud_object_client::{GuestIdentifier, ObjectClient};
+#[cfg(feature = "cloud_services")]
 use cloud_object_models::JsonSerializer;
+#[cfg(feature = "cloud_services")]
 use cynic::{MutationBuilder, QueryBuilder, SubscriptionBuilder};
 use warp_errors::report_error;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::error::UserFacingErrorInterface;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::generic_string_object::GenericStringObjectInput;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::add_object_guests::{
     AddObjectGuests, AddObjectGuestsInput, AddObjectGuestsResult, AddObjectGuestsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::bulk_create_objects::{
     BulkCreateGenericStringObjectsInput, BulkCreateObjects, BulkCreateObjectsInput,
     BulkCreateObjectsResult, BulkCreateObjectsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_folder::{
     CreateFolder, CreateFolderInput, CreateFolderResult, CreateFolderVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_generic_string_object::{
     CreateGenericStringObject, CreateGenericStringObjectInput, CreateGenericStringObjectResult,
     CreateGenericStringObjectVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_notebook::{
     CreateNotebook, CreateNotebookInput, CreateNotebookResult, CreateNotebookVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_workflow::{
     CreateWorkflow, CreateWorkflowInput, CreateWorkflowResult, CreateWorkflowVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::delete_object::{
     DeleteObject, DeleteObjectInput, DeleteObjectResult, DeleteObjectVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::empty_trash::{
     EmptyTrash, EmptyTrashInput, EmptyTrashResult, EmptyTrashVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::give_up_notebook_edit_access::{
     GiveUpNotebookEditAccess, GiveUpNotebookEditAccessVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::grab_notebook_edit_access::{
     GrabNotebookEditAccess, GrabNotebookEditAccessVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::leave_object::{
     LeaveObject, LeaveObjectInput, LeaveObjectResult, LeaveObjectVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::move_object::{
     MoveObject, MoveObjectInput, MoveObjectResult, MoveObjectVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::record_object_action::{
     RecordObjectAction, RecordObjectActionInput, RecordObjectActionResult,
     RecordObjectActionVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::remove_object_guest::{
     RemoveObjectGuest, RemoveObjectGuestInput, RemoveObjectGuestResult, RemoveObjectGuestVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::remove_object_link_permissions::{
     RemoveObjectLinkPermissions, RemoveObjectLinkPermissionsInput,
     RemoveObjectLinkPermissionsResult, RemoveObjectLinkPermissionsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::set_object_link_permissions::{
     SetObjectLinkPermissions, SetObjectLinkPermissionsInput, SetObjectLinkPermissionsResult,
     SetObjectLinkPermissionsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::transfer_generic_string_object_owner::{
     TransferGenericStringObjectOwner, TransferGenericStringObjectOwnerInput,
     TransferGenericStringObjectOwnerResult, TransferGenericStringObjectOwnerVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::transfer_notebook_owner::{
     TransferNotebookOwner, TransferNotebookOwnerInput, TransferNotebookOwnerResult,
     TransferNotebookOwnerVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::transfer_workflow_owner::{
     TransferWorkflowOwner, TransferWorkflowOwnerInput, TransferWorkflowOwnerResult,
     TransferWorkflowOwnerVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::trash_object::{
     TrashObject, TrashObjectInput, TrashObjectResult, TrashObjectVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::untrash_object::{
     UntrashObject, UntrashObjectInput, UntrashObjectVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::update_folder::{
     UpdateFolder, UpdateFolderInput, UpdateFolderResult, UpdateFolderVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::update_generic_string_object::{
     UpdateGenericStringObject, UpdateGenericStringObjectInput, UpdateGenericStringObjectVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::update_notebook::{
     NotebookUpdate, UpdateNotebook, UpdateNotebookInput, UpdateNotebookResult,
     UpdateNotebookVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::update_object_guests::{
     UpdateObjectGuests, UpdateObjectGuestsInput, UpdateObjectGuestsResult,
     UpdateObjectGuestsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::update_workflow::{
     UpdateWorkflow, UpdateWorkflowInput, UpdateWorkflowResult, UpdateWorkflowVariables,
     WorkflowUpdate,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::notebook::{UpdateNotebookEditAccessInput, UpdateNotebookEditAccessResult};
+#[cfg(feature = "cloud_services")]
 use warp_graphql::object::CloudObjectWithDescendants;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::object_permissions::AccessLevel;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_cloud_environments::{
     GetCloudEnvironmentsQuery, GetCloudEnvironmentsQueryVariables, GetCloudEnvironmentsResult,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_cloud_object::{
     CloudObjectInput, CloudObjectResult, GetCloudObject, GetCloudObjectVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_updated_cloud_objects::{
     GetUpdatedCloudObjects, GetUpdatedCloudObjectsVariables, UpdatedCloudObjectsInput,
     UpdatedCloudObjectsResult,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::subscriptions::get_warp_drive_updates::GetWarpDriveUpdates;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::subscriptions::start_graphql_streaming_operation;
 
+#[cfg(feature = "cloud_services")]
 use crate::ai::ambient_agents::scheduled::ScheduledAmbientAgent;
+#[cfg(feature = "cloud_services")]
 use crate::ai::cloud_environments::AmbientAgentEnvironment;
-use ai::document::AIDocumentId;
+#[cfg(feature = "cloud_services")]
+use crate::ai::document::ai_document_model::AIDocumentId;
+#[cfg(feature = "cloud_services")]
 use crate::ai::execution_profiles::AIExecutionProfile;
+#[cfg(feature = "cloud_services")]
 use crate::ai::facts::AIFact;
+#[cfg(feature = "cloud_services")]
 use crate::ai::mcp::{MCPServer, TemplatableMCPServer};
+#[cfg(feature = "cloud_services")]
 use crate::channel::ChannelState;
 use crate::cloud_object::model::generic_string_model::{
     GenericStringModel, GenericStringObjectId, Serializer, StringModel,
 };
+#[cfg(feature = "cloud_services")]
 use crate::cloud_object::{
     BulkCreateCloudObjectResult, BulkCreateGenericStringObjectsRequest, CreateCloudObjectResult,
-    CreateObjectRequest, CreatedCloudObject, GenericCloudObject, GenericServerObject,
-    GenericStringObjectFormat, GenericStringObjectUniqueKey, JsonObjectType, ObjectIdType,
-    ObjectType, ObjectsToUpdate, Owner, Revision, RevisionAndLastEditor, ServerCloudObject,
-    ServerFolder, ServerMetadata, ServerNotebook, ServerObject, ServerPermissions, ServerWorkflow,
-    TryFromGql as _, UpdateCloudObjectResult,
+    CreateObjectRequest, CreatedCloudObject, GenericStringObjectUniqueKey, JsonObjectType,
+    ObjectIdType, ObjectType, ObjectsToUpdate, Owner, Revision, RevisionAndLastEditor,
+    ServerCloudObject, ServerFolder, ServerMetadata, ServerNotebook, ServerPermissions,
+    ServerWorkflow, UpdateCloudObjectResult,
 };
-use crate::cloud_object::FolderId;
-use crate::cloud_object::SharingAccessLevel;
+use crate::cloud_object::{
+    GenericCloudObject, GenericServerObject, GenericStringObjectFormat, ServerObject,
+    TryFromGql as _,
+};
+#[cfg(feature = "cloud_services")]
+use crate::drive::folders::FolderId;
+#[cfg(feature = "cloud_services")]
+use crate::drive::sharing::SharingAccessLevel;
+#[cfg(feature = "cloud_services")]
 use crate::env_vars::EnvVarCollection;
-use crate::cloud_object::{NotebookId, SerializedNotebook};
+#[cfg(feature = "cloud_services")]
+use crate::notebooks::{NotebookId, SerializedNotebook};
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::schema::{
     action_type_to_gql_action_type, object_action_history_from_gql,
     object_update_success_to_update_result, update_generic_string_object_result_to_update_result,
 };
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
-use crate::server::ids::{ClientId, HashableId, ServerId, ServerIdAndType, SyncId, ToServerId};
+use crate::server::ids::ServerId;
+#[cfg(feature = "cloud_services")]
+use crate::server::ids::{ClientId, HashableId, ServerIdAndType, SyncId, ToServerId};
 use crate::server::server_api::ServerApi;
+#[cfg(feature = "cloud_services")]
 use crate::server::sync_queue::SerializedModel;
+#[cfg(feature = "cloud_services")]
 use crate::settings::Preference;
+#[cfg(feature = "cloud_services")]
 use crate::workflows::WorkflowId;
+#[cfg(feature = "cloud_services")]
 use crate::workflows::workflow_enum::WorkflowEnum;
+#[cfg(feature = "cloud_services")]
 use crate::workspaces::gql_convert::object_update_message_from_gql;
+#[cfg(feature = "cloud_services")]
 use crate::workspaces::user_profiles::UserProfileWithUID;
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl ObjectClient for ServerApi {
@@ -1414,3 +1482,8 @@ fn parse_server_gso<T, S>(
         Err(err) => report_error!(err.context(format!("Failed to convert {format:?} {uid}"))),
     }
 }
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl ObjectClient for ServerApi {}

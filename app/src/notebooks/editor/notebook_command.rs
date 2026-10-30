@@ -9,9 +9,13 @@ use lazy_static::lazy_static;
 use markdown_parser::markdown_parser::CODE_BLOCK_DEFAULT_MARKDOWN_LANG;
 use pathfinder_color::ColorU;
 use string_offset::{ByteOffset, CharOffset};
+#[cfg(feature = "rich_documents")]
 use syntect::easy::HighlightLines;
+#[cfg(feature = "rich_documents")]
 use syntect::highlighting::{self, Theme, ThemeSet};
+#[cfg(feature = "rich_documents")]
 use syntect::parsing::SyntaxSet;
+#[cfg(feature = "rich_documents")]
 use syntect::util::LinesWithEndings;
 use ui_components::lightbox::{LightboxImage, LightboxImageSource};
 use warp_completer::signatures::CommandRegistry;
@@ -26,6 +30,8 @@ use warp_editor::content::text::{
 };
 use warp_editor::editor::RunnableCommandModel;
 use warp_util::user_input::UserInput;
+#[cfg(feature = "rich_documents")]
+use warpui::AssetProvider as _;
 use warpui::r#async::SpawnedFutureHandle;
 use warpui::elements::{
     Align, Border, Container, CornerRadius, CrossAxisAlignment, Empty, Flex, MainAxisAlignment,
@@ -36,8 +42,8 @@ use warpui::platform::Cursor;
 use warpui::presenter::ChildView;
 use warpui::ui_components::components::{UiComponent, UiComponentStyles};
 use warpui::{
-    AppContext, AssetProvider as _, Element, Entity, ModelAsRef, ModelContext, ModelHandle,
-    SingletonEntity, ViewHandle, WeakModelHandle, WindowId,
+    AppContext, Element, Entity, ModelAsRef, ModelContext, ModelHandle, SingletonEntity,
+    ViewHandle, WeakModelHandle, WindowId,
 };
 
 use super::interaction_state_model::InteractionStateModel;
@@ -45,6 +51,7 @@ use super::keys::{NotebookKeybindings, custom_action_to_display};
 use super::model::ChildModelHandle;
 use super::view::EditorViewAction;
 use super::{NotebookWorkflow, rich_text_styles};
+#[cfg(feature = "rich_documents")]
 use crate::ASSETS;
 use crate::appearance::Appearance;
 use crate::completer::SessionAgnosticContext;
@@ -113,6 +120,7 @@ impl CachedHighlightColors {
     }
 }
 
+#[cfg(feature = "rich_documents")]
 struct CodeHighlightResult {
     origin_text: String,
     colors: Vec<(Range<ByteOffset>, AnsiColorIdentifier)>,
@@ -161,6 +169,7 @@ pub struct NotebookCommand {
     syntax_highlighting_handle: Option<SpawnedFutureHandle>,
     cached_highlight_delta: Option<CachedHighlightColors>,
 
+    #[cfg(feature = "rich_documents")]
     syntax_config: Option<(SyntaxSet, Theme)>,
 
     handle: WeakModelHandle<Self>,
@@ -221,6 +230,7 @@ impl NotebookCommand {
             dropdown
         });
 
+        #[cfg(feature = "rich_documents")]
         let syntax_config = {
             let ps = SyntaxSet::load_defaults_newlines();
             match ASSETS.get("bundled/syntax_theme/base16.tmTheme") {
@@ -260,6 +270,7 @@ impl NotebookCommand {
             syntax_highlighting_handle: None,
             cached_highlight_delta: None,
             debounce_highlighting_tx,
+            #[cfg(feature = "rich_documents")]
             syntax_config,
             handle: ctx.handle(),
         };
@@ -339,20 +350,28 @@ impl NotebookCommand {
             // Skip highlighting for default code.
             CodeBlockType::Code { lang } if lang == "text" => (),
             CodeBlockType::Code { lang } => {
-                let Some((syntax_set, syntax_theme)) = self.syntax_config.clone() else {
-                    return;
-                };
+                #[cfg(feature = "rich_documents")]
+                {
+                    let Some((syntax_set, syntax_theme)) = self.syntax_config.clone() else {
+                        return;
+                    };
 
-                self.syntax_highlighting_handle = Some(ctx.spawn(
-                    parse_code_into_style_ranges(buffer_text, lang, syntax_set, syntax_theme),
-                    |notebook_command, result, ctx| {
-                        notebook_command.update_buffer_with_parsed_code_syntax(result, ctx);
-                    },
-                ));
+                    self.syntax_highlighting_handle = Some(ctx.spawn(
+                        parse_code_into_style_ranges(buffer_text, lang, syntax_set, syntax_theme),
+                        |notebook_command, result, ctx| {
+                            notebook_command.update_buffer_with_parsed_code_syntax(result, ctx);
+                        },
+                    ));
+                }
+                #[cfg(not(feature = "rich_documents"))]
+                {
+                    drop((buffer_text, lang));
+                }
             }
         }
     }
 
+    #[cfg(feature = "rich_documents")]
     fn update_buffer_with_parsed_code_syntax(
         &mut self,
         highlight_result: Option<CodeHighlightResult>,
@@ -875,6 +894,7 @@ impl ChildModelHandle for ModelHandle<NotebookCommand> {
 }
 
 // Parse code into style ranges based on the current ANSI color and language.
+#[cfg(feature = "rich_documents")]
 async fn parse_code_into_style_ranges(
     buffer_text: String,
     language: String,
@@ -913,6 +933,7 @@ async fn parse_code_into_style_ranges(
 }
 
 // We use base16 theme here so the colors could translate fully to terminal ANSI color.
+#[cfg(feature = "rich_documents")]
 pub fn to_ansi_color(color: highlighting::Color) -> Option<AnsiColorIdentifier> {
     match color.r {
         0x00 => Some(AnsiColorIdentifier::Black),

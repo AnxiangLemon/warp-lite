@@ -463,7 +463,6 @@ pub(crate) fn handle_notification_artifact_buttons_event(
                 },
                 ctx
             );
-            #[cfg(not(feature = "warp_lite"))]
             ctx.dispatch_typed_action(&WorkspaceAction::OpenNotebook {
                 id: (*notebook_uid).into(),
             });

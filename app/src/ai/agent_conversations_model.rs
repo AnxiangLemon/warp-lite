@@ -7,14 +7,16 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use clap::ValueEnum;
+#[cfg(any(test, feature = "agent_runtime"))]
+pub use entry::AgentConversationProvenance;
 pub use entry::{
     AgentConversationEntry, AgentConversationEntryId, AgentConversationNavigationSubject,
-    AgentConversationProvenance,
 };
 use futures::stream::AbortHandle;
 use fuzzy_match::FuzzyMatchResult;
 use instant::Instant;
 use itertools::Itertools;
+#[cfg(feature = "agent_runtime")]
 pub use query::query_conversation_entries;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use warp_cli::agent::Harness;
@@ -1422,17 +1424,10 @@ impl AgentConversationsModel {
                 .entry_for_server_token(&server_token, app)
                 .and_then(|entry| model.resolve_entry_open_action(&entry, restore_layout, app))
                 .or_else(|| {
-                    #[cfg(not(feature = "warp_lite"))]
-                    {
-                        Some(WorkspaceAction::OpenConversationTranscriptViewer {
-                            ambient_agent_task_id: model.task_id_for_server_token(&server_token),
-                            conversation_id: server_token,
-                        })
-                    }
-                    #[cfg(feature = "warp_lite")]
-                    {
-                        None
-                    }
+                    Some(WorkspaceAction::OpenConversationTranscriptViewer {
+                        ambient_agent_task_id: model.task_id_for_server_token(&server_token),
+                        conversation_id: server_token,
+                    })
                 }),
         }
     }
@@ -1468,13 +1463,10 @@ impl AgentConversationsModel {
                 .map(AmbientAgentTask::active_live_session_state)
             {
                 Some(AmbientAgentLiveSessionState::Attachable { session_id }) => {
-                    #[cfg(not(feature = "warp_lite"))]
-                    {
-                        return Some(WorkspaceAction::OpenOrAttachAmbientAgentConversation {
-                            session_id,
-                            task_id,
-                        });
-                    }
+                    return Some(WorkspaceAction::OpenOrAttachAmbientAgentConversation {
+                        session_id,
+                        task_id,
+                    });
                 }
                 Some(AmbientAgentLiveSessionState::ActiveUnattachable) => {
                     return active_views_model
@@ -1503,16 +1495,13 @@ impl AgentConversationsModel {
                 .get(&conversation_id)
                 .map(|metadata| &metadata.nav_data)
             {
-                #[cfg(not(feature = "warp_lite"))]
-                {
-                    return Some(WorkspaceAction::RestoreOrNavigateToConversation {
-                        conversation_id,
-                        window_id: nav_data.window_id,
-                        pane_view_locator: nav_data.pane_view_locator,
-                        terminal_view_id: nav_data.terminal_view_id,
-                        restore_layout,
-                    });
-                }
+                return Some(WorkspaceAction::RestoreOrNavigateToConversation {
+                    conversation_id,
+                    window_id: nav_data.window_id,
+                    pane_view_locator: nav_data.pane_view_locator,
+                    terminal_view_id: nav_data.terminal_view_id,
+                    restore_layout,
+                });
             }
 
             if let Some(terminal_view_id) =
@@ -1532,34 +1521,24 @@ impl AgentConversationsModel {
                 || entry.backing.has_loaded_conversation
                 || nav_data.is_some()
             {
-                #[cfg(not(feature = "warp_lite"))]
-                {
-                    return Some(WorkspaceAction::RestoreOrNavigateToConversation {
-                        conversation_id,
-                        window_id: nav_data.and_then(|nav_data| nav_data.window_id),
-                        pane_view_locator: None,
-                        terminal_view_id: nav_data.and_then(|nav_data| nav_data.terminal_view_id),
-                        restore_layout,
-                    });
-                }
+                return Some(WorkspaceAction::RestoreOrNavigateToConversation {
+                    conversation_id,
+                    window_id: nav_data.and_then(|nav_data| nav_data.window_id),
+                    pane_view_locator: None,
+                    terminal_view_id: nav_data.and_then(|nav_data| nav_data.terminal_view_id),
+                    restore_layout,
+                });
             }
         }
 
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            return entry
-                .identity
-                .server_conversation_token
-                .as_ref()
-                .map(|token| WorkspaceAction::OpenConversationTranscriptViewer {
-                    conversation_id: token.clone(),
-                    ambient_agent_task_id: entry.identity.ambient_agent_task_id,
-                });
-        }
-        #[cfg(feature = "warp_lite")]
-        {
-            None
-        }
+        entry
+            .identity
+            .server_conversation_token
+            .as_ref()
+            .map(|token| WorkspaceAction::OpenConversationTranscriptViewer {
+                conversation_id: token.clone(),
+                ambient_agent_task_id: entry.identity.ambient_agent_task_id,
+            })
     }
 
     fn resolve_entry_copy_link(&self, entry: &AgentConversationEntry) -> Option<String> {
@@ -2082,6 +2061,6 @@ impl AgentConversationsModel {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "agent_conversations_model_tests.rs"]
 mod tests;

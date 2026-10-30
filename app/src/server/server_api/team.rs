@@ -1,58 +1,76 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
+#[cfg(feature = "cloud_services")]
+use anyhow::anyhow;
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use cynic::{MutationBuilder, QueryBuilder};
 #[cfg(test)]
 use mockall::{automock, predicate::*};
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::add_invite_link_domain_restriction::{
     AddInviteLinkDomainRestriction, AddInviteLinkDomainRestrictionInput,
     AddInviteLinkDomainRestrictionResult, AddInviteLinkDomainRestrictionVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_team::{
     CreateTeam, CreateTeamInput, CreateTeamResult, CreateTeamVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::delete_invite_link_domain_restriction::{
     DeleteInviteLinkDomainRestriction, DeleteInviteLinkDomainRestrictionInput,
     DeleteInviteLinkDomainRestrictionResult, DeleteInviteLinkDomainRestrictionVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::delete_team_invite::{
     DeleteTeamInvite, DeleteTeamInviteInput, DeleteTeamInviteResult, DeleteTeamInviteVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::join_team_with_team_discovery::{
     JoinTeamWithTeamDiscovery, JoinTeamWithTeamDiscoveryInput, JoinTeamWithTeamDiscoveryResult,
     JoinTeamWithTeamDiscoveryVariables, TeamDiscoveryEntrypoint,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::remove_user_from_team::{
     RemoveUserFromTeam, RemoveUserFromTeamInput, RemoveUserFromTeamResult,
     RemoveUserFromTeamVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::rename_team::{
     RenameTeam, RenameTeamInput, RenameTeamResult, RenameTeamVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::reset_invite_links::{
     ResetInviteLinks, ResetInviteLinksInput, ResetInviteLinksResult, ResetInviteLinksVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::send_team_invite_email::{
     SendTeamInviteEmail, SendTeamInviteEmailInput, SendTeamInviteEmailResult,
     SendTeamInviteEmailVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::set_is_invite_link_enabled::{
     SetIsInviteLinkEnabled, SetIsInviteLinkEnabledInput, SetIsInviteLinkEnabledResult,
     SetIsInviteLinkEnabledVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::set_team_discoverability::{
     SetTeamDiscoverability, SetTeamDiscoverabilityInput, SetTeamDiscoverabilityResult,
     SetTeamDiscoverabilityVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::set_team_member_role::{
     SetTeamMemberRole, SetTeamMemberRoleInput, SetTeamMemberRoleResult, SetTeamMemberRoleVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::transfer_team_ownership::{
     TransferTeamOwnership, TransferTeamOwnershipInput, TransferTeamOwnershipResult,
     TransferTeamOwnershipVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_discoverable_teams::{
     GetDiscoverableTeams, GetDiscoverableTeamsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_workspaces_metadata_for_user::{
     GetWorkspacesMetadataForUser, GetWorkspacesMetadataForUserVariables, PricingInfoResult,
 };
@@ -60,29 +78,39 @@ use warp_graphql::queries::get_workspaces_metadata_for_user::{
 use super::ServerApi;
 use crate::auth::UserUid;
 use crate::cloud_object::CloudObjectEventEntrypoint;
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
 use crate::server::ids::ServerId;
 use crate::workspaces::team::{DiscoverableTeam, MembershipRole};
 use crate::workspaces::user_workspaces::{CreateTeamResponse, WorkspacesMetadataWithPricing};
+#[cfg(feature = "cloud_services")]
 use crate::workspaces::workspace::Workspace;
 
 #[cfg_attr(test, automock)]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 pub trait TeamClient: 'static + Send + Sync {
-    async fn workspaces_metadata(&self) -> Result<WorkspacesMetadataWithPricing>;
+    async fn workspaces_metadata(&self) -> Result<WorkspacesMetadataWithPricing> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn add_invite_link_domain_restriction(
         &self,
         team_uid: ServerId,
         domain: String,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (team_uid, domain);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn delete_invite_link_domain_restriction(
         &self,
         team_uid: ServerId,
         domain_uid: ServerId,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (team_uid, domain_uid);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Creates a team and returns the result from the server with the newly created team.
     async fn create_team(
@@ -90,7 +118,10 @@ pub trait TeamClient: 'static + Send + Sync {
         name: String,
         entrypoint: CloudObjectEventEntrypoint,
         discoverable: Option<bool>,
-    ) -> Result<CreateTeamResponse>;
+    ) -> Result<CreateTeamResponse> {
+        let _ = (name, entrypoint, discoverable);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Removes the user from the selected team and returns a list of all teams that a user is
     /// still a member of (including updated team members).
@@ -99,7 +130,10 @@ pub trait TeamClient: 'static + Send + Sync {
         user_uid: UserUid,
         team_uid: ServerId,
         entrypoint: CloudObjectEventEntrypoint,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (user_uid, team_uid, entrypoint);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Removes the _current_ user from the team (user leaving the team) and returns the list of
     /// all teams that the current user is still a member of.
@@ -108,61 +142,96 @@ pub trait TeamClient: 'static + Send + Sync {
         user_uid: UserUid,
         team_uid: ServerId,
         entrypoint: CloudObjectEventEntrypoint,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (user_uid, team_uid, entrypoint);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn join_team_with_team_discovery(
         &self,
         team_uid: ServerId,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = team_uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn send_team_invite_email(
         &self,
         team_uid: ServerId,
         email: String,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (team_uid, email);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn delete_team_invite(
         &self,
         team_uid: ServerId,
         email: String,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (team_uid, email);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn get_discoverable_teams(&self) -> Result<Vec<DiscoverableTeam>>;
+    async fn get_discoverable_teams(&self) -> Result<Vec<DiscoverableTeam>> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn rename_team(
         &self,
         new_name: String,
         team_uid: ServerId,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (new_name, team_uid);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn reset_invite_links(&self, team_uid: ServerId)
-    -> Result<WorkspacesMetadataWithPricing>;
+    async fn reset_invite_links(
+        &self,
+        team_uid: ServerId,
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = team_uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn set_is_invite_link_enabled(
         &self,
         team_uid: ServerId,
         new_value: bool,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (team_uid, new_value);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn set_team_discoverability(
         &self,
         team_uid: ServerId,
         discoverable: bool,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (team_uid, discoverable);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn transfer_team_ownership(
         &self,
         new_owner_email: String,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = new_owner_email;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn set_team_member_role(
         &self,
         user_uid: UserUid,
         team_uid: ServerId,
         role: MembershipRole,
-    ) -> Result<WorkspacesMetadataWithPricing>;
+    ) -> Result<WorkspacesMetadataWithPricing> {
+        let _ = (user_uid, team_uid, role);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 }
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl TeamClient for ServerApi {
@@ -726,3 +795,8 @@ impl TeamClient for ServerApi {
         }
     }
 }
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl TeamClient for ServerApi {}

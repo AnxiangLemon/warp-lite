@@ -11,7 +11,6 @@ use settings::Setting;
 use thousands::Separable;
 use warp_core::features::FeatureFlag;
 use warp_core::ui::appearance::Appearance;
-use warp_core::ui::theme::Fill;
 use warp_graphql::billing::AddonCreditsOption;
 use warpui::elements::{
     Align, Border, ChildAnchor, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Empty,
@@ -35,6 +34,7 @@ use super::admin_actions::AdminActions;
 use super::billing_and_usage::overage_limit_modal::{SpendingLimitModal, SpendingLimitModalEvent};
 use super::billing_and_usage::usage_history_entry::UsageHistoryEntry;
 use super::billing_and_usage::usage_history_model::UsageHistoryModel;
+pub use super::billing_badge::create_discount_badge;
 use super::settings_page::{
     AdditionalInfo, HEADER_PADDING, build_sub_header, render_body_item, render_customer_type_badge,
     render_info_icon,
@@ -100,25 +100,6 @@ const ADDITIONAL_ADDON_CREDITS_DESCRIPTION_FOR_TEAM: &str =
 const AMBIENT_AGENT_TRIAL_TITLE: &str = "Cloud agent trial";
 /// The threshold below which we only show the "Buy more" button (not "New agent").
 use crate::ai::request_usage_model::AMBIENT_AGENT_TRIAL_CREDIT_THRESHOLD;
-
-pub fn create_discount_badge(discount: u32, appearance: &Appearance) -> Box<dyn Element> {
-    if discount == 0 {
-        return Empty::new().finish();
-    }
-
-    let theme = appearance.theme();
-    let bg_color: Fill = theme.terminal_colors().normal.green.into();
-
-    Container::new(
-        Text::new_inline(format!("{discount}% off"), appearance.ui_font_family(), 10.)
-            .with_color(theme.main_text_color(bg_color).into())
-            .finish(),
-    )
-    .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.)))
-    .with_background(bg_color)
-    .with_uniform_padding(4.)
-    .finish()
-}
 
 /// Formats an add-on credits price premium, expressed in basis points, as a
 /// human-readable percentage (e.g. 1000 -> "10%").

@@ -1,5 +1,6 @@
 //! Snapshot derivation and upload used by the shared handoff commit pipeline.
 
+#[cfg(feature = "agent_runtime")]
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -7,8 +8,11 @@ use remote_server::proto::UploadHandoffSnapshotResponse;
 use warp_util::standardized_path::StandardizedPath;
 use warpui::{SingletonEntity, ViewContext};
 
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_sdk::driver::upload_snapshot_for_handoff;
-use crate::ai::blocklist::handoff::touched_repos::{TouchedWorkspace, derive_touched_workspace};
+use crate::ai::blocklist::handoff::touched_repos::TouchedWorkspace;
+#[cfg(feature = "agent_runtime")]
+use crate::ai::blocklist::handoff::touched_repos::derive_touched_workspace;
 use crate::remote_server::manager::RemoteServerManager;
 use crate::server::server_api::ServerApiProvider;
 use crate::server::server_api::ai::{AIClient, InitialSnapshotToken};
@@ -55,6 +59,7 @@ pub enum SnapshotUploadTarget {
 /// Convert an `UploadHandoffSnapshotResponse` (proto) into a domain result.
 ///
 /// Maps the daemon response into the same result used by the local branch.
+#[cfg(feature = "agent_runtime")]
 fn try_upload_result_from_proto(
     resp: UploadHandoffSnapshotResponse,
 ) -> Result<HandoffUploadResult, anyhow::Error> {
@@ -115,6 +120,17 @@ pub(super) async fn upload_handoff_snapshot(
     paths: Vec<StandardizedPath>,
     target: SnapshotUploadTarget,
 ) -> (TouchedWorkspace, Result<HandoffUploadResult, anyhow::Error>) {
+    #[cfg(not(feature = "agent_runtime"))]
+    {
+        let _ = (paths, target);
+        (
+            TouchedWorkspace::default(),
+            Err(anyhow::anyhow!(
+                "Cloud agent handoff is unavailable in this build"
+            )),
+        )
+    }
+    #[cfg(feature = "agent_runtime")]
     match target {
         SnapshotUploadTarget::Remote { handle } => {
             let result = match handle.upload_handoff_snapshot(paths).await {

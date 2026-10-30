@@ -628,6 +628,6 @@ pub(super) async fn upload_current_block_snapshot(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "mod_tests.rs"]
 mod tests;

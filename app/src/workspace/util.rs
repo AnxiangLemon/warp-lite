@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use warpui::elements::MouseStateHandle;
 use warpui::{AppContext, EntityId, SingletonEntity, ViewContext, ViewHandle, WindowId};
 
+#[cfg(feature = "agent_runtime")]
 use super::OneTimeModalModel;
 use crate::appearance::Appearance;
 use crate::pane_group::PaneId;
@@ -162,9 +163,17 @@ impl WorkspaceState {
             || self.is_new_worktree_modal_open
             || self.is_remove_tab_config_dialog_open
             || {
-                let one_time_modal = OneTimeModalModel::as_ref(app);
-                one_time_modal.is_oz_launch_modal_open()
-                    || one_time_modal.is_build_plan_migration_modal_open()
+                #[cfg(feature = "agent_runtime")]
+                {
+                    let one_time_modal = OneTimeModalModel::as_ref(app);
+                    one_time_modal.is_oz_launch_modal_open()
+                        || one_time_modal.is_build_plan_migration_modal_open()
+                }
+                #[cfg(not(feature = "agent_runtime"))]
+                {
+                    let _ = app;
+                    false
+                }
             }
     }
 

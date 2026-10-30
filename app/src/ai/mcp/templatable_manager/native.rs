@@ -44,7 +44,7 @@ use crate::cloud_object::{
     CloudObject, CloudObjectLocation, CloudObjectLookup as _, CloudObjectMetadataExt,
     CloudObjectUuidLookup as _, GenericStringObjectFormat, JsonObjectType, Space,
 };
-use crate::cloud_object::CloudObjectTypeAndId;
+use crate::drive::CloudObjectTypeAndId;
 use crate::persistence::{
     ModelEvent, database_file_path_for_current_scope, establish_ro_connection,
 };
@@ -413,6 +413,10 @@ impl TemplatableMCPServerManager {
             builtin_server_token: Default::default(),
             server_loggers: Default::default(),
         };
+
+        if cfg!(feature = "warp_lite") {
+            return me;
+        }
 
         me.fetch_cloud_servers(ctx);
 

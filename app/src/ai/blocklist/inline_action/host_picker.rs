@@ -571,6 +571,6 @@ impl View for HostPicker {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "host_picker_tests.rs"]
 mod tests;

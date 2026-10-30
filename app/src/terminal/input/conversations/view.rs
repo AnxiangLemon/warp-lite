@@ -94,6 +94,7 @@ impl InlineConversationMenuView {
                 mixer.clone(),
                 positioner.clone(),
                 &input_suggestions_model,
+                #[cfg(feature = "agent_runtime")]
                 agent_view_controller,
                 tab_configs,
                 None,

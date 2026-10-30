@@ -4,11 +4,14 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::time::Duration;
 
+#[cfg(any(feature = "markdown_mermaid", test))]
 use base64::Engine as _;
+#[cfg(any(feature = "markdown_mermaid", test))]
 use base64::prelude::BASE64_STANDARD;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use markdown_parser::FormattedText;
+#[cfg(feature = "markdown_mermaid")]
 use mermaid_to_svg::MermaidTheme;
 use num_traits::SaturatingSub;
 use regex::Regex;
@@ -88,7 +91,7 @@ lazy_static! {
         Regex::new(r"^\[[xX]\] $").expect("Markdown shortcut regex should be valid");
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "model_tests.rs"]
 mod tests;
 
@@ -135,6 +138,7 @@ enum InlineStyleAction {
     None,
 }
 
+#[cfg(any(feature = "markdown_mermaid", test))]
 fn mermaid_image_html(svg: &[u8]) -> String {
     format!(
         "<img src=\"data:image/svg+xml;base64,{}\" alt=\"Mermaid diagram\" />",
@@ -143,10 +147,18 @@ fn mermaid_image_html(svg: &[u8]) -> String {
 }
 
 fn render_mermaid_clipboard_html(source: &str) -> Option<String> {
-    let svg = mermaid_to_svg::render_mermaid_to_svg(source, Some(&MermaidTheme::light()))
-        .ok()?
-        .into_bytes();
-    Some(mermaid_image_html(&svg))
+    #[cfg(feature = "markdown_mermaid")]
+    {
+        let svg = mermaid_to_svg::render_mermaid_to_svg(source, Some(&MermaidTheme::light()))
+            .ok()?
+            .into_bytes();
+        Some(mermaid_image_html(&svg))
+    }
+    #[cfg(not(feature = "markdown_mermaid"))]
+    {
+        let _ = source;
+        None
+    }
 }
 
 impl NotebooksEditorModel {

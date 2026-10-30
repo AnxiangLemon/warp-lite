@@ -1,12 +1,17 @@
 use fuzzy_match::match_indices_case_insensitive;
+#[cfg(feature = "agent_runtime")]
 use warpui::AppContext;
 
 use crate::ai::conversation_navigation::ConversationNavigationData;
+#[cfg(feature = "agent_runtime")]
 use crate::search::SyncDataSource;
+#[cfg(feature = "agent_runtime")]
 use crate::search::command_palette::conversations::DataSource;
+#[cfg(feature = "agent_runtime")]
 use crate::search::command_palette::conversations::search_item::{
     ConversationAction, ConversationSearchItem,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::search::data_source::QueryResult;
 
 /// A conversation that was fuzzy matched against a search term.
@@ -170,8 +175,10 @@ where
         })
 }
 
+#[cfg(feature = "agent_runtime")]
 type SearcherAction = <DataSource as SyncDataSource>::Action;
 
+#[cfg(feature = "agent_runtime")]
 pub trait ConversationSearcher {
     fn search(
         &self,
@@ -180,8 +187,10 @@ pub trait ConversationSearcher {
     ) -> anyhow::Result<Vec<QueryResult<SearcherAction>>>;
 }
 
+#[cfg(feature = "agent_runtime")]
 pub struct FuzzyConversationSearcher;
 
+#[cfg(feature = "agent_runtime")]
 impl FuzzyConversationSearcher {
     pub fn new() -> Self {
         Self
@@ -192,6 +201,7 @@ impl FuzzyConversationSearcher {
     }
 }
 
+#[cfg(feature = "agent_runtime")]
 impl ConversationSearcher for FuzzyConversationSearcher {
     fn search(
         &self,
@@ -210,6 +220,6 @@ impl ConversationSearcher for FuzzyConversationSearcher {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "search_tests.rs"]
 mod tests;

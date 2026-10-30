@@ -442,6 +442,6 @@ fn push_resolved(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "touched_repos_tests.rs"]
 mod tests;

@@ -2,14 +2,12 @@ mod legacy;
 mod maa;
 mod static_prompt_suggestions;
 
-pub use legacy::{
-    PassiveSuggestionsEvent as LegacyPassiveSuggestionsEvent,
-    PassiveSuggestionsModel as LegacyPassiveSuggestionsModel,
-};
-pub use maa::{
-    PassiveSuggestionsEvent as MaaPassiveSuggestionsEvent,
-    PassiveSuggestionsModel as MaaPassiveSuggestionsModel,
-};
+#[cfg(feature = "agent_runtime")]
+pub use legacy::PassiveSuggestionsEvent as LegacyPassiveSuggestionsEvent;
+pub use legacy::PassiveSuggestionsModel as LegacyPassiveSuggestionsModel;
+#[cfg(feature = "agent_runtime")]
+pub use maa::PassiveSuggestionsEvent as MaaPassiveSuggestionsEvent;
+pub use maa::PassiveSuggestionsModel as MaaPassiveSuggestionsModel;
 use warpui::ModelHandle;
 
 #[derive(Clone)]

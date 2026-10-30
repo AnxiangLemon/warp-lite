@@ -1,13 +1,16 @@
-use warpui::{SingletonEntity, UpdateView};
+#[cfg(feature = "agent_runtime")]
+use warpui::SingletonEntity;
+use warpui::UpdateView;
 
+#[cfg(feature = "agent_runtime")]
+use super::BlocklistAIHistoryModel;
 use super::{
-    AIAgentExchangeId, AIConversationId, AgentModeRewindEntrypoint, AppContext,
-    BlocklistAIHistoryModel, CONTEXT_MENU_WIDTH, ChannelState, ClipboardContent, ContextMenuAction,
-    ContextMenuState, ContextMenuType, EntityId, FeatureFlag, ForkAIConversationParams,
-    ForkFromExchange, ForkedConversationDestination, MenuItem, MenuItemFields, RichContentLink,
-    ServerConversationToken, ServerOutputId, ShareableObject, TerminalAction, TerminalModel,
-    TerminalView, Tip, TipHint, Vector2F, ViewContext, fork_label_for_query,
-    mark_feature_used_and_write_to_user_defaults,
+    AIAgentExchangeId, AIConversationId, AgentModeRewindEntrypoint, AppContext, CONTEXT_MENU_WIDTH,
+    ChannelState, ClipboardContent, ContextMenuAction, ContextMenuState, ContextMenuType, EntityId,
+    FeatureFlag, ForkAIConversationParams, ForkFromExchange, ForkedConversationDestination,
+    MenuItem, MenuItemFields, RichContentLink, ServerConversationToken, ServerOutputId,
+    ShareableObject, TerminalAction, TerminalModel, TerminalView, Tip, TipHint, Vector2F,
+    ViewContext, fork_label_for_query, mark_feature_used_and_write_to_user_defaults,
 };
 
 impl TerminalView {
@@ -19,148 +22,162 @@ impl TerminalView {
         model: &TerminalModel,
         ctx: &mut ViewContext<Self>,
     ) -> Vec<MenuItem<TerminalAction>> {
-        let mut items = vec![
-            MenuItemFields::new("Copy")
-                .with_on_select_action(TerminalAction::ContextMenu(
-                    ContextMenuAction::CopyAIBlock { ai_block_view_id },
-                ))
-                .into_item(),
-            MenuItemFields::new("Copy prompt")
-                .with_on_select_action(TerminalAction::ContextMenu(
-                    ContextMenuAction::CopyAIBlockQuery { ai_block_view_id },
-                ))
-                .into_item(),
-            MenuItemFields::new("Copy output as Markdown")
-                .with_on_select_action(TerminalAction::ContextMenu(
-                    ContextMenuAction::CopyAIBlockOutput { ai_block_view_id },
-                ))
-                .into_item(),
-        ];
+        #[cfg(feature = "agent_runtime")]
+        {
+            let mut items = vec![
+                MenuItemFields::new("Copy")
+                    .with_on_select_action(TerminalAction::ContextMenu(
+                        ContextMenuAction::CopyAIBlock { ai_block_view_id },
+                    ))
+                    .into_item(),
+                MenuItemFields::new("Copy prompt")
+                    .with_on_select_action(TerminalAction::ContextMenu(
+                        ContextMenuAction::CopyAIBlockQuery { ai_block_view_id },
+                    ))
+                    .into_item(),
+                MenuItemFields::new("Copy output as Markdown")
+                    .with_on_select_action(TerminalAction::ContextMenu(
+                        ContextMenuAction::CopyAIBlockOutput { ai_block_view_id },
+                    ))
+                    .into_item(),
+            ];
 
-        if let Some(link) = hovered_link {
-            match link {
-                RichContentLink::Url(url) => {
+            if let Some(link) = hovered_link {
+                match link {
+                    RichContentLink::Url(url) => {
+                        items.push(
+                            MenuItemFields::new("Copy URL")
+                                .with_on_select_action(TerminalAction::ContextMenu(
+                                    ContextMenuAction::CopyUrl { url_content: url },
+                                ))
+                                .into_item(),
+                        );
+                    }
+                    #[cfg(feature = "local_fs")]
+                    RichContentLink::FilePath { absolute_path, .. } => {
+                        items.push(
+                            MenuItemFields::new("Copy path")
+                                .with_on_select_action(TerminalAction::ContextMenu(
+                                    ContextMenuAction::CopyUrl {
+                                        url_content: absolute_path.to_string_lossy().into_owned(),
+                                    },
+                                ))
+                                .into_item(),
+                        );
+                    }
+                }
+            }
+
+            let num_requested_commands = self
+                .rich_content_views
+                .iter()
+                .find_map(|rich_content| {
+                    let ai_metadata = rich_content.ai_block_metadata()?;
+                    if ai_metadata.ai_block_handle.id() == ai_block_view_id {
+                        return Some(ai_metadata.ai_block_handle.as_ref(ctx));
+                    }
+                    None
+                })
+                .map_or_else(|| 0, |ai_block| ai_block.num_requested_commands());
+
+            if num_requested_commands > 0 {
+                items.push(
+                    MenuItemFields::new(String::from("Copy command"))
+                        .with_on_select_action(TerminalAction::ContextMenu(
+                            ContextMenuAction::CopyAgentCommand { ai_block_view_id },
+                        ))
+                        .into_item(),
+                );
+            }
+
+            let action_ids: Vec<_> = self
+                .rich_content_views
+                .iter()
+                .find_map(|rich_content| {
+                    let ai_metadata = rich_content.ai_block_metadata()?;
+                    if ai_metadata.ai_block_handle.id() == ai_block_view_id {
+                        return Some(ai_metadata.ai_block_handle.as_ref(ctx));
+                    }
+                    None
+                })
+                .map(|ai_block| {
+                    ai_block
+                        .requested_commands_iter()
+                        .map(|(action_id, _)| action_id)
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            let has_git_branch = action_ids.iter().any(|action_id| {
+                model
+                    .block_list()
+                    .block_for_ai_action_id(action_id)
+                    .is_some_and(|block| block.git_branch().is_some())
+            });
+            if has_git_branch {
+                items.push(
+                    MenuItemFields::new(String::from("Copy git branch"))
+                        .with_on_select_action(TerminalAction::ContextMenu(
+                            ContextMenuAction::CopyAgentGitBranch { ai_block_view_id },
+                        ))
+                        .into_item(),
+                );
+            }
+            items.push(MenuItem::Separator);
+            items.push(
+                MenuItemFields::new("Save as prompt")
+                    .with_on_select_action(TerminalAction::ContextMenu(
+                        ContextMenuAction::SavePromptAsAgentModeWorkflow { ai_block_view_id },
+                    ))
+                    .into_item(),
+            );
+            items.push(MenuItem::Separator);
+
+            if FeatureFlag::CloudConversations.is_enabled() {
+                let history_model = BlocklistAIHistoryModel::as_ref(ctx);
+                if history_model.can_conversation_be_shared(&ai_conversation_id) {
                     items.push(
-                        MenuItemFields::new("Copy URL")
+                        MenuItemFields::new("Copy share link")
                             .with_on_select_action(TerminalAction::ContextMenu(
-                                ContextMenuAction::CopyUrl { url_content: url },
+                                ContextMenuAction::CopyConversationShareLink {
+                                    conversation_id: ai_conversation_id,
+                                },
                             ))
                             .into_item(),
                     );
-                }
-                #[cfg(feature = "local_fs")]
-                RichContentLink::FilePath { absolute_path, .. } => {
                     items.push(
-                        MenuItemFields::new("Copy path")
+                        MenuItemFields::new("Share conversation")
                             .with_on_select_action(TerminalAction::ContextMenu(
-                                ContextMenuAction::CopyUrl {
-                                    url_content: absolute_path.to_string_lossy().into_owned(),
+                                ContextMenuAction::OpenConversationShareDialog {
+                                    conversation_id: ai_conversation_id,
                                 },
                             ))
                             .into_item(),
                     );
                 }
             }
-        }
 
-        let num_requested_commands = self
-            .rich_content_views
-            .iter()
-            .find_map(|rich_content| {
-                let ai_metadata = rich_content.ai_block_metadata()?;
-                if ai_metadata.ai_block_handle.id() == ai_block_view_id {
-                    return Some(ai_metadata.ai_block_handle.as_ref(ctx));
-                }
-                None
-            })
-            .map_or_else(|| 0, |ai_block| ai_block.num_requested_commands());
-
-        if num_requested_commands > 0 {
             items.push(
-                MenuItemFields::new(String::from("Copy command"))
+                MenuItemFields::new("Copy conversation text")
                     .with_on_select_action(TerminalAction::ContextMenu(
-                        ContextMenuAction::CopyAgentCommand { ai_block_view_id },
+                        ContextMenuAction::CopyAIBlockConversation { ai_block_view_id },
                     ))
                     .into_item(),
             );
+
+            items
         }
-
-        let action_ids: Vec<_> = self
-            .rich_content_views
-            .iter()
-            .find_map(|rich_content| {
-                let ai_metadata = rich_content.ai_block_metadata()?;
-                if ai_metadata.ai_block_handle.id() == ai_block_view_id {
-                    return Some(ai_metadata.ai_block_handle.as_ref(ctx));
-                }
-                None
-            })
-            .map(|ai_block| {
-                ai_block
-                    .requested_commands_iter()
-                    .map(|(action_id, _)| action_id)
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let has_git_branch = action_ids.iter().any(|action_id| {
-            model
-                .block_list()
-                .block_for_ai_action_id(action_id)
-                .is_some_and(|block| block.git_branch().is_some())
-        });
-        if has_git_branch {
-            items.push(
-                MenuItemFields::new(String::from("Copy git branch"))
-                    .with_on_select_action(TerminalAction::ContextMenu(
-                        ContextMenuAction::CopyAgentGitBranch { ai_block_view_id },
-                    ))
-                    .into_item(),
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = (
+                ai_block_view_id,
+                ai_conversation_id,
+                hovered_link,
+                model,
+                ctx,
             );
+            Vec::new()
         }
-        items.push(MenuItem::Separator);
-        items.push(
-            MenuItemFields::new("Save as prompt")
-                .with_on_select_action(TerminalAction::ContextMenu(
-                    ContextMenuAction::SavePromptAsAgentModeWorkflow { ai_block_view_id },
-                ))
-                .into_item(),
-        );
-        items.push(MenuItem::Separator);
-
-        if FeatureFlag::CloudConversations.is_enabled() {
-            let history_model = BlocklistAIHistoryModel::as_ref(ctx);
-            if history_model.can_conversation_be_shared(&ai_conversation_id) {
-                items.push(
-                    MenuItemFields::new("Copy share link")
-                        .with_on_select_action(TerminalAction::ContextMenu(
-                            ContextMenuAction::CopyConversationShareLink {
-                                conversation_id: ai_conversation_id,
-                            },
-                        ))
-                        .into_item(),
-                );
-                items.push(
-                    MenuItemFields::new("Share conversation")
-                        .with_on_select_action(TerminalAction::ContextMenu(
-                            ContextMenuAction::OpenConversationShareDialog {
-                                conversation_id: ai_conversation_id,
-                            },
-                        ))
-                        .into_item(),
-                );
-            }
-        }
-
-        items.push(
-            MenuItemFields::new("Copy conversation text")
-                .with_on_select_action(TerminalAction::ContextMenu(
-                    ContextMenuAction::CopyAIBlockConversation { ai_block_view_id },
-                ))
-                .into_item(),
-        );
-
-        items
     }
 
     fn conversation_text(
@@ -168,28 +185,38 @@ impl TerminalView {
         conversation_id: AIConversationId,
         ctx: &AppContext,
     ) -> Option<String> {
-        let Some(conversation) =
-            BlocklistAIHistoryModel::as_ref(ctx).conversation(&conversation_id)
-        else {
-            log::warn!("No conversation found for conversation ID {conversation_id}");
-            return None;
-        };
+        #[cfg(feature = "agent_runtime")]
+        {
+            let Some(conversation) =
+                BlocklistAIHistoryModel::as_ref(ctx).conversation(&conversation_id)
+            else {
+                log::warn!("No conversation found for conversation ID {conversation_id}");
+                return None;
+            };
 
-        let mut result = Vec::new();
-        for exchange in conversation.root_task_exchanges() {
-            let formatted_exchange =
-                exchange.format_for_copy(Some(self.ai_action_model.as_ref(ctx)));
-            if !formatted_exchange.is_empty() {
-                result.push(formatted_exchange);
+            let mut result = Vec::new();
+            for exchange in conversation.root_task_exchanges() {
+                let formatted_exchange =
+                    exchange.format_for_copy(Some(self.ai_action_model.as_ref(ctx)));
+                if !formatted_exchange.is_empty() {
+                    result.push(formatted_exchange);
+                }
             }
-        }
 
-        if result.is_empty() {
-            log::warn!("No copyable conversation text found for conversation ID {conversation_id}");
-            return None;
-        }
+            if result.is_empty() {
+                log::warn!(
+                    "No copyable conversation text found for conversation ID {conversation_id}"
+                );
+                return None;
+            }
 
-        Some(result.join("\n\n"))
+            Some(result.join("\n\n"))
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = (conversation_id, ctx);
+            None
+        }
     }
 
     pub(super) fn copy_conversation_text(
@@ -227,17 +254,27 @@ impl TerminalView {
         conversation_id: AIConversationId,
         ctx: &AppContext,
     ) -> Option<ServerConversationToken> {
-        let history_model = BlocklistAIHistoryModel::as_ref(ctx);
-        // Prefer loaded conversation data when available.
-        history_model
-            .conversation(&conversation_id)
-            .and_then(|conversation| conversation.debugging_server_conversation_token().cloned())
-            .or_else(|| {
-                // Restored entries may only have server metadata loaded.
-                history_model
-                    .get_server_conversation_metadata(&conversation_id)
-                    .map(|metadata| metadata.server_conversation_token.clone())
-            })
+        #[cfg(feature = "agent_runtime")]
+        {
+            let history_model = BlocklistAIHistoryModel::as_ref(ctx);
+            // Prefer loaded conversation data when available.
+            history_model
+                .conversation(&conversation_id)
+                .and_then(|conversation| {
+                    conversation.debugging_server_conversation_token().cloned()
+                })
+                .or_else(|| {
+                    // Restored entries may only have server metadata loaded.
+                    history_model
+                        .get_server_conversation_metadata(&conversation_id)
+                        .map(|metadata| metadata.server_conversation_token.clone())
+                })
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = (conversation_id, ctx);
+            None
+        }
     }
 
     fn conversation_debug_request_id(
@@ -245,10 +282,18 @@ impl TerminalView {
         conversation_id: AIConversationId,
         ctx: &AppContext,
     ) -> Option<ServerOutputId> {
-        BlocklistAIHistoryModel::as_ref(ctx)
-            .conversation(&conversation_id)
-            .and_then(|conversation| conversation.root_task_exchanges().last())
-            .and_then(|exchange| exchange.output_status.server_output_id())
+        #[cfg(feature = "agent_runtime")]
+        {
+            BlocklistAIHistoryModel::as_ref(ctx)
+                .conversation(&conversation_id)
+                .and_then(|conversation| conversation.root_task_exchanges().last())
+                .and_then(|exchange| exchange.output_status.server_output_id())
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = (conversation_id, ctx);
+            None
+        }
     }
 
     fn copy_debugging_menu_items(
@@ -289,18 +334,26 @@ impl TerminalView {
         ai_conversation_id: AIConversationId,
         ctx: &mut ViewContext<Self>,
     ) -> Vec<(String, ContextMenuAction)> {
-        let conversation_token = BlocklistAIHistoryModel::as_ref(ctx)
-            .conversation(&ai_conversation_id)
-            .and_then(|conversation| conversation.debugging_server_conversation_token());
+        #[cfg(feature = "agent_runtime")]
+        {
+            let conversation_token = BlocklistAIHistoryModel::as_ref(ctx)
+                .conversation(&ai_conversation_id)
+                .and_then(|conversation| conversation.debugging_server_conversation_token());
 
-        let Some(conversation_token) = conversation_token else {
-            return Vec::new();
-        };
+            let Some(conversation_token) = conversation_token else {
+                return Vec::new();
+            };
 
-        let server_output_id = self
-            .ai_block_for_exchange(&ai_exchange_id)
-            .and_then(|ai_block_handle| ai_block_handle.as_ref(ctx).server_output_id(ctx));
-        self.copy_debugging_menu_items(conversation_token.clone(), server_output_id)
+            let server_output_id = self
+                .ai_block_for_exchange(&ai_exchange_id)
+                .and_then(|ai_block_handle| ai_block_handle.as_ref(ctx).server_output_id(ctx));
+            self.copy_debugging_menu_items(conversation_token.clone(), server_output_id)
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = (ai_exchange_id, ai_conversation_id, ctx);
+            Vec::new()
+        }
     }
 
     fn conversation_menu_items(

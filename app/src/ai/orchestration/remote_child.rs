@@ -425,6 +425,6 @@ fn resolve_runtime_skills(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "remote_child_tests.rs"]
 mod tests;

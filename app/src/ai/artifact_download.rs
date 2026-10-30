@@ -106,6 +106,6 @@ pub(crate) async fn download_artifact_bytes(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "artifact_download_tests.rs"]
 mod tests;

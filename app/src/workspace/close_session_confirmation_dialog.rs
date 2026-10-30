@@ -15,9 +15,30 @@ use warpui::{
 };
 
 use crate::appearance::Appearance;
+use crate::lite_i18n::choose;
 use crate::pane_group::PaneId;
 use crate::ui_components::dialog::{Dialog, dialog_styles};
 use crate::workspace::TabMovement;
+
+pub(super) fn init(app: &mut AppContext) {
+    use warpui::keymap::FixedBinding;
+    use warpui::keymap::macros::*;
+
+    app.register_fixed_bindings([
+        FixedBinding::new(
+            "escape",
+            CloseSessionConfirmationAction::Cancel,
+            id!("CloseSessionConfirmation"),
+        ),
+        FixedBinding::new(
+            "enter",
+            CloseSessionConfirmationAction::CloseSession {
+                dont_show_again: false,
+            },
+            id!("CloseSessionConfirmation"),
+        ),
+    ]);
+}
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Copy, Clone)]
@@ -90,7 +111,10 @@ impl View for CloseSessionConfirmationDialog {
         let dont_show_again_checkbox = appearance
             .ui_builder()
             .checkbox(self.dont_show_again_mouse_state.clone(), Some(14.))
-            .with_label(Span::new("Don't show again.", Default::default()))
+            .with_label(Span::new(
+                choose("Don't show again.", "不再提示。"),
+                Default::default(),
+            ))
             .check(self.dont_show_again)
             .build()
             .with_cursor(Cursor::PointingHand)
@@ -99,11 +123,11 @@ impl View for CloseSessionConfirmationDialog {
             })
             .finish();
 
-        let dont_show_again_value = self.dont_show_again;
+        let dont_show_again_value = !cfg!(feature = "warp_lite") && self.dont_show_again;
         let close_session_button = appearance
             .ui_builder()
             .button(ButtonVariant::Accent, self.confirm_mouse_state.clone())
-            .with_centered_text_label("Close session".into())
+            .with_centered_text_label(choose("Close session", "确认关闭").into())
             .with_style(button_style)
             .build()
             .with_cursor(Cursor::PointingHand)
@@ -117,7 +141,7 @@ impl View for CloseSessionConfirmationDialog {
         let cancel_button = appearance
             .ui_builder()
             .button(ButtonVariant::Basic, self.cancel_mouse_state.clone())
-            .with_centered_text_label("Cancel".into())
+            .with_centered_text_label(choose("Cancel", "取消").into())
             .with_style(button_style)
             .build()
             .with_cursor(Cursor::PointingHand)
@@ -126,27 +150,39 @@ impl View for CloseSessionConfirmationDialog {
             })
             .finish();
 
-        let dialog = Container::new(
-            Dialog::new(
-                "Close session?".into(),
-                Some(
-                    "You are about to close a session that is currently being shared. Closing it will end sharing for everyone."
-                        .into(),
-                ),
+        #[cfg(feature = "integration_tests")]
+        let close_session_button =
+            warpui::elements::SavePosition::new(close_session_button, "close-session-confirm")
+                .finish();
+        #[cfg(feature = "integration_tests")]
+        let cancel_button =
+            warpui::elements::SavePosition::new(cancel_button, "close-session-cancel").finish();
+        let mut dialog = Dialog::new(
+                choose("Close session?", "关闭分屏？").into(),
+                Some(choose(
+                    "You are about to close a session that is currently being shared. Closing it will end sharing for everyone.",
+                    "关闭后会结束此分屏中的终端会话。",
+                ).into()),
                 UiComponentStyles {
                     width: Some(460.),
                     padding: Some(Coords::uniform(24.)),
                     ..dialog_styles(appearance)
                 },
-            )
-            .with_child(dont_show_again_checkbox)
-            .with_bottom_row_child(cancel_button)
-            .with_bottom_row_child(close_session_button)
-            .build()
-            .finish()
+            );
+        if !cfg!(feature = "warp_lite") {
+            dialog = dialog.with_child(dont_show_again_checkbox);
+        }
+        let dialog = Container::new(
+            dialog
+                .with_bottom_row_child(cancel_button)
+                .with_bottom_row_child(close_session_button)
+                .build()
+                .finish(),
         )
         .with_margin_top(35.)
         .finish();
+        #[cfg(feature = "integration_tests")]
+        let dialog = warpui::elements::SavePosition::new(dialog, "close-session-dialog").finish();
 
         // Stack needed so that dialog can get bounds information,
         // specifically to ensure no overlap with the window's traffic lights
@@ -194,7 +230,7 @@ impl TypedActionView for CloseSessionConfirmationDialog {
     ) {
         match action {
             CloseSessionConfirmationAction::CloseSession { dont_show_again } => {
-                let Some(open_confirmation_source) = self.open_confirmation_source else {
+                let Some(open_confirmation_source) = self.open_confirmation_source.take() else {
                     // Should not be possible.
                     report_error!(
                         "Close session button pressed with no open confirmation dialog source"
@@ -202,17 +238,20 @@ impl TypedActionView for CloseSessionConfirmationDialog {
                     return;
                 };
                 ctx.emit(CloseSessionConfirmationEvent::CloseSession {
-                    dont_show_again: *dont_show_again,
+                    dont_show_again: !cfg!(feature = "warp_lite") && *dont_show_again,
                     open_confirmation_source,
                 });
             }
             CloseSessionConfirmationAction::Cancel => {
+                self.open_confirmation_source = None;
                 ctx.emit(CloseSessionConfirmationEvent::Cancel);
                 self.dont_show_again = false;
             }
             CloseSessionConfirmationAction::ToggleDontShowAgain => {
-                self.dont_show_again = !self.dont_show_again;
-                ctx.notify();
+                if !cfg!(feature = "warp_lite") {
+                    self.dont_show_again = !self.dont_show_again;
+                    ctx.notify();
+                }
             }
         }
     }

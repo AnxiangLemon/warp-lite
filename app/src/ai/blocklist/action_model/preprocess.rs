@@ -140,6 +140,6 @@ impl PreprocessActionBatch {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "preprocess_tests.rs"]
 mod tests;

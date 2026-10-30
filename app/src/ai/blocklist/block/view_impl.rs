@@ -72,6 +72,7 @@ use crate::appearance::Appearance;
 use crate::cloud_object::model::persistence::CloudModel;
 use crate::settings::{AISettings, InputModeSettings, InputSettings};
 use crate::settings_view::SettingsSection;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::TerminalView;
 use crate::terminal::block_list_element::BlockListMenuSource;
 use crate::terminal::grid_renderer::URL_COLOR;
@@ -649,7 +650,6 @@ pub fn render_citation(
     let theme = appearance.theme();
 
     let (icon, name) = match citation {
-        #[cfg(not(feature = "warp_lite"))]
         AIAgentCitation::WarpDriveObject { uid } => {
             let item = CloudModel::as_ref(app)
                 .get_by_uid(uid)?
@@ -659,8 +659,6 @@ pub fn render_citation(
                 item.display_name().unwrap_or(String::from("Untitled")),
             )
         }
-        #[cfg(feature = "warp_lite")]
-        AIAgentCitation::WarpDriveObject { .. } => return None,
         AIAgentCitation::WarpDocumentation { .. } => {
             let icon = Icon::Warp.to_warpui_icon(theme.foreground()).finish();
             let name = String::from("Warp Docs");
@@ -964,6 +962,7 @@ impl View for AIBlock {
             // Derive the display info for the participant who initiated this exchange.
             // For non-shared sessions, this is just the current user.
             // For shared sessions, this is the user who initiated the request.
+            #[cfg(feature = "agent_runtime")]
             let (avatar_display_name, profile_image_path, avatar_color) = self
                 .model
                 .response_initiator(app)
@@ -994,6 +993,12 @@ impl View for AIBlock {
                     self.profile_image_path.clone(),
                     None,
                 ));
+            #[cfg(not(feature = "agent_runtime"))]
+            let (avatar_display_name, profile_image_path, avatar_color) = (
+                self.user_display_name.clone(),
+                self.profile_image_path.clone(),
+                None,
+            );
             if let Some(rendered_query) = query::maybe_render(
                 query::Props {
                     user_display_name: &avatar_display_name,

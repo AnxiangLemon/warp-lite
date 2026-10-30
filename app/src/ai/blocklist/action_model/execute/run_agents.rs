@@ -473,7 +473,7 @@ impl RunAgentsExecutor {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "run_agents_tests.rs"]
 mod tests;
 

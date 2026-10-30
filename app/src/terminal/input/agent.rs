@@ -1,36 +1,58 @@
+#[cfg(feature = "agent_runtime")]
 use warp_cli::agent::Harness;
+#[cfg(feature = "agent_runtime")]
 use warp_core::settings::Setting;
+#[cfg(feature = "agent_runtime")]
 use warp_core::ui::theme::color::internal_colors;
+#[cfg(feature = "agent_runtime")]
 use warpui::elements::{
     Align, AnchorPair, Border, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment,
     DispatchEventResult, DropTarget, Element, Empty, EventHandler, Expanded, Flex, Hoverable,
     MainAxisSize, OffsetPositioning, OffsetType, ParentElement, PositionedElementOffsetBounds,
     PositioningAxis, Radius, SavePosition, Stack, XAxisAnchor, YAxisAnchor,
 };
+#[cfg(feature = "agent_runtime")]
 use warpui::presenter::ChildView;
+#[cfg(feature = "agent_runtime")]
 use warpui::{AppContext, SingletonEntity as _, ViewHandle};
 
+#[cfg(feature = "agent_runtime")]
 use super::common::{
     add_command_xray_overlay, add_input_suggestions_overlays, add_voltron_overlay,
     add_workflow_info_overlay, maybe_add_buy_credits_banner,
     wrap_input_with_terminal_padding_and_focus_handler,
 };
+#[cfg(feature = "agent_runtime")]
 use super::{Input, InputAction, InputDropTargetData};
+#[cfg(feature = "agent_runtime")]
 use crate::BlocklistAIHistoryModel;
-use crate::ai::blocklist::InputType;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewState;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::shortcuts::{
     AgentShortcutsViewContext, render_agent_shortcuts_view,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::connected_self_hosted_workers::ConnectedSelfHostedWorkersModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::harness_availability::HarnessAvailabilityModel;
+#[cfg(feature = "agent_runtime")]
 use crate::appearance::Appearance;
+#[cfg(feature = "agent_runtime")]
 use crate::context_chips::spacing::{self};
+#[cfg(feature = "agent_runtime")]
 use crate::editor::position_id_for_cursor;
+#[cfg(feature = "agent_runtime")]
 use crate::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::InputModeSettings;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::InputType;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::settings::TerminalSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::TerminalAction;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::ambient_agent::HostSelector;
 
 pub(super) const CLOUD_MODE_V2_MAX_WIDTH: f32 = 720.;
@@ -59,6 +81,7 @@ const CLOUD_MODE_V2_HORIZONTAL_GUTTER: f32 = 16.;
 // Top padding above the attachment chips row inside the V2 input container.
 const CLOUD_MODE_V2_CHIPS_ROW_TOP_PADDING: f32 = 4.;
 
+#[cfg(feature = "agent_runtime")]
 impl Input {
     pub fn is_cloud_mode_input_v2_composing(&self, app: &AppContext) -> bool {
         FeatureFlag::CloudModeInputV2.is_enabled()
@@ -165,6 +188,7 @@ impl Input {
             false,
         ));
 
+        #[cfg(feature = "agent_runtime")]
         if let Some(selected_workflow_state) = self.workflows_state.selected_workflow_state.as_ref()
             && selected_workflow_state.should_show_more_info_view
         {
@@ -176,6 +200,7 @@ impl Input {
             );
         }
 
+        #[cfg(feature = "agent_runtime")]
         if self.is_voltron_open && self.is_pane_focused(app) {
             add_voltron_overlay(&mut stack, &self.voltron_view, menu_positioning);
         }
@@ -421,6 +446,7 @@ impl Input {
             );
         }
 
+        #[cfg(feature = "agent_runtime")]
         if let Some(selected_workflow_state) = self.workflows_state.selected_workflow_state.as_ref()
             && selected_workflow_state.should_show_more_info_view
         {
@@ -449,6 +475,7 @@ impl Input {
                 ),
             );
         }
+        #[cfg(feature = "agent_runtime")]
         if self.is_voltron_open && self.is_pane_focused(app) {
             add_voltron_overlay(&mut stack, &self.voltron_view, menu_positioning);
         }

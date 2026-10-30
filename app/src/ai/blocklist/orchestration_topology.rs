@@ -487,6 +487,6 @@ pub fn orchestration_aware_conversation_status(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "orchestration_topology_tests.rs"]
 mod tests;

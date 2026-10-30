@@ -29,9 +29,6 @@ pub fn error_to_user_message(error: &rmcp::RmcpError) -> String {
         rmcp::RmcpError::ClientInitialize(err) => {
             format!("Failed to initialize client: {}", err)
         }
-        rmcp::RmcpError::ServerInitialize(err) => {
-            format!("Failed to initialize server: {}", err)
-        }
         rmcp::RmcpError::TransportCreation { error, .. } => {
             format!("Failed to establish connection: {}", error)
         }

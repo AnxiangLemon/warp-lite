@@ -2,9 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
+#[cfg(feature = "network_transport")]
 use futures::StreamExt as _;
 use instant::Duration;
-use parking_lot::{Mutex, RwLock};
+#[cfg(feature = "network_transport")]
+use parking_lot::Mutex;
+use parking_lot::RwLock;
 use warp_graphql::client::RequestOptions;
 use warp_server_auth::auth_state::AuthState;
 use warp_server_auth::credentials::AuthToken;
@@ -31,6 +34,7 @@ const EVAL_USER_IDS: [i32; 11] = [
 ];
 
 /// Duration for which an ambient agent workload token is valid.
+#[cfg(feature = "network_transport")]
 const AMBIENT_WORKLOAD_TOKEN_DURATION: Duration = Duration::from_secs(3 * 60 * 60);
 
 /// Selects whether a contextual header is inherited, set, or omitted for one request.
@@ -110,11 +114,13 @@ pub struct BaseClient {
     auth_state: Arc<AuthState>,
     event_sender: async_channel::Sender<AuthEvent>,
     auth_session: Arc<AuthSession>,
+    #[cfg(feature = "network_transport")]
     ambient_workload_token: Arc<Mutex<Option<warp_isolation_platform::WorkloadToken>>>,
     ambient_agent_task_id: Arc<RwLock<Option<String>>>,
     agent_source: Option<String>,
     graphql_routing: GraphqlRoutingConfig,
     authenticated_graphql: AuthenticatedGraphqlConfig,
+    #[cfg(feature = "network_transport")]
     iap_token_provider: Option<Arc<dyn http_client::iap::IapTokenProvider>>,
 }
 
@@ -161,16 +167,20 @@ impl BaseClient {
             auth_state.clone(),
             event_sender.clone(),
         ));
+        #[cfg(not(feature = "network_transport"))]
+        drop(iap_token_provider);
         Self {
             client,
             auth_state,
             event_sender,
             auth_session,
+            #[cfg(feature = "network_transport")]
             ambient_workload_token: Arc::new(Mutex::new(None)),
             ambient_agent_task_id: Arc::new(RwLock::new(None)),
             agent_source,
             graphql_routing,
             authenticated_graphql,
+            #[cfg(feature = "network_transport")]
             iap_token_provider,
         }
     }
@@ -213,7 +223,14 @@ impl BaseClient {
     }
 
     pub fn access_token_ignoring_validity(&self) -> Option<String> {
-        self.auth_state.get_access_token_ignoring_validity()
+        #[cfg(feature = "network_transport")]
+        {
+            self.auth_state.get_access_token_ignoring_validity()
+        }
+        #[cfg(not(feature = "network_transport"))]
+        {
+            None
+        }
     }
 
     pub fn allowed_to_refresh_token(&self) -> bool {
@@ -246,6 +263,7 @@ impl BaseClient {
     }
 
     /// Returns an ambient agent workload token when the current runtime can issue one.
+    #[cfg(feature = "network_transport")]
     pub async fn get_or_create_ambient_workload_token(&self) -> Result<Option<String>> {
         if cfg!(target_family = "wasm") {
             return Ok(None);
@@ -275,6 +293,11 @@ impl BaseClient {
         let token = workload_token.token.clone();
         *self.ambient_workload_token.lock() = Some(workload_token);
         Ok(Some(token))
+    }
+
+    #[cfg(not(feature = "network_transport"))]
+    pub async fn get_or_create_ambient_workload_token(&self) -> Result<Option<String>> {
+        Err(warp_graphql::client::GraphQLError::Unavailable.into())
     }
 
     /// Resolves request-local ambient agent policy into wire headers.
@@ -338,6 +361,7 @@ impl BaseClient {
     }
 
     /// Notifies the application when an enabled IAP-backed request receives an IAP challenge.
+    #[cfg(feature = "network_transport")]
     pub fn observe_iap_challenge(&self, response: &http_client::Response) -> bool {
         if self.iap_token_provider.is_none()
             || !http_client::iap::is_iap_challenge(response.status(), response.headers())
@@ -354,8 +378,15 @@ impl BaseClient {
         true
     }
 
+    #[cfg(not(feature = "network_transport"))]
+    pub fn observe_iap_challenge(&self, response: &http_client::Response) -> bool {
+        let _ = response;
+        false
+    }
+
     /// Wraps an eventsource stream so IAP challenges notify the application without changing the
     /// original stream result or reconnecting it.
+    #[cfg(feature = "network_transport")]
     pub fn wrap_eventsource_with_iap_detection(
         &self,
         stream: http_client::EventSourceStream,
@@ -388,8 +419,16 @@ impl BaseClient {
         }
     }
 
+    #[cfg(not(feature = "network_transport"))]
+    pub fn wrap_eventsource_with_iap_detection(
+        &self,
+        stream: http_client::EventSourceStream,
+    ) -> http_client::EventSourceStream {
+        stream
+    }
+
     /// Inspects a WebSocket handshake error for an IAP challenge and notifies the application.
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "network_transport"))]
     pub fn report_ws_iap_challenge(&self, error: &anyhow::Error) {
         if self.iap_token_provider.is_none() || !crate::iap::ws_connect_is_iap_challenge(error) {
             return;
@@ -400,18 +439,30 @@ impl BaseClient {
         }
     }
 
-    #[cfg(target_family = "wasm")]
-    pub fn report_ws_iap_challenge(&self, _error: &anyhow::Error) {}
+    #[cfg(any(target_family = "wasm", not(feature = "network_transport")))]
+    pub fn report_ws_iap_challenge(&self, error: &anyhow::Error) {
+        let _ = error;
+    }
 
     /// Returns the current IAP proxy authorization header for transports outside the HTTP client.
+    #[cfg(feature = "network_transport")]
     pub fn iap_proxy_auth_header(&self) -> Option<(&'static str, String)> {
         self.iap_token_provider
             .as_ref()?
             .cached_token()
             .map(|token| http_client::iap::proxy_auth_header(&token))
     }
+
+    #[cfg(not(feature = "network_transport"))]
+    pub fn iap_proxy_auth_header(&self) -> Option<(&'static str, String)> {
+        None
+    }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "network_transport"))]
 #[path = "base_client_tests.rs"]
 mod tests;
+
+#[cfg(all(test, not(feature = "network_transport")))]
+#[path = "base_client_offline_tests.rs"]
+mod offline_tests;

@@ -7,11 +7,8 @@ use warpui::{App, AppContext, SingletonEntity, ViewContext};
 
 use super::super::{AIBlockMetadata, RichContentMetadata, RichContentType};
 use super::*;
-use crate::ai::agent::conversation::AIConversationId;
-use crate::ai::agent::task::TaskId;
 use crate::ai::agent::{AIAgentInput, ServerOutputId, UserQueryMode};
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
-use crate::ai::blocklist::block::cli_controller::UserTakeOverReason;
 use crate::ai::blocklist::model::{
     AIBlockModel, AIBlockOutputStatus, AIRequestType, OutputStatusUpdateCallback,
 };
@@ -24,6 +21,7 @@ use crate::terminal::cli_agent_sessions::{
     CLIAgentSessionsModel,
 };
 use crate::terminal::model::ansi::{BootstrappedValue, Handler as _, InitShellValue};
+use crate::terminal::session_types::{AIConversationId, TaskId, UserTakeOverReason};
 use crate::terminal::shared_session::SharedSessionSource;
 use crate::terminal::{CLIAgent, Event};
 use crate::test_util::add_window_with_terminal;

@@ -572,6 +572,6 @@ fn parse_org_from_git_url(url: &str) -> Option<String> {
     None
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "resolve_skill_spec_tests.rs"]
 mod tests;

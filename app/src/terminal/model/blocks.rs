@@ -32,9 +32,7 @@ use super::rich_content::RichContentType;
 use super::secrets::RespectObfuscatedSecrets;
 use super::selection::ScrollDelta;
 use super::terminal_model::RangeInModel;
-use crate::ai::agent::AIAgentActionId;
-use crate::ai::agent::conversation::AIConversationId;
-use crate::ai::blocklist::{AIBlock, SerializedBlockListItem};
+use crate::ai::blocklist::AIBlock;
 use crate::terminal::block_filter::BlockFilterQuery;
 use crate::terminal::block_list_element::GridType;
 use crate::terminal::event::Event::{AfterBlockCompleted, TerminalClear};
@@ -47,7 +45,8 @@ use crate::terminal::model::ansi::{
     PromptMetadata, StandardCharset, TabulationClearMode,
 };
 use crate::terminal::model::block::{
-    AgentViewVisibility, Block, InteractionMode, SerializedBlock, TranscriptScope,
+    AgentViewVisibility, Block, InteractionMode, SerializedBlock, SerializedBlockListItem,
+    TranscriptScope,
 };
 use crate::terminal::model::blockgrid::BlockGrid;
 use crate::terminal::model::bootstrap::BootstrapStage;
@@ -56,6 +55,7 @@ use crate::terminal::model::index::{Point, VisibleRow};
 use crate::terminal::model::iterm_image::ITermImage;
 use crate::terminal::model::secrets::ObfuscateSecrets;
 use crate::terminal::model::terminal_model::{BlockIndex, WithinBlock};
+use crate::terminal::session_types::{AIAgentActionId, AIConversationId};
 use crate::terminal::view::{InlineBannerId, InlineBannerItem, SeparatorId, WithinBlockBanner};
 use crate::terminal::{BlockPadding, ShellHost, SizeInfo, SizeUpdate};
 
@@ -3671,17 +3671,33 @@ impl BlockList {
     }
 
     pub fn last_non_hidden_ai_block_handle(&self, app: &AppContext) -> Option<ViewHandle<AIBlock>> {
-        let rich_content_view_id = self
-            .last_non_hidden_rich_content_block_after_block(None)?
-            .1
-            .view_id;
-        let active_window_id = app.windows().active_window()?;
-        app.view_with_id::<AIBlock>(active_window_id, rich_content_view_id)
+        #[cfg(feature = "agent_runtime")]
+        {
+            let rich_content_view_id = self
+                .last_non_hidden_rich_content_block_after_block(None)?
+                .1
+                .view_id;
+            let active_window_id = app.windows().active_window()?;
+            app.view_with_id::<AIBlock>(active_window_id, rich_content_view_id)
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = app;
+            None
+        }
     }
 
     pub fn has_active_ai_block(&self, app: &AppContext) -> bool {
-        self.last_non_hidden_ai_block_handle(app)
-            .is_some_and(|handle| !handle.as_ref(app).is_finished())
+        #[cfg(feature = "agent_runtime")]
+        {
+            self.last_non_hidden_ai_block_handle(app)
+                .is_some_and(|handle| !handle.as_ref(app).is_finished())
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = app;
+            false
+        }
     }
 
     /// Returns the contents of all blocks associated with bootstrap.

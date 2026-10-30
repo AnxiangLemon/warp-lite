@@ -137,6 +137,6 @@ impl Entity for ConnectedSelfHostedWorkersModel {
 
 impl SingletonEntity for ConnectedSelfHostedWorkersModel {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "connected_self_hosted_workers_tests.rs"]
 mod tests;

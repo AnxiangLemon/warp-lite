@@ -716,6 +716,6 @@ impl Entity for OrchestrationEventService {
 
 impl SingletonEntity for OrchestrationEventService {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "orchestration_events_tests.rs"]
 mod tests;

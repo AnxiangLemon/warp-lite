@@ -1,125 +1,74 @@
-mod login_failure_reason;
-#[cfg(not(feature = "warp_lite"))]
+pub mod auth_manager;
 mod auth_override_warning_body;
-#[cfg(not(feature = "warp_lite"))]
 pub mod auth_override_warning_modal;
-#[cfg(not(feature = "warp_lite"))]
 mod auth_view_body;
-#[cfg(not(feature = "warp_lite"))]
 pub mod auth_view_modal;
-#[cfg(not(feature = "warp_lite"))]
 mod auth_view_shared_helpers;
-#[cfg(not(feature = "warp_lite"))]
 mod login_error_modal;
-#[cfg(not(feature = "warp_lite"))]
 mod login_failure_notification;
-#[cfg(not(feature = "warp_lite"))]
 pub mod login_slide;
-#[cfg(not(feature = "warp_lite"))]
 pub mod needs_sso_link_view;
-#[cfg(not(feature = "warp_lite"))]
 pub mod paste_auth_token_modal;
 mod user_properties;
 pub use warp_server_auth::{auth_state, credentials, user, user_uid};
 #[cfg(target_family = "wasm")]
 pub mod web_handoff;
 
-#[cfg(not(feature = "warp_lite"))]
-#[path = "auth_manager.rs"]
-pub mod auth_manager;
-#[cfg(feature = "warp_lite")]
-#[path = "auth_manager_lite.rs"]
-pub mod auth_manager;
-
 use ::settings::{Setting, SettingsManager, ToggleableSetting};
-#[cfg(not(feature = "warp_lite"))]
 use ai::index::full_source_code_embedding::manager::CodebaseIndexManager;
-pub use auth_manager::{
-    AuthManager, AuthManagerEvent, LoginGatedFeature, PersistedCurrentUserInformation,
-};
+pub use auth_manager::AuthManager;
 pub use auth_state::AuthStateProvider;
-pub use login_failure_reason::LoginFailureReason;
-#[cfg(feature = "warp_lite")]
-pub use auth_manager::{AuthRedirectPayload, AuthViewVariant};
-#[cfg(not(feature = "warp_lite"))]
-pub use auth_view_modal::{AuthRedirectPayload, AuthViewVariant};
+use itertools::Itertools;
+#[cfg(feature = "agent_runtime")]
+pub use login_failure_notification::LoginFailureReason;
 #[cfg(feature = "tui")]
 use url::Url;
 pub use user_uid::UserUid;
 use warp_core::channel::ChannelState;
 use warp_core::user_preferences::GetUserPreferences as _;
 use warp_errors::{report_error, report_if_error};
+use warpui::modals::{AlertDialogWithCallbacks, ModalButton};
 use warpui::{AppContext, SingletonEntity};
 
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::agent_conversations_model::AgentConversationsModel;
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::blocklist::BlocklistAIHistoryModel;
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::blocklist::agent_view::orchestration_pill_bar_model::OrchestrationPillBarModel;
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
 #[cfg(not(target_family = "wasm"))]
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::mcp::TemplatableMCPServerManager;
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::request_usage_model::AIRequestUsageModel;
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai_assistant::requests::REQUEST_LIMIT_INFO_CACHE_KEY;
-#[cfg(not(feature = "warp_lite"))]
 use crate::cloud_object::model::persistence::CloudModel;
-#[cfg(not(feature = "warp_lite"))]
 use crate::code::editor_management::{CodeEditorStatus, CodeEditorSummary};
-#[cfg(not(feature = "warp_lite"))]
 use crate::env_vars::manager::EnvVarCollectionManager;
-#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::manager::NotebookManager;
-#[cfg(not(feature = "warp_lite"))]
 use crate::palette::PaletteMode;
-#[cfg(not(feature = "warp_lite"))]
 use crate::root_view::RootView;
-#[cfg(not(feature = "warp_lite"))]
 use crate::server::cloud_objects::update_manager::UpdateManager;
-#[cfg(not(feature = "warp_lite"))]
 use crate::server::sync_queue::SyncQueue;
-#[cfg(not(feature = "warp_lite"))]
 use crate::server::telemetry::{PaletteSource, TelemetryEvent};
-#[cfg(not(feature = "warp_lite"))]
 use crate::session_management::{RunningSessionSummary, SessionNavigationData};
-#[cfg(not(feature = "warp_lite"))]
 use crate::settings::{
     AISettings, CRASH_REPORTING_ENABLED_DEFAULTS_KEY, CloudPreferencesSettings, PrivacySettings,
     TELEMETRY_ENABLED_DEFAULTS_KEY,
 };
-#[cfg(not(feature = "warp_lite"))]
 use crate::terminal::general_settings::GeneralSettings;
-#[cfg(not(feature = "warp_lite"))]
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::manager::Manager as SharedSessionManager;
-#[cfg(not(feature = "warp_lite"))]
 use crate::workflows::manager::WorkflowManager;
-#[cfg(not(feature = "warp_lite"))]
 use crate::workspace::{Workspace, WorkspaceAction};
-#[cfg(not(feature = "warp_lite"))]
 use crate::workspaces::update_manager::TeamUpdateManager;
-#[cfg(not(feature = "warp_lite"))]
 use crate::{
     GlobalResourceHandlesProvider, focus_running_window_and_show_native_modal, persistence,
     send_telemetry_sync_from_app_ctx,
 };
-#[cfg(not(feature = "warp_lite"))]
-use itertools::Itertools;
-#[cfg(not(feature = "warp_lite"))]
-use warpui::modals::{AlertDialogWithCallbacks, ModalButton};
 
-pub fn init(_app: &mut AppContext) {
-    #[cfg(not(feature = "warp_lite"))]
-    {
-        auth_view_modal::init(_app);
-        auth_view_body::init(_app);
-        auth_override_warning_body::init(_app);
-        login_slide::init(_app);
-        paste_auth_token_modal::init(_app);
-    }
+pub fn init(app: &mut AppContext) {
+    auth_view_modal::init(app);
+    auth_view_body::init(app);
+    auth_override_warning_body::init(app);
+    login_slide::init(app);
+    paste_auth_token_modal::init(app);
 }
 
 /// Returns the configured Warp web logout URL.
@@ -166,7 +115,6 @@ pub fn web_logout_url_with_continue(continue_url: &str) -> Option<String> {
 
 /// If the app has running processes or dirty objects, we'll show a confirmation modal before logging out.
 /// If the user aborts, the user will not be logged out.
-#[cfg(not(feature = "warp_lite"))]
 pub fn maybe_log_out(app: &mut AppContext) {
     send_telemetry_sync_from_app_ctx!(TelemetryEvent::UserInitiatedLogOut, app);
 
@@ -309,26 +257,18 @@ pub fn maybe_log_out(app: &mut AppContext) {
     }
 }
 
-#[cfg(feature = "warp_lite")]
-pub fn maybe_log_out(_app: &mut AppContext) {}
-
 /// Logs out locally and sends the user to Warp web's logout endpoint.
 ///
 /// This is intentionally separate from [`log_out`], which is also used for
 /// non-user-initiated auth recovery paths where opening a browser would be
 /// surprising.
-#[cfg(not(feature = "warp_lite"))]
 pub fn log_out_and_open_web(app: &mut AppContext) {
     log_out(app);
     let logout_url = web_logout_url();
     app.open_url(&logout_url);
 }
 
-#[cfg(feature = "warp_lite")]
-pub fn log_out_and_open_web(_app: &mut AppContext) {}
-
 // Log out the user, clears workspace state, stops running processes, and deletes database.
-#[cfg(not(feature = "warp_lite"))]
 pub fn log_out(app: &mut AppContext) {
     send_telemetry_sync_from_app_ctx!(TelemetryEvent::LogOut, app);
 
@@ -392,6 +332,7 @@ pub fn log_out(app: &mut AppContext) {
     WorkflowManager::handle(app).update(app, |manager, _| manager.reset());
 
     // Stop and leave all shared sessions
+    #[cfg(feature = "agent_runtime")]
     SharedSessionManager::handle(app).update(app, |manager, ctx| {
         manager.stop_all_shared_sessions(ctx);
         manager.clear_joined();
@@ -419,14 +360,10 @@ pub fn log_out(app: &mut AppContext) {
     crate::platform::wasm::emit_event(crate::platform::wasm::WarpEvent::LoggedOut);
 }
 
-#[cfg(feature = "warp_lite")]
-pub fn log_out(_app: &mut AppContext) {}
-
 // Remove the cloud persisted settings from user defaults.
 // When a user signs out, we remove cloud persisted settings of their account.
 // This is so they do not experience the old settings when they log in with a different account.
 // Partial deletion of user defaults is a stopgap for Logout v0. The correct solution is:
-#[cfg(not(feature = "warp_lite"))]
 fn remove_cloud_persisted_settings(app: &mut AppContext) {
     let is_settings_sync_enabled = *CloudPreferencesSettings::as_ref(app).settings_sync_enabled;
     if is_settings_sync_enabled {

@@ -227,6 +227,6 @@ impl ConversationSelection for AgentViewConversationSelection {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "conversation_selection_tests.rs"]
 mod tests;

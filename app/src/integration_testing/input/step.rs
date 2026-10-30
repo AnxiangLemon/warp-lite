@@ -3,23 +3,30 @@ use warpui::SingletonEntity;
 use warpui::integration::TestStep;
 use warpui::windowing::WindowManager;
 
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentInputFooterEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{InputConfig, InputType};
+#[cfg(feature = "agent_runtime")]
 use crate::integration_testing::input::{inline_model_selector_is_open, input_is_empty};
 use crate::integration_testing::step::new_step_with_default_assertions;
 use crate::integration_testing::terminal::assert_context_menu_is_open;
-use crate::integration_testing::view_getters::{
-    single_input_view_for_tab, single_terminal_view, single_terminal_view_for_tab,
-};
+#[cfg(feature = "agent_runtime")]
+use crate::integration_testing::view_getters::single_terminal_view_for_tab;
+use crate::integration_testing::view_getters::{single_input_view_for_tab, single_terminal_view};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::CLIAgent;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::{
     CLIAgentInputEntrypoint, CLIAgentInputState, CLIAgentSession, CLIAgentSessionContext,
     CLIAgentSessionStatus, CLIAgentSessionsModel,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::models::InlineModelSelectorTab;
 use crate::terminal::view::TerminalAction;
 
 /// Opens the CLI-agent Rich Input for the terminal view at `tab_index`.
+#[cfg(feature = "agent_runtime")]
 pub fn open_cli_agent_rich_input(tab_index: usize) -> TestStep {
     new_step_with_default_assertions("Open CLI Agent Rich Input").with_action(
         move |app, window_id, _step_data| {
@@ -133,6 +140,7 @@ pub fn open_input_context_menu() -> TestStep {
 
 /// Toggles the inline model selector by emitting the same footer event the model
 /// chip emits when clicked, exercising the real `Input` event-handling path.
+#[cfg(feature = "agent_runtime")]
 pub fn toggle_inline_model_selector_from_chip() -> TestStep {
     new_step_with_default_assertions("Toggle inline model selector from model chip").with_action(
         |app, window_id, _| {
@@ -149,6 +157,7 @@ pub fn toggle_inline_model_selector_from_chip() -> TestStep {
 
 /// Opens the inline model selector from the model chip and asserts it opened with
 /// a cleared input buffer (so the input can be used to search models).
+#[cfg(feature = "agent_runtime")]
 pub fn open_inline_model_selector_from_chip() -> TestStep {
     toggle_inline_model_selector_from_chip()
         .add_named_assertion(

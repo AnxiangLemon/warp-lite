@@ -12,25 +12,24 @@ async-channel.workspace = true
 chrono.workspace = true
 cynic.workspace = true
 http_client.workspace = true
-futures-util.workspace = true
-futures.workspace = true
+futures = { workspace = true, optional = true }
 http.workspace = true
 instant.workspace = true
-log.workspace = true
+log = { workspace = true, optional = true }
 persistence.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 warp_core.workspace = true
 warp_graphql_schema.workspace = true
-websocket = {path = "../websocket"}
+websocket = { path = "../websocket", optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-graphql-ws-client = {workspace = true, features = ["client-cynic", "tungstenite"]}
+graphql-ws-client = { workspace = true, features = ["client-cynic", "tungstenite"], optional = true }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
-graphql-ws-client = {workspace = true, features = ["client-cynic", "ws_stream_wasm"]}
-ws_stream_wasm = "0.7"
+graphql-ws-client = { workspace = true, features = ["client-cynic", "ws_stream_wasm"], optional = true }
+ws_stream_wasm = { version = "0.7", optional = true }
 
 [dev-dependencies]
 http_client = { workspace = true, features = ["test-util"] }
@@ -40,5 +39,7 @@ anyhow.workspace = true
 cynic-codegen.workspace = true
 
 [features]
+default = ["network_transport"]
+network_transport = ["http_client/network_transport", "dep:futures", "dep:log", "dep:websocket", "dep:graphql-ws-client", "dep:ws_stream_wasm"]
 # Enables utilities for testing.
 test-util = []

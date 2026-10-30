@@ -1,36 +1,58 @@
+#[cfg(feature = "agent_runtime")]
 use warp_core::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use warp_core::send_telemetry_from_ctx;
+#[cfg(feature = "agent_runtime")]
 use warp_core::ui::appearance::Appearance;
+#[cfg(feature = "agent_runtime")]
 use warp_errors::report_error;
+#[cfg(feature = "agent_runtime")]
 use warpui::keymap::Keystroke;
+#[cfg(feature = "agent_runtime")]
 use warpui::{EntityId, SingletonEntity, ViewContext};
 
+#[cfg(feature = "agent_runtime")]
 use crate::TelemetryEvent;
-use crate::ai::agent::conversation::AIConversationId;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::BlocklistAIHistoryModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::{
     AgentViewEntryBlock, AgentViewEntryBlockEvent, AgentViewEntryBlockParams, AgentViewEntryOrigin,
     AutoTriggerBehavior, DismissalStrategy, ENTER_OR_EXIT_CONFIRMATION_WINDOW, EnterAgentViewError,
     EphemeralMessage,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::history_model::CloudConversationData;
+#[cfg(feature = "agent_runtime")]
 use crate::global_resource_handles::GlobalResourceHandlesProvider;
+#[cfg(feature = "agent_runtime")]
 use crate::persistence::ModelEvent;
+#[cfg(feature = "agent_runtime")]
 use crate::server::telemetry::TelemetryAgentViewEntryOrigin;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::TerminalView;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::message_bar::{Message, MessageItem};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::model::rich_content::RichContentType;
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::AIConversationId;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::load_ai_conversation::{
     RestoreConversationEntryBehavior, RestoredAIConversation,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::{
     AgentViewEntryMetadata, RichContentInsertionPosition, RichContentMetadata,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::view_components::DismissibleToast;
+#[cfg(feature = "agent_runtime")]
 use crate::workspace::ToastStack;
 
 pub const ENTER_AGAIN_TO_SEND_MESSAGE_ID: &str = "enter_again_to_send";
 
+#[cfg(feature = "agent_runtime")]
 impl TerminalView {
     pub fn enter_agent_view(
         &mut self,

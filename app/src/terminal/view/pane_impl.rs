@@ -1,12 +1,16 @@
 //! This module contains the implementation of `BackingView` for `TerminalView`, as well as
 //! business logic for integrating the terminal view with the pane infra (`crate::pane_group`).
+#[cfg(feature = "agent_runtime")]
 use settings::Setting as _;
+#[cfg(feature = "agent_runtime")]
 use warp_core::context_flag::ContextFlag;
 use warpui::elements::{
     ConstrainedBox, CrossAxisAlignment, Empty, Flex, MainAxisAlignment, MainAxisSize,
     ParentElement, Shrinkable,
 };
-use warpui::prelude::{ChildView, Container};
+#[cfg(feature = "agent_runtime")]
+use warpui::prelude::ChildView;
+use warpui::prelude::Container;
 use warpui::text_layout::ClipConfig;
 use warpui::ui_components::components::UiComponent;
 #[cfg(not(target_arch = "wasm32"))]
@@ -16,42 +20,58 @@ use warpui::{
     WeakModelHandle,
 };
 
+#[cfg(feature = "agent_runtime")]
+use super::Viewer;
+#[cfg(feature = "agent_runtime")]
 use super::ambient_agent::is_cloud_agent_pre_first_exchange;
+#[cfg(feature = "agent_runtime")]
 use super::shared_session::adapter::Kind as SharedSessionKind;
-use super::{Event, PaneConfiguration, TerminalAction, TerminalViewState, Viewer};
+use super::{Event, PaneConfiguration, TerminalAction, TerminalViewState};
 use crate::ai::agent::conversation::{
     AIConversation, ConversationStatus, ServerAIConversationMetadata,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::BlocklistAIHistoryModel;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::orchestration_conversation_links::parent_conversation_navigation_card;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::orchestration_topology::orchestration_aware_conversation_status;
 use crate::appearance::Appearance;
-use crate::cloud_object::ShareableObject;
+use crate::drive::sharing::ShareableObject;
 use crate::features::FeatureFlag;
 use crate::menu::{MenuItem, MenuItemFields};
 use crate::pane_group::focus_state::{PaneFocusHandle, PaneGroupFocusEvent, PaneGroupFocusState};
 use crate::pane_group::pane::view::PaneHeaderAction;
+#[cfg(feature = "agent_runtime")]
+use crate::pane_group::pane::view::header::PANE_HEADER_HEIGHT;
 use crate::pane_group::pane::view::header::components::{
     CenteredHeaderEdgeWidth, header_edge_min_width, render_pane_header_buttons,
     render_pane_header_title_text, render_three_column_header,
 };
-use crate::pane_group::pane::view::header::{PANE_HEADER_HEIGHT, render_pane_header_draggable};
+use crate::pane_group::pane::view::header::render_pane_header_draggable;
 use crate::pane_group::pane::{PaneStack, view};
 use crate::pane_group::{BackingView, SplitPaneState, TOGGLE_MAXIMIZE_PANE_BINDING_NAME};
+#[cfg(feature = "agent_runtime")]
 use crate::settings::app_installation_detection::{
     UserAppInstallDetectionSettings, UserAppInstallStatus,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
 use crate::terminal::shared_session::SharedSessionActionSource;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::manager::Manager;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::participant_avatar_view::render_participants_and_role_elements;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::render_util::shared_session_indicator_color;
 use crate::terminal::{TerminalManager, TerminalView};
+#[cfg(feature = "agent_runtime")]
 use crate::ui_components::agent_icon::terminal_view_agent_icon_variant;
 use crate::ui_components::buttons::icon_button_with_color;
 use crate::ui_components::icon_with_status::render_icon_with_status;
 use crate::ui_components::{blended_colors, icons};
 use crate::util::bindings::keybinding_name_to_display_string;
+#[cfg(feature = "agent_runtime")]
 use crate::workspace::tab_settings::TabSettings;
 #[cfg(target_arch = "wasm32")]
 use crate::workspace::{WorkspaceAction, WorkspaceRegistry};
@@ -158,43 +178,48 @@ impl TerminalView {
 
     /// Returns the shareable object for the active agent view conversation, if any.
     fn agent_view_shareable_object(&self, ctx: &ViewContext<Self>) -> Option<ShareableObject> {
-        // Only set shareable object if CloudConversations feature is enabled
-        if !FeatureFlag::CloudConversations.is_enabled() {
-            return None;
-        }
-
-        // If we're in a shared session, prioritize this to share.
-        if let Some(shared_session) = &self.shared_session {
-            return Some(ShareableObject::Session {
-                handle: ctx.handle(),
-                session_id: *shared_session.session_id(),
-                started_at: *shared_session.started_at(),
-            });
-        }
-
-        // Check if agent view is active
-        let conversation_id = self
-            .agent_view_controller
-            .as_ref(ctx)
-            .agent_view_state()
-            .active_conversation_id()?;
-
-        // Don't show share button for empty conversations
-        let conversation = BlocklistAIHistoryModel::as_ref(ctx).conversation(&conversation_id)?;
-        if conversation.is_empty() {
-            return None;
-        }
-        let exchange_count = conversation.exchange_count();
-        // If there's only one exchange, make sure it's completed (not still streaming)
-        if exchange_count == 1
-            && let Some(latest_exchange) = conversation.latest_exchange()
-            && latest_exchange.output_status.is_streaming()
+        #[cfg(feature = "agent_runtime")]
         {
-            return None;
-        }
+            // Only set shareable object if CloudConversations feature is enabled
+            if !FeatureFlag::CloudConversations.is_enabled() {
+                return None;
+            }
 
-        // Return the ShareableObject with the conversation ID
-        Some(ShareableObject::AIConversation(conversation_id))
+            // If we're in a shared session, prioritize this to share.
+            if let Some(shared_session) = &self.shared_session {
+                return Some(ShareableObject::Session {
+                    handle: ctx.handle(),
+                    session_id: *shared_session.session_id(),
+                    started_at: *shared_session.started_at(),
+                });
+            }
+
+            // Check if agent view is active
+            let conversation_id = self.agent_view_state(ctx).active_conversation_id()?;
+
+            // Don't show share button for empty conversations
+            let conversation =
+                BlocklistAIHistoryModel::as_ref(ctx).conversation(&conversation_id)?;
+            if conversation.is_empty() {
+                return None;
+            }
+            let exchange_count = conversation.exchange_count();
+            // If there's only one exchange, make sure it's completed (not still streaming)
+            if exchange_count == 1
+                && let Some(latest_exchange) = conversation.latest_exchange()
+                && latest_exchange.output_status.is_streaming()
+            {
+                return None;
+            }
+
+            // Return the ShareableObject with the conversation ID
+            Some(ShareableObject::AIConversation(conversation_id))
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = ctx;
+            None
+        }
     }
 
     /// Updates the pane header's shareable object based on agent view state.
@@ -241,6 +266,7 @@ impl TerminalView {
 
     /// Renders the back button for the pane header, or an empty element if the
     /// back button should not be shown.
+    #[cfg(feature = "agent_runtime")]
     fn maybe_render_header_back_button(&self, app: &AppContext) -> Box<dyn Element> {
         if !FeatureFlag::AgentView.is_enabled() || warpui::platform::is_mobile_device() {
             return Flex::row().finish();
@@ -256,7 +282,7 @@ impl TerminalView {
         let is_ambient_agent = self.is_ambient_agent_session(app);
         let has_parent_terminal = (is_ambient_agent && self.is_nested_cloud_mode(app))
             || (!is_ambient_agent && !is_transcript_viewer);
-        let is_fullscreen_agent_view = self.agent_view_controller.as_ref(app).is_fullscreen();
+        let is_fullscreen_agent_view = self.agent_view_state(app).is_fullscreen();
 
         if in_nav_stack || (is_fullscreen_agent_view && has_parent_terminal) {
             Flex::row()
@@ -266,6 +292,11 @@ impl TerminalView {
         } else {
             Flex::row().finish()
         }
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    fn maybe_render_header_back_button(&self, app: &AppContext) -> Box<dyn Element> {
+        let _ = app;
+        Empty::new().finish()
     }
 
     fn render_header_title(
@@ -293,6 +324,9 @@ impl TerminalView {
         };
 
         let should_render_ambient_agent_indicator = self.is_cloud_agent_session(app);
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&should_render_ambient_agent_indicator,);
+
         let theme = appearance.theme();
         let render_agent_circle = |variant| {
             render_icon_with_status(
@@ -303,6 +337,10 @@ impl TerminalView {
                 theme.background(),
             )
         };
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&render_agent_circle,);
+
+        #[cfg(feature = "agent_runtime")]
         let pane_indicator = if should_render_ambient_agent_indicator {
             // Shared/viewed ambient session: route through the shared helper so the pane header
             // renders the same brand-color circle + cloud lobe + status as the vertical tab.
@@ -344,6 +382,8 @@ impl TerminalView {
         } else {
             self.render_terminal_mode_indicator(app)
         };
+        #[cfg(not(feature = "agent_runtime"))]
+        let pane_indicator = self.render_terminal_mode_indicator(app);
 
         let is_pane_dragging = header_ctx.draggable_state.is_dragging();
         let mut center_row = Flex::row()
@@ -385,8 +425,8 @@ impl TerminalView {
         app: &AppContext,
     ) -> (Box<dyn Element>, f32) {
         let appearance = Appearance::as_ref(app);
-        let is_fullscreen_agent_view = FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(app).is_fullscreen();
+        let is_fullscreen_agent_view =
+            FeatureFlag::AgentView.is_enabled() && self.agent_view_state(app).is_fullscreen();
         let icon_color = Some(
             appearance
                 .theme()
@@ -484,24 +524,27 @@ impl TerminalView {
     }
 
     fn render_parent_conversation_header_card(&self, app: &AppContext) -> Option<Box<dyn Element>> {
-        if !(FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(app).is_fullscreen())
+        #[cfg(feature = "agent_runtime")]
         {
-            return None;
-        }
+            if !(FeatureFlag::AgentView.is_enabled() && self.agent_view_state(app).is_fullscreen())
+            {
+                return None;
+            }
 
-        let active_conversation_id = self
-            .agent_view_controller
-            .as_ref(app)
-            .agent_view_state()
-            .active_conversation_id()?;
-        let active_conversation =
-            BlocklistAIHistoryModel::as_ref(app).conversation(&active_conversation_id)?;
-        parent_conversation_navigation_card(
-            active_conversation,
-            self.mouse_states.parent_conversation_header_link.clone(),
-            app,
-        )
+            let active_conversation_id = self.agent_view_state(app).active_conversation_id()?;
+            let active_conversation =
+                BlocklistAIHistoryModel::as_ref(app).conversation(&active_conversation_id)?;
+            parent_conversation_navigation_card(
+                active_conversation,
+                self.mouse_states.parent_conversation_header_link.clone(),
+                app,
+            )
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = app;
+            None
+        }
     }
 
     fn maybe_add_parent_navigation_card(
@@ -510,14 +553,16 @@ impl TerminalView {
         parent_conversation_header_card: Option<Box<dyn Element>>,
         app: &AppContext,
     ) -> Box<dyn Element> {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&app,);
+
         // The pill bar is shown for the orchestrator and swap-target child panes.
         // Split-off panes ("Open in new pane" / "Open in new tab") render a
         // breadcrumb row instead. When no children have arrived yet,
         // `OrchestrationPillBar::pill_specs` returns `None` and the pill
         // bar's `render` short-circuits to `Empty`.
-        if FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(app).is_fullscreen()
-        {
+        #[cfg(feature = "agent_runtime")]
+        if FeatureFlag::AgentView.is_enabled() && self.agent_view_state(app).is_fullscreen() {
             // The wrapping `Flex::column` would otherwise pass an infinite
             // vertical max constraint down to its non-flex children. That
             // breaks the title's vertical centering: with infinite max.y,
@@ -573,8 +618,8 @@ impl TerminalView {
         header_ctx: &view::HeaderRenderContext,
         app: &AppContext,
     ) -> Box<dyn Element> {
-        let is_fullscreen_agent_view = FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(app).is_fullscreen();
+        let is_fullscreen_agent_view =
+            FeatureFlag::AgentView.is_enabled() && self.agent_view_state(app).is_fullscreen();
         let parent_conversation_header_card = self.render_parent_conversation_header_card(app);
 
         let left = self.maybe_render_header_back_button(app);
@@ -644,7 +689,10 @@ impl BackingView for TerminalView {
     }
 
     fn on_pane_header_overflow_menu_toggled(&mut self, is_open: bool, ctx: &mut ViewContext<Self>) {
+        #[cfg(feature = "agent_runtime")]
         self.pane_header_overflow_menu_toggled(is_open, ctx);
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (is_open, ctx);
     }
 
     fn pane_header_overflow_menu_items(
@@ -654,52 +702,65 @@ impl BackingView for TerminalView {
         let model = self.model.lock();
         let mut items = vec![];
         let source = SharedSessionActionSource::PaneHeader;
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&source,);
 
         // Shared-session related items.
         let shared_session_status = model.shared_session_status();
-        let is_ambient_agent = self.is_ambient_agent_session(ctx);
-        if shared_session_status.is_sharer_or_viewer() {
-            if !is_ambient_agent {
-                // Disable the item (rather than silently no-op) when the Manager does not yet
-                // have a session id (e.g. during ViewPending while the session is still setting up).
-                let has_session_link = Manager::as_ref(ctx).has_session_link(&self.view_id);
-                items.push(
-                    MenuItemFields::new("Copy link")
-                        .with_on_select_action(TerminalAction::CopySharedSessionLink { source })
-                        .with_disabled(!has_session_link)
-                        .into_item(),
-                );
-            }
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&shared_session_status,);
 
-            if shared_session_status.is_sharer() {
-                items.push(
-                    MenuItemFields::new("Stop sharing session")
-                        .with_on_select_action(TerminalAction::StopSharingCurrentSession { source })
-                        .into_item(),
-                );
-            }
-            if !ContextFlag::HideOpenOnDesktopButton.is_enabled()
-                && *UserAppInstallDetectionSettings::as_ref(ctx)
-                    .user_app_installation_detected
-                    .value()
-                    == UserAppInstallStatus::Detected
+        let is_ambient_agent = self.is_ambient_agent_session(ctx);
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = (&is_ambient_agent,);
+
+        #[cfg(feature = "agent_runtime")]
+        {
+            if shared_session_status.is_sharer_or_viewer() {
+                if !is_ambient_agent {
+                    // Disable the item (rather than silently no-op) when the Manager does not yet
+                    // have a session id (e.g. during ViewPending while the session is still setting up).
+                    let has_session_link = Manager::as_ref(ctx).has_session_link(&self.view_id);
+                    items.push(
+                        MenuItemFields::new("Copy link")
+                            .with_on_select_action(TerminalAction::CopySharedSessionLink { source })
+                            .with_disabled(!has_session_link)
+                            .into_item(),
+                    );
+                }
+
+                if shared_session_status.is_sharer() {
+                    items.push(
+                        MenuItemFields::new("Stop sharing session")
+                            .with_on_select_action(TerminalAction::StopSharingCurrentSession {
+                                source,
+                            })
+                            .into_item(),
+                    );
+                }
+                if !ContextFlag::HideOpenOnDesktopButton.is_enabled()
+                    && *UserAppInstallDetectionSettings::as_ref(ctx)
+                        .user_app_installation_detected
+                        .value()
+                        == UserAppInstallStatus::Detected
+                {
+                    items.push(
+                        MenuItemFields::new("Open on Desktop")
+                            .with_on_select_action(TerminalAction::OpenSharedSessionOnDesktop {
+                                source,
+                            })
+                            .into_item(),
+                    );
+                }
+            } else if FeatureFlag::CreatingSharedSessions.is_enabled()
+                && ContextFlag::CreateSharedSession.is_enabled()
             {
                 items.push(
-                    MenuItemFields::new("Open on Desktop")
-                        .with_on_select_action(TerminalAction::OpenSharedSessionOnDesktop {
-                            source,
-                        })
+                    MenuItemFields::new("Share session")
+                        .with_on_select_action(TerminalAction::OpenShareSessionModal { source })
                         .into_item(),
                 );
             }
-        } else if FeatureFlag::CreatingSharedSessions.is_enabled()
-            && ContextFlag::CreateSharedSession.is_enabled()
-        {
-            items.push(
-                MenuItemFields::new("Share session")
-                    .with_on_select_action(TerminalAction::OpenShareSessionModal { source })
-                    .into_item(),
-            );
         }
 
         // Split-pane related items.
@@ -729,8 +790,8 @@ impl BackingView for TerminalView {
             .lock()
             .shared_session_status()
             .is_sharer_or_viewer();
-        let is_fullscreen_agent_view = FeatureFlag::AgentView.is_enabled()
-            && self.agent_view_controller.as_ref(app).is_fullscreen();
+        let is_fullscreen_agent_view =
+            FeatureFlag::AgentView.is_enabled() && self.agent_view_state(app).is_fullscreen();
         is_shared
             || is_fullscreen_agent_view
             || FeatureFlag::ContextWindowUsageV2.is_enabled()
@@ -938,42 +999,50 @@ impl TerminalView {
 
     /// Render shared session header content (participant avatars and role controls).
     fn render_shared_session_header_content(&self, app: &AppContext) -> Option<Box<dyn Element>> {
-        let Some(shared_session) = &self.shared_session else {
-            return None;
-        };
-
-        let presence_manager = shared_session.presence_manager();
-        let role = presence_manager.as_ref(app).role();
-
-        // Get viewer avatars to render
-        let viewers = shared_session.pane_header_viewer_avatars(app);
-
-        // Get role change menu info based on session kind
-        let (role_change_menu, is_role_change_menu_open, mouse_state_handle) =
-            match shared_session.kind() {
-                SharedSessionKind::Viewer(viewer) => (
-                    Some(viewer.role_change_menu.clone()),
-                    viewer.is_role_change_menu_open,
-                    viewer.role_change_menu_button.clone(),
-                ),
-                SharedSessionKind::Sharer(sharer) => {
-                    (None, false, sharer.revoke_all_mouse_state_handle().clone())
-                }
+        #[cfg(feature = "agent_runtime")]
+        {
+            let Some(shared_session) = &self.shared_session else {
+                return None;
             };
 
-        // Hide role change button in cloud mode conversations
-        let hide_role_change_button = self.model.lock().is_shared_ambient_agent_session();
+            let presence_manager = shared_session.presence_manager();
+            let role = presence_manager.as_ref(app).role();
 
-        // Render participant avatars and role elements
-        Some(render_participants_and_role_elements(
-            viewers,
-            role,
-            mouse_state_handle,
-            role_change_menu,
-            is_role_change_menu_open,
-            hide_role_change_button,
-            app,
-        ))
+            // Get viewer avatars to render
+            let viewers = shared_session.pane_header_viewer_avatars(app);
+
+            // Get role change menu info based on session kind
+            let (role_change_menu, is_role_change_menu_open, mouse_state_handle) =
+                match shared_session.kind() {
+                    SharedSessionKind::Viewer(viewer) => (
+                        Some(viewer.role_change_menu.clone()),
+                        viewer.is_role_change_menu_open,
+                        viewer.role_change_menu_button.clone(),
+                    ),
+                    SharedSessionKind::Sharer(sharer) => {
+                        (None, false, sharer.revoke_all_mouse_state_handle().clone())
+                    }
+                };
+
+            // Hide role change button in cloud mode conversations
+            let hide_role_change_button = self.model.lock().is_shared_ambient_agent_session();
+
+            // Render participant avatars and role elements
+            Some(render_participants_and_role_elements(
+                viewers,
+                role,
+                mouse_state_handle,
+                role_change_menu,
+                is_role_change_menu_open,
+                hide_role_change_button,
+                app,
+            ))
+        }
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = app;
+            None
+        }
     }
 
     pub fn is_ambient_agent_session(&self, ctx: &AppContext) -> bool {
@@ -1005,6 +1074,7 @@ impl TerminalView {
         self.is_ambient_agent_session(ctx) || self.model.lock().is_cloud_agent_conversation()
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn selected_conversation_for_user_facing_chrome<'a>(
         &'a self,
         ctx: &'a AppContext,
@@ -1017,6 +1087,14 @@ impl TerminalView {
                     && (conversation.title().is_some_and(|title| !title.is_empty())
                         || FeatureFlag::AgentView.is_enabled())
             })
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    fn selected_conversation_for_user_facing_chrome<'a>(
+        &'a self,
+        ctx: &'a AppContext,
+    ) -> Option<&'a AIConversation> {
+        let _ = ctx;
+        None
     }
 
     fn selected_conversation_display_title_for_chrome(
@@ -1040,6 +1118,7 @@ impl TerminalView {
     /// both the `WaitingForSession` phase (env being provisioned, "Connecting to Host") and
     /// the post-session pre-first-exchange phase (session ready, harness not started, no
     /// exchange yet). In either case the run is committed and we want the UI to read as busy.
+    #[cfg(feature = "agent_runtime")]
     fn is_in_cloud_agent_setup_phase(&self, ctx: &AppContext) -> bool {
         if self
             .ambient_agent_view_model
@@ -1057,6 +1136,11 @@ impl TerminalView {
             ctx,
         )
     }
+    #[cfg(not(feature = "agent_runtime"))]
+    fn is_in_cloud_agent_setup_phase(&self, ctx: &AppContext) -> bool {
+        let _ = ctx;
+        false
+    }
 
     /// Selected conversation status for chrome, or [`ConversationStatus::InProgress`] while the
     /// active block is long-running (terminal-derived; not mirrored in history events) or while
@@ -1064,31 +1148,39 @@ impl TerminalView {
     /// conversations, returns the aggregated child status so tab/header badges keep reflecting
     /// active descendants after its turn finishes.
     pub fn selected_conversation_status(&self, ctx: &AppContext) -> Option<ConversationStatus> {
-        let long_running = self.is_long_running();
-        let cloud_setup = self.is_in_cloud_agent_setup_phase(ctx);
+        #[cfg(feature = "agent_runtime")]
+        {
+            let long_running = self.is_long_running();
+            let cloud_setup = self.is_in_cloud_agent_setup_phase(ctx);
 
-        let Some(conversation) = self.selected_conversation_for_user_facing_chrome(ctx) else {
-            // Ambient agent tabs can show Oz chrome without a filtered "chrome" conversation;
-            // still surface busy while a long-running shell command is active or the cloud
-            // environment is spinning up.
-            if (long_running || cloud_setup) && self.is_ambient_agent_session(ctx) {
+            let Some(conversation) = self.selected_conversation_for_user_facing_chrome(ctx) else {
+                // Ambient agent tabs can show Oz chrome without a filtered "chrome" conversation;
+                // still surface busy while a long-running shell command is active or the cloud
+                // environment is spinning up.
+                if (long_running || cloud_setup) && self.is_ambient_agent_session(ctx) {
+                    return Some(ConversationStatus::InProgress);
+                }
+                return None;
+            };
+
+            if long_running || cloud_setup {
                 return Some(ConversationStatus::InProgress);
             }
-            return None;
-        };
 
-        if long_running || cloud_setup {
-            return Some(ConversationStatus::InProgress);
+            if self.selected_conversation_is_empty(ctx) {
+                return None;
+            }
+
+            Some(orchestration_aware_conversation_status(
+                BlocklistAIHistoryModel::as_ref(ctx),
+                conversation,
+            ))
         }
-
-        if self.selected_conversation_is_empty(ctx) {
-            return None;
+        #[cfg(not(feature = "agent_runtime"))]
+        {
+            let _ = ctx;
+            None
         }
-
-        Some(orchestration_aware_conversation_status(
-            BlocklistAIHistoryModel::as_ref(ctx),
-            conversation,
-        ))
     }
 
     pub fn selected_conversation_is_empty(&self, ctx: &AppContext) -> bool {
@@ -1151,6 +1243,7 @@ impl TerminalView {
             .and_then(AIConversation::latest_user_query)
     }
 
+    #[cfg(feature = "agent_runtime")]
     fn selected_cli_agent_title_for_chrome(&self, ctx: &AppContext) -> Option<String> {
         let session = CLIAgentSessionsModel::as_ref(ctx)
             .session(self.view_id)
@@ -1164,6 +1257,11 @@ impl TerminalView {
         } else {
             session.session_context.title_like_text()
         }
+    }
+    #[cfg(not(feature = "agent_runtime"))]
+    fn selected_cli_agent_title_for_chrome(&self, ctx: &AppContext) -> Option<String> {
+        let _ = ctx;
+        None
     }
 }
 

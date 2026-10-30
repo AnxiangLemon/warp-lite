@@ -15,7 +15,6 @@ use warpui::{
 };
 
 use super::cloud_conversation_continuation::TombstoneCta;
-use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::agent_management::telemetry::{AgentManagementTelemetryEvent, ArtifactType};
 use crate::ai::ambient_agents::{
     AmbientAgentTask, AmbientAgentTaskId, AmbientConversationStatus,
@@ -27,6 +26,7 @@ use crate::appearance::Appearance;
 use crate::server::ids::SyncId;
 use crate::server::server_api::ServerApiProvider;
 use crate::settings::ai::{AISettings, AISettingsChangedEvent};
+use crate::terminal::session_types::AIConversationId;
 use crate::ui_components::blended_colors;
 use crate::util::time_format::human_readable_precise_duration;
 use crate::view_components::action_button::{ActionButton, PrimaryTheme};
@@ -267,7 +267,6 @@ impl ConversationEndedTombstoneView {
                         },
                         ctx
                     );
-                    #[cfg(not(feature = "warp_lite"))]
                     ctx.dispatch_typed_action(&WorkspaceAction::OpenNotebook {
                         id: SyncId::ServerId((*notebook_uid).into()),
                     });
@@ -648,7 +647,6 @@ impl TypedActionView for ConversationEndedTombstoneView {
                     AgentManagementTelemetryEvent::TombstoneContinueLocally,
                     ctx
                 );
-                #[cfg(not(feature = "warp_lite"))]
                 ctx.dispatch_typed_action(&WorkspaceAction::ContinueConversationLocally {
                     conversation_id: *conversation_id,
                 });

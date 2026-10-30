@@ -139,6 +139,9 @@ impl AppearanceManager {
             Settings::theme_for_theme_kind(&theme_kind, ctx)
         };
 
+        #[cfg(feature = "warp_lite")]
+        let new_theme = apply_lite_background_setting(new_theme);
+
         #[cfg(target_family = "wasm")]
         emit_theme_background_event(&new_theme);
 
@@ -308,6 +311,20 @@ fn load_default_monospace_font_family(ctx: &mut AppContext) -> anyhow::Result<Fa
 
 fn load_default_ui_font_family(ctx: &mut AppContext) -> anyhow::Result<FamilyId> {
     warpui::fonts::Cache::handle(ctx).update(ctx, |font_cache, _| {
+        #[cfg(windows)]
+        if cfg!(feature = "warp_lite") {
+            // Windows UI shaping only searches loaded families; preload CJK coverage while keeping
+            // the selected UI and terminal typefaces unchanged.
+            for family_name in ["Microsoft YaHei UI", "Microsoft YaHei", "SimSun"] {
+                if let Ok(family) = font_cache.load_system_font(family_name) {
+                    let font = font_cache.select_font(family, Default::default());
+                    if font_cache.glyph_for_char(font, '终', false).is_some() {
+                        break;
+                    }
+                }
+            }
+        }
+
         let roboto = font_cache.load_family_from_bytes(
             "Roboto",
             vec![
@@ -393,6 +410,12 @@ fn get_or_load_font_family(font_name: &str, ctx: &mut AppContext) -> Option<Fami
     })
 }
 
+#[cfg(feature = "warp_lite")]
+fn apply_lite_background_setting(mut theme: WarpTheme) -> WarpTheme {
+    crate::themes::backgrounds::apply_lite_background(&mut theme);
+    theme
+}
+
 fn build_appearance(ctx: &mut AppContext) -> Appearance {
     let default_monospace_font_family = load_default_monospace_font_family(ctx)
         .expect("unable to load default monospace font family");
@@ -420,6 +443,8 @@ fn build_appearance(ctx: &mut AppContext) -> Appearance {
 
     let theme_kind = active_theme_kind(ThemeSettings::as_ref(ctx), ctx);
     let theme = Settings::theme_for_theme_kind(&theme_kind, ctx);
+    #[cfg(feature = "warp_lite")]
+    let theme = apply_lite_background_setting(theme);
     #[cfg(target_family = "wasm")]
     emit_theme_background_event(&theme);
 

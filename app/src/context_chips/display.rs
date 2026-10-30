@@ -14,12 +14,14 @@ use warpui::{
 use super::display_chip::{DisplayChip, DisplayChipConfig, PromptDisplayChipEvent};
 use super::prompt_type::PromptType;
 use super::{ChipResult, ContextChipKind, git_line_changes_from_chips};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::agent_view::AgentViewController;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::{
     BlocklistAIContextModel, BlocklistAIHistoryEvent, BlocklistAIHistoryModel,
     BlocklistAIInputEvent, BlocklistAIInputModel,
 };
-use ai::document::{AIDocumentId, AIDocumentVersion};
+use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
 use crate::completer::SessionContext;
 use crate::context_chips::display_chip::{DisplayChipAction, PromptChipShellCommand};
 use crate::settings::InputSettings;
@@ -53,7 +55,9 @@ impl RowBuilder {
 pub struct PromptDisplay {
     prompt: ModelHandle<PromptType>,
     display_chips: Vec<ViewHandle<DisplayChip>>,
+    #[cfg(feature = "agent_runtime")]
     ai_input_model: ModelHandle<BlocklistAIInputModel>,
+    #[cfg(feature = "agent_runtime")]
     ai_context_model: ModelHandle<BlocklistAIContextModel>,
     terminal_view_id: EntityId,
     menu_positioning_provider: Arc<dyn MenuPositioningProvider>,
@@ -66,7 +70,7 @@ pub struct PromptDisplay {
 
     /// Whether this terminal is viewing a shared session.
     is_shared_session_viewer: bool,
-
+    #[cfg(feature = "agent_runtime")]
     agent_view_controller: ModelHandle<AgentViewController>,
 }
 
@@ -98,20 +102,21 @@ impl PromptDisplay {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         prompt: ModelHandle<PromptType>,
-        ai_input_model: ModelHandle<BlocklistAIInputModel>,
-        ai_context_model: ModelHandle<BlocklistAIContextModel>,
+        #[cfg(feature = "agent_runtime")] ai_input_model: ModelHandle<BlocklistAIInputModel>,
+        #[cfg(feature = "agent_runtime")] ai_context_model: ModelHandle<BlocklistAIContextModel>,
         terminal_view_id: EntityId,
         menu_positioning_provider: Arc<dyn MenuPositioningProvider>,
         session_context: Option<SessionContext>,
         current_repo_path: Option<PathBuf>,
         model_events: ModelHandle<ModelEventDispatcher>,
-        agent_view_controller: ModelHandle<AgentViewController>,
+        #[cfg(feature = "agent_runtime")] agent_view_controller: ModelHandle<AgentViewController>,
         is_shared_session_viewer: bool,
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.observe(&prompt, |me, _, ctx| me.handle_prompt_change(ctx));
 
         // Subscribe to AI input model changes to trigger re-render when input mode changes
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(&ai_input_model, |_me, _model, event, ctx| {
             match event {
                 BlocklistAIInputEvent::InputTypeChanged { .. }
@@ -123,6 +128,7 @@ impl PromptDisplay {
         });
 
         // Subscribe todo list updates to refresh the todo list chip visibility
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(
             &BlocklistAIHistoryModel::handle(ctx),
             |me, _, event, ctx| {
@@ -137,7 +143,7 @@ impl PromptDisplay {
                 }
             },
         );
-
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(&agent_view_controller, |_, _, _, ctx| {
             ctx.notify();
         });
@@ -145,13 +151,16 @@ impl PromptDisplay {
         Self {
             prompt,
             display_chips: vec![],
+            #[cfg(feature = "agent_runtime")]
             ai_input_model,
+            #[cfg(feature = "agent_runtime")]
             ai_context_model,
             terminal_view_id,
             menu_positioning_provider,
             session_context,
             current_repo_path,
             model_events,
+            #[cfg(feature = "agent_runtime")]
             agent_view_controller,
             pane_is_focused: true,
             is_shared_session_viewer,
@@ -219,7 +228,9 @@ impl PromptDisplay {
                     chip_result.clone(),
                     next_chip_kind,
                     DisplayChipConfig {
+                        #[cfg(feature = "agent_runtime")]
                         ai_input_model: self.ai_input_model.clone(),
+                        #[cfg(feature = "agent_runtime")]
                         ai_context_model: self.ai_context_model.clone(),
                         terminal_view_id: self.terminal_view_id,
                         menu_positioning_provider: self.menu_positioning_provider.clone(),
@@ -227,7 +238,9 @@ impl PromptDisplay {
                         current_repo_path: self.current_repo_path.clone(),
                         model_events: self.model_events.clone(),
                         is_shared_session_viewer,
+                        #[cfg(feature = "agent_runtime")]
                         agent_view_controller: self.agent_view_controller.clone(),
+                        #[cfg(feature = "agent_runtime")]
                         ambient_agent_view_model: None,
                     },
                 );

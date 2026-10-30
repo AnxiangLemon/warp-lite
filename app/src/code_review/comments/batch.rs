@@ -211,6 +211,6 @@ impl ReviewCommentBatch {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "batch_tests.rs"]
 mod tests;

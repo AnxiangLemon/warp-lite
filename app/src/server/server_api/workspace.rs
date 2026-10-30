@@ -1,28 +1,38 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
+#[cfg(feature = "cloud_services")]
+use anyhow::anyhow;
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use cynic::{MutationBuilder, QueryBuilder};
 #[cfg(test)]
 use mockall::{automock, predicate::*};
+#[cfg(feature = "cloud_services")]
 use warp_graphql::error::UserFacingErrorInterface;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::purchase_addon_credits::{
     PurchaseAddonCredits, PurchaseAddonCreditsInput, PurchaseAddonCreditsResult,
     PurchaseAddonCreditsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::stripe_billing_portal::{
     StripeBillingPortal, StripeBillingPortalInput, StripeBillingPortalResult,
     StripeBillingPortalVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::update_workspace_settings::{
     AddonCreditsSettingsInput, UpdateWorkspaceSettings, UpdateWorkspaceSettingsInput,
     UpdateWorkspaceSettingsResult, UpdateWorkspaceSettingsVariables,
     UsageBasedPricingSettingsInput,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_ai_overages_for_workspace::{
     GetAiOveragesForWorkspace, GetAiOveragesForWorkspaceVariables, UserResult,
 };
 
 use super::ServerApi;
+#[cfg(feature = "cloud_services")]
 use super::team::TeamClient;
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
 use crate::server::ids::ServerId;
 use crate::workspaces::user_workspaces::WorkspacesMetadataResponse;
@@ -44,22 +54,37 @@ pub enum PurchaseAddonCreditsOutcome {
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 pub trait WorkspaceClient: 'static + Send + Sync {
-    async fn generate_stripe_billing_portal_link(&self, team_uid: ServerId) -> Result<String>;
+    async fn generate_stripe_billing_portal_link(&self, team_uid: ServerId) -> Result<String> {
+        let _ = team_uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn update_usage_based_pricing_settings(
         &self,
         team_uid: ServerId,
         usage_based_pricing_enabled: bool,
         max_monthly_spend_cents: Option<u32>,
-    ) -> Result<WorkspacesMetadataResponse>;
+    ) -> Result<WorkspacesMetadataResponse> {
+        let _ = (
+            team_uid,
+            usage_based_pricing_enabled,
+            max_monthly_spend_cents,
+        );
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn refresh_ai_overages(&self) -> Result<AiOverages>;
+    async fn refresh_ai_overages(&self) -> Result<AiOverages> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn purchase_addon_credits(
         &self,
         team_uid: Option<ServerId>,
         credits: i32,
-    ) -> Result<PurchaseAddonCreditsOutcome>;
+    ) -> Result<PurchaseAddonCreditsOutcome> {
+        let _ = (team_uid, credits);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn update_addon_credits_settings(
         &self,
@@ -67,9 +92,18 @@ pub trait WorkspaceClient: 'static + Send + Sync {
         auto_reload_enabled: Option<bool>,
         max_monthly_spend_cents: Option<i32>,
         selected_auto_reload_credit_denomination: Option<i32>,
-    ) -> Result<WorkspacesMetadataResponse>;
+    ) -> Result<WorkspacesMetadataResponse> {
+        let _ = (
+            team_uid,
+            auto_reload_enabled,
+            max_monthly_spend_cents,
+            selected_auto_reload_credit_denomination,
+        );
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 }
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl WorkspaceClient for ServerApi {
@@ -238,3 +272,8 @@ impl WorkspaceClient for ServerApi {
         }
     }
 }
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl WorkspaceClient for ServerApi {}

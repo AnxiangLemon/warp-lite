@@ -401,6 +401,6 @@ fn write_upload_output_to<W: std::io::Write>(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "artifact_tests.rs"]
 mod tests;

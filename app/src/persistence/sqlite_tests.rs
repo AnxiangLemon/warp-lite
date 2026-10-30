@@ -2,8 +2,11 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+#[cfg(feature = "agent_runtime")]
 use ai::workspace::WorkspaceMetadata;
-use chrono::{Local, Utc};
+use chrono::Local;
+#[cfg(feature = "agent_runtime")]
+use chrono::Utc;
 use cloud_object_persistence::to_cloud_object_permissions;
 use diesel::connection::SimpleConnection;
 use pathfinder_geometry::rect::RectF;
@@ -13,17 +16,19 @@ use warp_graphql::scalars::time::ServerTimestamp;
 
 use super::{
     app_database_file_path, database_file_path_for_current_scope, database_file_path_for_scope,
-    decode_path, deduplicate_events, encode_path, get_all_codebase_index_metadata,
-    read_sqlite_data, save_app_state, save_codebase_index_metadata, setup_database, start_writer,
+    decode_path, deduplicate_events, encode_path, read_sqlite_data, save_app_state, setup_database,
 };
+#[cfg(feature = "agent_runtime")]
+use super::{get_all_codebase_index_metadata, save_codebase_index_metadata, start_writer};
 use crate::app_state::{
     AppState, CodePaneSnapShot, CodePaneTabSnapshot, LeafContents, LeafSnapshot, PaneNodeSnapshot,
     TabGroupSnapshot, TabSnapshot, TerminalPaneSnapshot, WindowSnapshot,
 };
+#[cfg(feature = "agent_runtime")]
 use crate::auth::UserUid;
 use crate::cloud_object::{CloudObjectPermissions, Owner};
 use crate::code::editor_management::CodeSource;
-use crate::cloud_object::{CloudNotebook, CloudNotebookModel};
+use crate::notebooks::{CloudNotebook, CloudNotebookModel};
 use crate::persistence::model::ObjectPermissions;
 use crate::persistence::{
     BlockCompleted, ModelEvent, PersistedDataScope, PersistenceScope, StartedCommandMetadata,
@@ -35,7 +40,16 @@ use crate::terminal::model::block::SerializedBlock;
 use crate::terminal::model::session::SessionId;
 use crate::themes::theme::AnsiColorIdentifier;
 use crate::workspace::tab_group::TabGroupId;
+#[cfg(feature = "agent_runtime")]
 use crate::workspaces::user_profiles::UserProfileWithUID;
+
+fn terminal_data_scope() -> PersistedDataScope {
+    if cfg!(feature = "agent_runtime") {
+        PersistedDataScope::Full
+    } else {
+        PersistedDataScope::TerminalOnly
+    }
+}
 
 #[test]
 fn app_scope_database_path_matches_app_database_path() {
@@ -130,6 +144,7 @@ fn remote_server_daemon_database_permissions_are_owner_only() {
     assert_eq!(database_path.metadata().unwrap().mode() & 0o777, 0o600);
 }
 
+#[cfg(feature = "agent_runtime")]
 fn test_codebase_metadata(path: &str) -> WorkspaceMetadata {
     WorkspaceMetadata {
         path: PathBuf::from(path),
@@ -140,6 +155,7 @@ fn test_codebase_metadata(path: &str) -> WorkspaceMetadata {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn sqlite_read_restores_app_state_and_codebase_metadata() {
     let tempdir = tempfile::tempdir().expect("tempdir should be created");
     let database_path = tempdir.path().join("warp.sqlite");
@@ -156,7 +172,7 @@ fn sqlite_read_restores_app_state_and_codebase_metadata() {
     let metadata = test_codebase_metadata("/tmp/remote-repo");
     save_codebase_index_metadata(&mut conn, metadata.clone())
         .expect("codebase index metadata should save");
-    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::Full)
+    let restored = read_sqlite_data(&mut conn, None, terminal_data_scope())
         .expect("persisted data should load");
     let restored_app_state = restored
         .app_state
@@ -166,10 +182,39 @@ fn sqlite_read_restores_app_state_and_codebase_metadata() {
     assert_eq!(restored.codebase_indices[0].path, metadata.path);
 }
 
+#[test]
+fn lite_terminal_restore_does_not_read_cloud_or_ai_tables() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let mut conn = setup_database(&tempdir.path().join("warp.sqlite")).unwrap();
+    let app_state = AppState {
+        windows: vec![test_terminal_window_snapshot(false)],
+        active_window_index: Some(0),
+        block_lists: Default::default(),
+        running_mcp_servers: Default::default(),
+    };
+    save_app_state(&mut conn, &app_state).unwrap();
+    conn.batch_execute(
+        "INSERT INTO commands (command, pwd) VALUES ('echo lite-history', 'C:\\Lite project');
+         DROP TABLE server_experiments;
+         DROP TABLE ai_queries;",
+    )
+    .unwrap();
+
+    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::TerminalOnly).unwrap();
+    assert_eq!(restored.app_state.unwrap().windows.len(), 1);
+    assert_eq!(restored.command_history.len(), 1);
+    assert!(restored.cloud_objects.is_empty());
+    assert!(restored.ai_queries.is_empty());
+    assert!(restored.multi_agent_conversations.is_empty());
+    assert!(restored.codebase_indices.is_empty());
+    assert!(read_sqlite_data(&mut conn, None, PersistedDataScope::Full).is_err());
+}
+
 /// Mirrors `init_db(&PersistenceScope::Tui)` in an isolated tempdir: the TUI
 /// database lives in a `tui/` subdirectory, runs the same migrations, and
 /// round-trips a write+read using the TUI's `PersistedDataScope`.
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn tui_database_in_tui_subdirectory_round_trips_data() {
     let tempdir = tempfile::tempdir().expect("tempdir should be created");
     let database_path = tempdir.path().join("tui").join("warp.sqlite");
@@ -240,6 +285,7 @@ fn tui_database_in_tui_subdirectory_round_trips_data() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn sqlite_writer_reuses_codebase_index_metadata_events() {
     let tempdir = tempfile::tempdir().expect("tempdir should be created");
     let database_path = tempdir.path().join("warp.sqlite");
@@ -437,7 +483,7 @@ fn test_sqlite_round_trips_vertical_tabs_panel_open() {
 
     save_app_state(&mut conn, &app_state).expect("app state should save");
 
-    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::Full)
+    let restored = read_sqlite_data(&mut conn, None, terminal_data_scope())
         .expect("app state should load")
         .app_state
         .expect("app state should be present for the full scope");
@@ -471,7 +517,7 @@ fn test_sqlite_round_trips_window_team_uid() {
 
     save_app_state(&mut conn, &app_state).expect("app state should save");
 
-    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::Full)
+    let restored = read_sqlite_data(&mut conn, None, terminal_data_scope())
         .expect("app state should load")
         .app_state
         .expect("app state should be present for the full scope");
@@ -539,7 +585,7 @@ fn test_sqlite_round_trips_custom_vertical_tabs_title() {
 
     save_app_state(&mut conn, &app_state).expect("app state should save");
 
-    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::Full)
+    let restored = read_sqlite_data(&mut conn, None, terminal_data_scope())
         .expect("app state should load")
         .app_state
         .expect("app state should be present for the full scope");
@@ -618,7 +664,7 @@ fn test_sqlite_round_trips_code_pane_with_multiple_tabs() {
 
     save_app_state(&mut conn, &app_state).expect("app state should save");
 
-    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::Full)
+    let restored = read_sqlite_data(&mut conn, None, terminal_data_scope())
         .expect("app state should load")
         .app_state
         .expect("app state should be present for the full scope");
@@ -743,7 +789,7 @@ fn test_sqlite_round_trips_tab_groups() {
 
     save_app_state(&mut conn, &app_state).expect("app state should save");
 
-    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::Full)
+    let restored = read_sqlite_data(&mut conn, None, terminal_data_scope())
         .expect("app state should load")
         .app_state
         .expect("app state should be present for the full scope");
@@ -904,7 +950,7 @@ fn test_sqlite_round_trips_pinned_state() {
 
     save_app_state(&mut conn, &app_state).expect("app state should save");
 
-    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::Full)
+    let restored = read_sqlite_data(&mut conn, None, terminal_data_scope())
         .expect("app state should load")
         .app_state
         .expect("app state should be present for the full scope");
@@ -1082,7 +1128,7 @@ fn test_sqlite_drops_too_small_bounds_on_read() {
     )
     .expect("corrupting update should succeed");
 
-    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::Full)
+    let restored = read_sqlite_data(&mut conn, None, terminal_data_scope())
         .expect("app state should load")
         .app_state
         .expect("app state should be present for the full scope");
@@ -1092,4 +1138,130 @@ fn test_sqlite_drops_too_small_bounds_on_read() {
         restored.windows[0].bounds.is_none(),
         "tiny persisted bounds must be discarded on read so users recover from a corrupt DB"
     );
+}
+
+#[cfg(not(feature = "agent_runtime"))]
+#[test]
+fn lite_writer_rejects_cloud_events_and_preserves_local_history() {
+    use crate::persistence::model::Project;
+    use crate::server::CloudServicesUnavailable;
+    use crate::suggestions::ignored_suggestions_model::SuggestionType;
+
+    let tempdir = tempfile::tempdir().unwrap();
+    let mut conn = setup_database(&tempdir.path().join("warp.sqlite")).unwrap();
+    let project = Project {
+        path: r"C:\Lite project".to_string(),
+        added_ts: Local::now().naive_local(),
+        last_opened_ts: None,
+    };
+    for event in [
+        ModelEvent::InsertCommand {
+            metadata: StartedCommandMetadata {
+                command: "echo native-history".to_string(),
+                start_ts: Some(Local::now()),
+                pwd: Some(project.path.clone()),
+                shell: Some("pwsh".to_string()),
+                username: None,
+                hostname: None,
+                session_id: Some(SessionId::from(7)),
+                git_branch: None,
+                cloud_workflow_id: None,
+                workflow_command: None,
+                is_agent_executed: false,
+            },
+        },
+        ModelEvent::UpsertProject {
+            project: project.clone(),
+        },
+        ModelEvent::AddIgnoredSuggestion {
+            suggestion: "echo ignored".to_string(),
+            suggestion_type: SuggestionType::ShellCommand,
+        },
+    ] {
+        super::handle_model_event(event, &mut conn).unwrap();
+    }
+
+    for event in [
+        ModelEvent::SaveExperiments {
+            experiments: vec![],
+        },
+        ModelEvent::ClearUserProfiles,
+        ModelEvent::DeleteAIConversation {
+            conversation_id: "unavailable".to_string(),
+        },
+        ModelEvent::DeleteMCPServerInstallations {
+            installation_uuids: vec![],
+        },
+        ModelEvent::DeleteCodebaseIndexMetadata {
+            repo_path: PathBuf::from(r"C:\cloud project"),
+        },
+        ModelEvent::SaveAIDocumentContent {
+            document_id: "unavailable".to_string(),
+            content: "must not persist".to_string(),
+            version: 1,
+            title: "disabled".to_string(),
+        },
+    ] {
+        let error = super::handle_model_event(event, &mut conn).unwrap_err();
+        assert!(error.downcast_ref::<CloudServicesUnavailable>().is_some());
+    }
+
+    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::TerminalOnly).unwrap();
+    assert_eq!(restored.command_history.len(), 1);
+    assert_eq!(restored.command_history[0].command, "echo native-history");
+    assert_eq!(
+        restored.command_history[0].pwd.as_deref(),
+        Some(project.path.as_str())
+    );
+    assert_eq!(restored.projects, vec![project.clone()]);
+    assert_eq!(
+        restored.ignored_suggestions,
+        vec![("echo ignored".to_string(), SuggestionType::ShellCommand)]
+    );
+
+    super::handle_model_event(ModelEvent::DeleteProject { path: project.path }, &mut conn).unwrap();
+    super::handle_model_event(
+        ModelEvent::RemoveIgnoredSuggestion {
+            suggestion: "echo ignored".to_string(),
+            suggestion_type: SuggestionType::ShellCommand,
+        },
+        &mut conn,
+    )
+    .unwrap();
+    let restored = read_sqlite_data(&mut conn, None, PersistedDataScope::TerminalOnly).unwrap();
+    assert!(restored.projects.is_empty());
+    assert!(restored.ignored_suggestions.is_empty());
+    assert_eq!(restored.command_history.len(), 1);
+}
+
+#[cfg(not(feature = "agent_runtime"))]
+#[test]
+fn lite_reader_rejects_non_terminal_scopes() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let mut conn = setup_database(&tempdir.path().join("warp.sqlite")).unwrap();
+    for scope in [
+        PersistedDataScope::Full,
+        PersistedDataScope::TuiFrontend,
+        PersistedDataScope::CodebaseIndicesOnly,
+    ] {
+        let error = read_sqlite_data(&mut conn, None, scope)
+            .err()
+            .expect("non-terminal reads must be unavailable");
+        let diesel::result::Error::QueryBuilderError(error) = error else {
+            panic!("expected an explicit unavailable error, got {error:?}");
+        };
+        assert!(
+            error
+                .downcast_ref::<crate::server::CloudServicesUnavailable>()
+                .is_some()
+        );
+    }
+}
+
+#[test]
+fn relative_primary_database_path_is_rejected_before_opening_or_creating_files() {
+    let error = super::init_db_at_path(&PersistenceScope::App, std::path::Path::new("warp.sqlite"))
+        .err()
+        .expect("a primary database must have an absolute path");
+    assert!(error.to_string().contains("must be absolute"));
 }

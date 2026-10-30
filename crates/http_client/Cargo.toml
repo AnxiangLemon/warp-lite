@@ -6,6 +6,8 @@ publish.workspace = true
 license.workspace = true
 
 [features]
+default = ["network_transport"]
+network_transport = []
 test-util = []
 
 [dependencies]

@@ -586,6 +586,6 @@ fn map_cli_session_status(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "local_agent_task_sync_model_tests.rs"]
 mod tests;

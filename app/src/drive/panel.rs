@@ -27,16 +27,18 @@ use crate::cloud_object::{
 };
 use crate::env_vars::CloudEnvVarCollection;
 use crate::env_vars::manager::EnvVarCollectionSource;
-use crate::cloud_object::CloudNotebook;
+use crate::notebooks::CloudNotebook;
 use crate::notebooks::manager::NotebookSource;
 use crate::server::cloud_objects::update_manager::{InitiatedBy, UpdateManager};
 use crate::server::ids::{ClientId, ServerId, SyncId};
+#[cfg(feature = "agent_runtime")]
 use crate::server::telemetry::SharingDialogSource;
 use crate::workflows::manager::WorkflowOpenSource;
 use crate::workflows::{CloudWorkflow, WorkflowViewMode};
 use crate::workspaces::user_workspaces::UserWorkspaces;
 
-pub use crate::workspace::sidebar_constants::{MAX_SIDEBAR_WIDTH_RATIO, MIN_SIDEBAR_WIDTH};
+pub const MIN_SIDEBAR_WIDTH: f32 = 250.;
+pub const MAX_SIDEBAR_WIDTH_RATIO: f32 = 0.75;
 
 pub const WARP_DRIVE_POSITION_ID: &str = "warp_drive";
 
@@ -642,6 +644,7 @@ impl DrivePanel {
         })
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn open_object_sharing_settings(
         &mut self,
         object_id: CloudObjectTypeAndId,
@@ -752,6 +755,6 @@ pub(crate) mod styles {
     pub const SEARCH_BUTTON_PADDING_RIGHT: f32 = 4.;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "panel_tests.rs"]
 mod tests;

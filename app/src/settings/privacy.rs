@@ -11,6 +11,7 @@ use warp_errors::{report_error, report_if_error};
 use warp_graphql::mutations::update_user_settings::UpdateUserSettingsInput;
 use warpui::{AppContext, Entity, ModelContext, SingletonEntity, UpdateModel};
 
+#[cfg(feature = "agent_runtime")]
 use super::cloud_preferences_syncer::CloudPreferencesSyncer;
 use crate::ai::blocklist::telemetry_banner::should_collect_ai_ugc_telemetry;
 use crate::auth::AuthStateProvider;
@@ -814,6 +815,7 @@ impl PrivacySettings {
                             .set_value(self.is_cloud_conversation_storage_enabled, ctx)
                     );
                 });
+                #[cfg(feature = "agent_runtime")]
                 CloudPreferencesSyncer::handle(ctx).update(ctx, |syncer, ctx| {
                     syncer.maybe_sync_local_prefs_to_cloud(
                         vec![

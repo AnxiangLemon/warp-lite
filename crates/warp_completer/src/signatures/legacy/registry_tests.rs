@@ -1,5 +1,7 @@
 use crate::completer::testing::FakeCompletionContext;
 use crate::completer::{CompletionContext, TopLevelCommandCaseSensitivity};
+#[cfg(not(target_family = "wasm"))]
+use crate::signatures::CommandRegistry;
 use crate::signatures::registry::SignatureResult;
 use crate::signatures::testing::{create_test_command_registry, test_signature};
 
@@ -232,4 +234,42 @@ fn test_alias_expansion_path_skips_multiple_flags_before_subcommand() {
     };
     assert_eq!(found_signature.signature.name(), "get");
     assert_eq!(found_signature.token_index, 5);
+}
+
+#[cfg(not(target_family = "wasm"))]
+#[test]
+fn embedded_git_subcommands_remain_available() {
+    #[cfg(feature = "cli_signatures")]
+    warp_core::features::mark_initialized();
+    let registry = CommandRegistry::global_instance();
+
+    let signature = registry
+        .signature_from_line("git status ", TopLevelCommandCaseSensitivity::CaseSensitive)
+        .expect("embedded git status signature should be available");
+
+    assert_eq!(signature.signature.name(), "status");
+}
+
+#[cfg(not(target_family = "wasm"))]
+#[test]
+fn embedded_powershell_options_remain_available() {
+    #[cfg(feature = "cli_signatures")]
+    warp_core::features::mark_initialized();
+    let registry = CommandRegistry::global_instance();
+
+    let signature = registry
+        .signature_from_line(
+            "Get-ChildItem ",
+            TopLevelCommandCaseSensitivity::CaseInsensitive,
+        )
+        .expect("embedded PowerShell signature should be available");
+
+    assert_eq!(signature.signature.name(), "Get-ChildItem");
+    assert!(
+        signature
+            .signature
+            .options()
+            .iter()
+            .any(|option| { option.exact_string.iter().any(|flag| flag == "-Filter") })
+    );
 }

@@ -1,14 +1,23 @@
 use ai::agent::action_result::FetchConversationResult;
 use futures::FutureExt;
 use futures::future::BoxFuture;
+#[cfg(feature = "agent_runtime")]
 use warp_errors::report_error;
-use warpui::{Entity, ModelContext, SingletonEntity};
+#[cfg(feature = "agent_runtime")]
+use warpui::SingletonEntity;
+use warpui::{Entity, ModelContext};
 
 use super::{ActionExecution, AnyActionExecution, ExecuteActionInput, PreprocessActionInput};
+#[cfg(feature = "agent_runtime")]
 use crate::BlocklistAIHistoryModel;
+use crate::ai::agent::AIAgentActionResultType;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::api::ServerConversationToken;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent::conversation::AIConversation;
-use crate::ai::agent::{AIAgentActionResultType, AIAgentActionType, conversation_yaml};
+#[cfg(feature = "agent_runtime")]
+use crate::ai::agent::{AIAgentActionType, conversation_yaml};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::history_model::CloudConversationData;
 
 pub struct FetchConversationExecutor;
@@ -23,9 +32,25 @@ impl FetchConversationExecutor {
         _input: ExecuteActionInput,
         _ctx: &mut ModelContext<Self>,
     ) -> bool {
-        true
+        cfg!(feature = "agent_runtime")
     }
 
+    #[cfg(not(feature = "agent_runtime"))]
+    pub(super) fn execute(
+        &mut self,
+        input: ExecuteActionInput,
+        ctx: &mut ModelContext<Self>,
+    ) -> AnyActionExecution {
+        let _ = (input, ctx);
+        ActionExecution::<()>::Sync(AIAgentActionResultType::FetchConversation(
+            FetchConversationResult::Error(
+                "Agent conversations are unavailable in this build".to_owned(),
+            ),
+        ))
+        .into()
+    }
+
+    #[cfg(feature = "agent_runtime")]
     pub(super) fn execute(
         &mut self,
         input: ExecuteActionInput,
@@ -66,6 +91,7 @@ impl FetchConversationExecutor {
 }
 
 /// Materializes a loaded conversation's tasks into YAML files on disk.
+#[cfg(feature = "agent_runtime")]
 fn materialize_conversation(
     conversation: Option<AIConversation>,
     server_conversation_id: &str,

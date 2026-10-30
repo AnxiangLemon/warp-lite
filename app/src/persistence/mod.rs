@@ -2,6 +2,7 @@
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "local_fs")] {
+        #[cfg(feature = "agent_runtime")]
         pub mod agent;
         mod block_list;
         mod sqlite;
@@ -54,7 +55,8 @@ use crate::cloud_object::model::generic_string_model::CloudStringObject;
 use crate::cloud_object::{
     CloudObject, CloudObjectMetadata, ObjectIdType, RevisionAndLastEditor, ServerCreationInfo,
 };
-use crate::cloud_object::{CloudFolder, CloudNotebook};
+use crate::drive::folders::CloudFolder;
+use crate::notebooks::CloudNotebook;
 use crate::server::experiments::ServerExperiment;
 use crate::server::ids::SyncId;
 use crate::suggestions::ignored_suggestions_model::SuggestionType;
@@ -80,11 +82,9 @@ pub enum PersistenceScope {
 
 /// The [`PersistenceScope`] this process's persistence was initialized with.
 ///
-/// Set once by [`initialize`]. Code that opens ad-hoc read-only connections
-/// should resolve the database path through [`current_scope`] (or
-/// `database_file_path_for_current_scope`) rather than hardcoding a scope, so
-/// it reads the same database as the writer regardless of which front-end
-/// this process is running.
+/// Set once by [`initialize`]. Ad-hoc read-only connections should use
+/// `database_file_path_for_current_scope` so they reuse the writer's resolved startup path,
+/// regardless of the front-end or subsequent environment and directory-discovery changes.
 static CURRENT_SCOPE: OnceLock<PersistenceScope> = OnceLock::new();
 
 /// Returns the scope [`initialize`] was called with, defaulting to
@@ -107,6 +107,8 @@ pub enum PersistedDataScope {
     /// The GUI app: everything, including window/tab/block session
     /// restoration and command history.
     Full,
+    /// Local terminal windows, tabs, blocks and command history.
+    TerminalOnly,
     /// The `warp-tui` front-end: command history, cloud objects, user profiles,
     /// and agent/conversation state, but no GUI session restoration or pending
     /// object actions.
@@ -118,23 +120,33 @@ pub enum PersistedDataScope {
 impl PersistedDataScope {
     /// Window/tab/pane snapshots and restored blocks.
     fn session_restoration(self) -> bool {
-        matches!(self, PersistedDataScope::Full)
+        matches!(
+            self,
+            PersistedDataScope::Full | PersistedDataScope::TerminalOnly
+        )
     }
 
     /// Shell-command history consumed by both interactive front-ends.
     fn command_history(self) -> bool {
         matches!(
             self,
-            PersistedDataScope::Full | PersistedDataScope::TuiFrontend
+            PersistedDataScope::Full
+                | PersistedDataScope::TuiFrontend
+                | PersistedDataScope::TerminalOnly
         )
     }
 
     /// User profiles used to identify cloud-object creators in both interactive frontends.
+    #[cfg(feature = "agent_runtime")]
     fn user_profiles(self) -> bool {
-        self != PersistedDataScope::CodebaseIndicesOnly
+        matches!(
+            self,
+            PersistedDataScope::Full | PersistedDataScope::TuiFrontend
+        )
     }
 
     /// Pending object actions, which only the GUI consumes.
+    #[cfg(feature = "agent_runtime")]
     fn gui_only_data(self) -> bool {
         matches!(self, PersistedDataScope::Full)
     }
@@ -280,6 +292,7 @@ impl SingletonEntity for PersistenceWriter {}
 /// of user ID->SqliteData and get the respective AppState after the user logs in.
 ///
 /// For now, to address the global scoping here, we clear all persisted data on logout.
+#[derive(Default)]
 pub struct PersistedData {
     /// Session restoration data. `None` when the launch mode's
     /// [`PersistedDataScope`] excludes it entirely (the daemon).
@@ -341,7 +354,7 @@ pub struct FinishedCommandMetadata {
     pub session_id: SessionId,
 }
 
-#[derive(Debug)]
+#[cfg_attr(feature = "agent_runtime", derive(Debug))]
 pub enum ModelEvent {
     SaveBlock(BlockCompleted),
     DeleteBlocks(Vec<u8>),
@@ -500,4 +513,70 @@ pub enum ModelEvent {
         version: i32,
         title: String,
     },
+}
+
+#[cfg(not(feature = "agent_runtime"))]
+impl std::fmt::Debug for ModelEvent {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Self::SaveBlock(..) => "SaveBlock",
+            Self::DeleteBlocks(..) => "DeleteBlocks",
+            Self::Snapshot(..) => "Snapshot",
+            Self::UpsertWorkflows(..) => "UpsertWorkflows",
+            Self::UpsertNotebooks(..) => "UpsertNotebooks",
+            Self::UpsertFolders(..) => "UpsertFolders",
+            Self::MarkObjectAsSynced { .. } => "MarkObjectAsSynced",
+            Self::IncrementRetryCount(..) => "IncrementRetryCount",
+            Self::UpsertGenericStringObject { .. } => "UpsertGenericStringObject",
+            Self::UpsertGenericStringObjects(..) => "UpsertGenericStringObjects",
+            Self::UpsertNotebook { .. } => "UpsertNotebook",
+            Self::UpsertWorkflow { .. } => "UpsertWorkflow",
+            Self::UpsertFolder { .. } => "UpsertFolder",
+            Self::UpdateObjectAfterServerCreation { .. } => "UpdateObjectAfterServerCreation",
+            Self::DeleteObjects { .. } => "DeleteObjects",
+            Self::UpsertWorkspace { .. } => "UpsertWorkspace",
+            Self::UpsertWorkspaces { .. } => "UpsertWorkspaces",
+            Self::SetCurrentWorkspace { .. } => "SetCurrentWorkspace",
+            Self::UpdateObjectMetadata { .. } => "UpdateObjectMetadata",
+            Self::InsertCommand { .. } => "InsertCommand",
+            Self::UpdateFinishedCommand { .. } => "UpdateFinishedCommand",
+            Self::UpsertUserProfiles { .. } => "UpsertUserProfiles",
+            Self::ClearUserProfiles => "ClearUserProfiles",
+            Self::RecordTimeOfNextRefresh { .. } => "RecordTimeOfNextRefresh",
+            Self::SaveExperiments { .. } => "SaveExperiments",
+            Self::PauseAndRemoveDatabase => "PauseAndRemoveDatabase",
+            #[cfg(feature = "local_fs")]
+            Self::ReconstructAndResume => "ReconstructAndResume",
+            Self::InsertObjectAction { .. } => "InsertObjectAction",
+            Self::SyncObjectActions { .. } => "SyncObjectActions",
+            Self::Terminate => "Terminate",
+            Self::UpsertAIQuery { .. } => "UpsertAIQuery",
+            Self::DeleteAIConversation { .. } => "DeleteAIConversation",
+            Self::UpdateMultiAgentConversation { .. } => "UpdateMultiAgentConversation",
+            Self::BackfillConversationSummaries { .. } => "BackfillConversationSummaries",
+            Self::DeleteMultiAgentConversations { .. } => "DeleteMultiAgentConversations",
+            Self::UpsertCurrentUserInformation { .. } => "UpsertCurrentUserInformation",
+            Self::UpsertCodebaseIndexMetadata { .. } => "UpsertCodebaseIndexMetadata",
+            Self::DeleteCodebaseIndexMetadata { .. } => "DeleteCodebaseIndexMetadata",
+            Self::UpsertProject { .. } => "UpsertProject",
+            Self::DeleteProject { .. } => "DeleteProject",
+            Self::UpsertMCPServerEnvironmentVariables { .. } => {
+                "UpsertMCPServerEnvironmentVariables"
+            }
+            Self::UpsertProjectRules { .. } => "UpsertProjectRules",
+            Self::DeleteProjectRules { .. } => "DeleteProjectRules",
+            Self::AddIgnoredSuggestion { .. } => "AddIgnoredSuggestion",
+            Self::RemoveIgnoredSuggestion { .. } => "RemoveIgnoredSuggestion",
+            Self::UpsertMCPServerInstallation { .. } => "UpsertMCPServerInstallation",
+            Self::DeleteMCPServerInstallations { .. } => "DeleteMCPServerInstallations",
+            Self::DeleteMCPServerInstallationsByTemplateUuid { .. } => {
+                "DeleteMCPServerInstallationsByTemplateUuid"
+            }
+            Self::UpdateMCPInstallationRunning { .. } => "UpdateMCPInstallationRunning",
+            Self::UpsertWorkspaceLanguageServer { .. } => "UpsertWorkspaceLanguageServer",
+            Self::UpdateBlockAgentViewVisibility { .. } => "UpdateBlockAgentViewVisibility",
+            Self::SaveAIDocumentContent { .. } => "SaveAIDocumentContent",
+        };
+        formatter.write_str(name)
+    }
 }

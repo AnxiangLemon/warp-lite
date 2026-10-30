@@ -28,7 +28,7 @@ pub struct HarnessModelSelection {
     pub reasoning_level: Option<String>,
 }
 
-define_settings_group!(CloudAgentSettings, settings: [
+define_settings_group!(CloudAgentSettings, schema_cfg: feature = "agent_runtime", settings: [
     last_selected_environment_id: LastSelectedEnvironmentId {
         type: Option<SyncId>,
         default: None,

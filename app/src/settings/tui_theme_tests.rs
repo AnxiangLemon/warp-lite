@@ -1,5 +1,8 @@
+#[cfg(feature = "agent_runtime")]
 use settings::schema::SettingSchemaEntry;
-use settings::{Setting, SettingSurfaces, SettingsMode, SyncToCloud};
+use settings::{Setting, SyncToCloud};
+#[cfg(feature = "agent_runtime")]
+use settings::{SettingSurfaces, SettingsMode};
 use settings_value::SettingsValue;
 #[cfg(feature = "tui")]
 use warpui_core::runtime::BackgroundLuminance;
@@ -59,6 +62,7 @@ fn theme_setting_is_tui_local_and_defaults_to_automatic_detection() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn theme_schema_entry_is_tui_only() {
     let entry = inventory::iter::<SettingSchemaEntry>
         .into_iter()

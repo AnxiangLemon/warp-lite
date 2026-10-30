@@ -2,30 +2,39 @@ use std::borrow::Cow;
 
 use warpui::{App, AssetProvider, View, ViewHandle, WindowId};
 
+#[cfg(feature = "agent_runtime")]
 pub mod agent_mode;
+#[cfg(feature = "agent_runtime")]
 pub mod ai_document;
 pub mod assertions;
 pub mod block;
 pub mod block_filtering;
 pub mod clipboard;
+#[cfg(feature = "agent_runtime")]
 pub mod cloud_object;
+#[cfg(feature = "agent_runtime")]
 pub mod code_review;
+#[cfg(feature = "agent_runtime")]
 pub mod codebase_context;
 pub mod command_palette;
 pub mod command_search;
 pub mod context_chips;
 pub mod find;
+#[cfg(feature = "agent_runtime")]
 pub mod goto_line;
 pub mod input;
 pub mod keybindings;
 pub mod launch_configs;
 pub mod navigation_palette;
+#[cfg(feature = "agent_runtime")]
 pub mod notebook;
 pub mod pane_group;
 pub mod persistence;
 #[cfg(target_os = "macos")]
 pub mod preview_config_migration;
+#[cfg(feature = "agent_runtime")]
 pub mod remote_server;
+#[cfg(feature = "agent_runtime")]
 pub mod rules;
 pub mod secret_redaction;
 pub mod settings;
@@ -36,8 +45,10 @@ pub mod terminal;
 pub mod themes;
 pub mod type_getters;
 pub mod view_getters;
+#[cfg(feature = "agent_runtime")]
 pub mod warp_drive;
 pub mod window;
+#[cfg(feature = "agent_runtime")]
 pub mod workflow;
 pub mod workspace;
 

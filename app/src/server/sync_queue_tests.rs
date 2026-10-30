@@ -22,20 +22,20 @@ use crate::cloud_object::{
     GenericStringObjectFormat, JsonObjectType, ObjectIdType, ObjectType, Owner, Revision,
     RevisionAndLastEditor, ServerCreationInfo, UpdateCloudObjectResult,
 };
-use crate::cloud_object::CloudObjectTypeAndId;
+use crate::drive::CloudObjectTypeAndId;
 use crate::notebooks::{CloudNotebookModel, NotebookId};
 use crate::server::cloud_objects::update_manager::InitiatedBy;
 use crate::server::ids::{ClientId, HashableId, ServerId, ServerIdAndType, SyncId};
 use crate::server::server_api::ServerApiProvider;
 use crate::server::server_api::auth::UserAuthenticationError;
 use crate::server::sync_queue::{
-    CreationFailureReason, GenericStringObjectToCreate, QueueItemId, SerializedModel,
+    CreationFailureReason, GenericStringObjectToCreate, QueueItem, QueueItemId, SerializedModel,
     SyncQueueEvent,
 };
 use crate::system::SystemStats;
 use crate::workflows::CloudWorkflowModel;
 use crate::workflows::workflow::{Argument, ArgumentType, Workflow};
-use crate::{NetworkStatus, QueueItem, SyncQueue};
+use crate::{NetworkStatus, SyncQueue};
 
 #[derive(Default)]
 struct Events(Vec<SyncQueueEvent>);

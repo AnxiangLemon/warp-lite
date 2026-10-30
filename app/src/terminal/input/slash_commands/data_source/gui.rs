@@ -11,8 +11,6 @@ use super::{
     InlineItem, SlashCommandDataSource, SlashCommandDataSourceState, UpdatedActiveCommands,
 };
 #[cfg(not(target_family = "wasm"))]
-use crate::ai::agent::conversation::AIConversationId;
-#[cfg(not(target_family = "wasm"))]
 use crate::ai::agent_conversations_model::AgentConversationsModel;
 #[cfg(not(target_family = "wasm"))]
 use crate::ai::blocklist::BlocklistAIHistoryModel;
@@ -29,6 +27,8 @@ use crate::settings::{
 };
 use crate::terminal::input::slash_commands::AcceptSlashCommandOrSavedPrompt;
 use crate::terminal::model::session::active_session::ActiveSession;
+#[cfg(not(target_family = "wasm"))]
+use crate::terminal::session_types::AIConversationId;
 use crate::terminal::view::ambient_agent::AmbientAgentViewModel;
 
 pub struct GuiDataSourceArgs {

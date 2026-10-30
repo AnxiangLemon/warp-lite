@@ -5,8 +5,8 @@ use super::{
     CLIAgentInputEntrypoint, CLIAgentInputState, CLIAgentSession, CLIAgentSessionContext,
     CLIAgentSessionStatus, CLIAgentSessionsModel,
 };
-use crate::ai::blocklist::{InputConfig, InputType};
 use crate::terminal::CLIAgent;
+use crate::terminal::session_types::{InputConfig, InputType};
 
 #[test]
 fn parse_stop_notification() {

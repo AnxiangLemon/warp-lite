@@ -1329,6 +1329,6 @@ mod styles {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "zero_state_block_tests.rs"]
 mod tests;

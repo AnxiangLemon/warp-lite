@@ -1,5 +1,4 @@
-// On Windows, keep release builds from opening an extra console window.
-#![cfg_attr(feature = "release_bundle", windows_subsystem = "windows")]
+#![cfg_attr(windows, windows_subsystem = "windows")]
 
 use anyhow::Result;
 use warp_core::AppId;
@@ -13,7 +12,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let mut state = ChannelState::new(
+    let state = ChannelState::new(
         Channel::Oss,
         ChannelConfig {
             app_id: AppId::new("dev", "warp", "WarpLite"),
@@ -26,9 +25,6 @@ fn main() -> Result<()> {
             mcp_static_config: None,
         },
     );
-    if cfg!(debug_assertions) {
-        state = state.with_additional_features(warp_core::features::DEBUG_FLAGS);
-    }
     ChannelState::set(state);
 
     warp::run()

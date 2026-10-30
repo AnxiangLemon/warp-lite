@@ -8,6 +8,7 @@ use warp_util::local_or_remote_path::LocalOrRemotePath;
 use warpui_core::{AppContext, Entity, ModelContext, SingletonEntity};
 
 use super::GlobalRules;
+pub use super::types::ProjectRulePath;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "local_fs")] {
@@ -71,12 +72,6 @@ pub struct ProjectRulesResult {
     pub root_path: LocalOrRemotePath,
     pub active_rules: Vec<ProjectRule>,
     pub additional_rule_paths: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ProjectRulePath {
-    pub path: PathBuf,
-    pub project_root: PathBuf,
 }
 
 struct FindRulesResult {

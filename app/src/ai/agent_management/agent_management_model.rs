@@ -613,6 +613,6 @@ fn active_focused_terminal_id(app: &AppContext) -> Option<EntityId> {
     workspace.active_terminal_id(app)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "agent_management_model_tests.rs"]
 mod tests;

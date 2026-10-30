@@ -8,7 +8,9 @@ license.workspace = true
 description = "Language Server Protocol implementation for Warp"
 
 [features]
+default = ["managed_downloads"]
 local_fs = []
+managed_downloads = ["node_runtime/managed_downloads"]
 
 [build-dependencies]
 anyhow = { workspace = true }

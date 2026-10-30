@@ -5,10 +5,15 @@ use std::fmt::Debug;
 use std::ops::Range;
 use std::sync::Arc;
 
+#[cfg(feature = "html")]
+pub mod html_parser;
+#[cfg(not(feature = "html"))]
+#[path = "html_disabled.rs"]
 pub mod html_parser;
 pub mod markdown_parser;
 pub mod weight;
 pub use html_parser::parse_html;
+pub const WARP_EMBED_ATTRIBUTE_NAME: &str = "data-warp-embedded-item";
 use itertools::Itertools;
 pub use markdown_parser::{
     parse_image_prefix, parse_image_run_line, parse_inline_markdown, parse_markdown,

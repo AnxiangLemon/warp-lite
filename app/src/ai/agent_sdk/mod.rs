@@ -1911,6 +1911,6 @@ fn command_to_telemetry_event(command: &CliCommand) -> CliTelemetryEvent {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "mod_tests.rs"]
 mod tests;

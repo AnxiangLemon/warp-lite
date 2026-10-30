@@ -24,19 +24,21 @@ use std::sync::Arc;
 
 use ai::document::DEFAULT_PLANNING_DOCUMENT_TITLE;
 use chrono::Local;
+#[cfg(feature = "agent_runtime")]
+pub use execute::ShellCommandExecutorEvent;
 pub use execute::{
     AskUserQuestionExecutor, EditAcceptAndContinueClickedEvent, EditAcceptClickedEvent,
     EditResolvedEvent, EditStats, NewConversationDecision, PromptSuggestionExecutor,
     ReadFileContextResult, RequestFileEditsExecutor, RequestFileEditsFormatKind,
     RequestFileEditsTelemetryEvent, RunAgentsExecutor, RunAgentsExecutorEvent,
-    RunAgentsSpawningSnapshot, ShellCommandExecutor, ShellCommandExecutorEvent, StartAgentExecutor,
-    StartAgentExecutorEvent, StartAgentOutcome, StartAgentRequest, StartAgentRequestId,
-    read_local_file_context,
+    RunAgentsSpawningSnapshot, ShellCommandExecutor, StartAgentExecutor, StartAgentExecutorEvent,
+    StartAgentOutcome, StartAgentRequest, StartAgentRequestId, read_local_file_context,
 };
 pub(crate) use execute::{
     FileReadResult, MalformedFinalLineProxyEvent, apply_edits, coerce_integer_args,
 };
 #[cfg(test)]
+#[cfg(feature = "agent_runtime")]
 pub(crate) use execute::{compose_run_agents_child_prompt, run_agents_to_start_agent_mode};
 use futures::future::{BoxFuture, join_all};
 use itertools::Itertools;
@@ -62,7 +64,6 @@ use crate::ai::agent::{
 };
 use crate::ai::blocklist::action_model::execute::suggest_new_conversation::SuggestNewConversationExecutor;
 use crate::ai::blocklist::telemetry::send_run_agents_completed_telemetry;
-#[cfg(not(feature = "warp_lite"))]
 use crate::ai::document::ai_document_model::AIDocumentModel;
 use crate::ai::get_relevant_files::controller::GetRelevantFilesController;
 use crate::terminal::TerminalModel;
@@ -1048,7 +1049,6 @@ impl BlocklistAIActionModel {
         // For shared session viewers, take in any document action results
         // and apply the associated actions to the local document version
         // (or create a new document if the given doc does not exist).
-        #[cfg(not(feature = "warp_lite"))]
         self.maybe_sync_view_only_documents_with_local_model(
             conversation_id,
             &mut action_result,
@@ -1413,7 +1413,6 @@ impl BlocklistAIActionModel {
     /// `DocumentContext` versions match. For CreateDocuments, restore missing documents
     /// (using titles from the original action); for EditDocuments, apply edits to local
     /// documents and align versions, so headers and "View" buttons stay accurate.
-    #[cfg(not(feature = "warp_lite"))]
     fn maybe_sync_view_only_documents_with_local_model(
         &self,
         conversation_id: AIConversationId,
@@ -1532,6 +1531,6 @@ impl Entity for BlocklistAIActionModel {
     type Event = BlocklistAIActionEvent;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "action_model_tests.rs"]
 mod tests;

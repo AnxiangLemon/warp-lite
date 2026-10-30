@@ -1331,6 +1331,6 @@ pub fn render_validation_error(
     .finish()
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "orchestration_controls_tests.rs"]
 mod tests;

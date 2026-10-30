@@ -242,6 +242,6 @@ pub(crate) fn rehydrate_codex_transcript_from_reader(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "codex_transcript_tests.rs"]
 mod tests;

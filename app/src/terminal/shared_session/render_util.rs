@@ -1,15 +1,23 @@
 use pathfinder_color::ColorU;
+#[cfg(feature = "agent_runtime")]
 use pathfinder_geometry::vector::vec2f;
+use warpui::elements::{ChildAnchor, ParentAnchor};
+#[cfg(feature = "agent_runtime")]
 use warpui::elements::{
-    ChildAnchor, CornerRadius, Fill, Hoverable, MouseStateHandle, OffsetPositioning, ParentAnchor,
-    ParentElement, ParentOffsetBounds, Radius, Stack,
+    CornerRadius, Fill, Hoverable, MouseStateHandle, OffsetPositioning, ParentElement,
+    ParentOffsetBounds, Radius, Stack,
 };
+#[cfg(feature = "agent_runtime")]
 use warpui::fonts::Weight;
+#[cfg(feature = "agent_runtime")]
 use warpui::ui_components::components::{UiComponent, UiComponentStyles};
+#[cfg(feature = "agent_runtime")]
 use warpui::{AppContext, Element, SingletonEntity};
 
+#[cfg(feature = "agent_runtime")]
 use super::presence_manager::{MUTED_AVATAR_BORDER_COLOR, MUTED_PARTICIPANT_COLOR, Participant};
 use crate::appearance::Appearance;
+#[cfg(feature = "agent_runtime")]
 use crate::ui_components::avatar::{Avatar, AvatarContent};
 
 pub fn shared_session_indicator_color(appearance: &Appearance) -> ColorU {
@@ -20,10 +28,12 @@ pub fn shared_session_indicator_color(appearance: &Appearance) -> ColorU {
 pub const SHARED_SESSION_AVATAR_DIAMETER: f32 = 20.;
 pub const SHARED_SESSION_AVATAR_EXECUTOR_DIAMETER: f32 = 16.;
 
+#[cfg(feature = "agent_runtime")]
 const SHARED_SESSION_DIAMETER_BORDER_WIDTH: f32 = 1.;
 
 /// Shared helper function for rendering avatar in pane header and selected blocks.
 /// Actions on hover and click are handled separately.
+#[cfg(feature = "agent_runtime")]
 pub fn non_hoverable_participant_avatar(
     display_name: String,
     image_url: Option<String>,
@@ -76,7 +86,7 @@ pub fn non_hoverable_participant_avatar(
     .finish()
 }
 
-/// Struct containing just fields from the [`Participant`] needed for rendering the avatar,
+/// Struct containing just fields from a shared-session participant needed for rendering the avatar,
 /// to avoid unnecessary cloning of the other fields in the participant.
 #[derive(Clone)]
 pub struct ParticipantAvatarParams {
@@ -88,6 +98,7 @@ pub struct ParticipantAvatarParams {
     pub tooltip_child_anchor: ChildAnchor,
 }
 
+#[cfg(feature = "agent_runtime")]
 impl ParticipantAvatarParams {
     pub fn new(participant: &Participant, is_self_reconnecting: bool) -> Self {
         Self {
@@ -102,6 +113,7 @@ impl ParticipantAvatarParams {
 }
 
 /// Helper function to render participant avatar and handle hover in selected blocks.
+#[cfg(feature = "agent_runtime")]
 pub fn participant_avatar_for_selected_block(
     params: ParticipantAvatarParams,
     mouse_state_handle: MouseStateHandle,

@@ -23,7 +23,11 @@ pub struct AboutPageView {
 impl AboutPageView {
     pub fn new(_ctx: &mut ViewContext<AboutPageView>) -> Self {
         AboutPageView {
-            page: PageType::new_monolith(AboutPageWidget::default(), None, false),
+            page: PageType::new_monolith(
+                AboutPageWidget::default(),
+                cfg!(feature = "warp_lite").then_some("关于"),
+                false,
+            ),
         }
     }
 }
@@ -69,7 +73,11 @@ impl SettingsWidget for AboutPageWidget {
             "bundled/svg/warp-logo-with-dark-title.svg"
         };
 
-        let version = ChannelState::app_version().unwrap_or("v#.##.###");
+        let version = if cfg!(feature = "warp_lite") {
+            concat!("Warp Lite ", env!("CARGO_PKG_VERSION"))
+        } else {
+            ChannelState::app_version().unwrap_or("v#.##.###")
+        };
 
         let version_text = ui_builder
             .span(version.to_string())
@@ -115,7 +123,7 @@ impl SettingsWidget for AboutPageWidget {
                 .with_child(version_row.finish())
                 .with_child(
                     ui_builder
-                        .span("Copyright 2026 Warp")
+                        .span(super::lite_i18n::text("Copyright 2026 Warp"))
                         .build()
                         .with_margin_top(16.)
                         .finish(),

@@ -20,6 +20,7 @@ use remote_server::ssh::ssh_args;
 use remote_server::transport::{Connection, ControlPath, Error, InstallOutcome, RemoteTransport};
 use warpui::r#async::executor;
 
+#[cfg(feature = "cloud_services")]
 #[path = "ssh_transport/installation.rs"]
 pub(crate) mod installation;
 
@@ -218,8 +219,22 @@ impl RemoteTransport for SshTransport {
     }
 
     fn install_binary(&self) -> Pin<Box<dyn Future<Output = InstallOutcome> + Send>> {
-        let socket_path = self.socket_path.clone();
-        Box::pin(async move { installation::install_binary(&socket_path).await })
+        #[cfg(feature = "cloud_services")]
+        {
+            let socket_path = self.socket_path.clone();
+            Box::pin(async move { installation::install_binary(&socket_path).await })
+        }
+        #[cfg(not(feature = "cloud_services"))]
+        {
+            Box::pin(async {
+                InstallOutcome {
+                    source: None,
+                    result: Err(Error::Other(anyhow::anyhow!(
+                        "Remote server installation is unavailable in this build"
+                    ))),
+                }
+            })
+        }
     }
 
     fn connect(

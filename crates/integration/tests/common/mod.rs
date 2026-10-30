@@ -18,6 +18,13 @@ pub fn run_integration_test(name: &str) -> Result<(), String> {
             let k = k
                 .to_str()
                 .expect("environment variable keys should contain valid unicode");
+            #[cfg(target_os = "windows")]
+            if ["PATH", "SystemRoot", "TEMP", "TMP", "COMSPEC", "PATHEXT"]
+                .iter()
+                .any(|name| k.eq_ignore_ascii_case(name))
+            {
+                return true;
+            }
             // Propagate the PATH to the integration test
             // process, otherwise the shell it spawns might not
             // be able to find the binaries it needs to execute.

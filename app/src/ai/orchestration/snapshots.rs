@@ -622,6 +622,6 @@ pub fn build_runner_snapshot(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "snapshots_tests.rs"]
 mod tests;

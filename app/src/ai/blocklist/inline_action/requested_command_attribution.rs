@@ -7,7 +7,7 @@ use warpui::{AppContext, SingletonEntity};
 use crate::ai::agent::AIAgentCitation;
 use crate::cloud_object::model::persistence::CloudModel;
 use crate::env_vars::{EnvVarCollection, EnvVarCollectionExt, EnvVarExt, EnvVarValue};
-use crate::cloud_object::CloudNotebookModel;
+use crate::notebooks::CloudNotebookModel;
 use crate::terminal::shell::ShellType;
 use crate::workflows::command_parser::command_matches_workflow;
 
@@ -105,6 +105,6 @@ fn is_command_copied_from_env_var_collection(
     false
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "requested_command_attribution_tests.rs"]
 mod tests;

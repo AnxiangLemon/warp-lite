@@ -109,6 +109,6 @@ pub fn compute_task_depths(tasks: &HashMap<String, api::Task>) -> HashMap<&str, 
     depths
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "linearization_tests.rs"]
 mod tests;

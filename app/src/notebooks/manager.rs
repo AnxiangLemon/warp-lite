@@ -1,29 +1,34 @@
 use std::collections::HashMap;
+#[cfg(feature = "agent_runtime")]
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
 use futures_util::stream::AbortHandle;
 use markdown_parser::markdown_parser::parse_markdown_to_raw_text;
 use warp_errors::report_error;
+#[cfg(feature = "agent_runtime")]
+use warpui::EntityId;
 use warpui::r#async::SpawnedFutureHandle;
-use warpui::{
-    Entity, EntityId, ModelContext, ModelHandle, SingletonEntity, WeakViewHandle, WindowId,
-};
+use warpui::{Entity, ModelContext, ModelHandle, SingletonEntity, WeakViewHandle, WindowId};
 
 use super::CloudNotebook;
 use super::notebook::NotebookView;
 use crate::cloud_object::Owner;
 use crate::cloud_object::model::persistence::{CloudModel, CloudModelEvent};
+#[cfg(feature = "agent_runtime")]
 use crate::drive::OpenWarpDriveObjectSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::{NotebookPane, PaneContent};
+use crate::safe_debug;
+#[cfg(feature = "agent_runtime")]
+use crate::safe_warn;
 use crate::server::cloud_objects::update_manager::{
     ObjectOperation, OperationSuccessType, UpdateManager, UpdateManagerEvent,
 };
 use crate::server::ids::SyncId;
 use crate::workspace::PaneViewLocator;
-use crate::{safe_debug, safe_warn};
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "manager_tests.rs"]
 mod tests;
 
@@ -179,6 +184,7 @@ impl NotebookManager {
         }
     }
 
+    #[cfg(feature = "agent_runtime")]
     /// Unconditionally create a new notebook pane.
     pub fn create_pane(
         &mut self,
@@ -213,6 +219,7 @@ impl NotebookManager {
         NotebookPane::new(view, ctx)
     }
 
+    #[cfg(feature = "agent_runtime")]
     /// Register an open notebook pane once it's bound to a pane group.
     pub fn register_pane(
         &mut self,
@@ -246,6 +253,7 @@ impl NotebookManager {
     }
 
     // De-register an open notebook pane when it's removed from a pane group.
+    #[cfg(feature = "agent_runtime")]
     pub fn deregister_pane(&mut self, pane: &NotebookPane, ctx: &mut ModelContext<Self>) {
         let Some(notebook_id) = pane.notebook_view(ctx).as_ref(ctx).notebook_id(ctx) else {
             log::warn!("Notebook pane has no notebook ID");

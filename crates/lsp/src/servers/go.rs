@@ -57,6 +57,10 @@ impl LanguageServerCandidate for GoPlsCandidate {
         _metadata: LanguageServerMetadata,
         executor: &CommandBuilder,
     ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            cfg!(feature = "managed_downloads"),
+            "Managed language-server installation is disabled in this build"
+        );
         let output = executor
             .command("go")
             .args(["install", "golang.org/x/tools/gopls@latest"])

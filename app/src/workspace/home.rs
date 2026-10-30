@@ -6,7 +6,6 @@
 use warpui::ViewContext;
 
 use super::view::Workspace;
-#[cfg(not(feature = "warp_lite"))]
 use crate::pane_group::{AnyPaneContent, FilePane};
 
 const WARP_HOME_TITLE: &str = "Welcome to Warp on Web";
@@ -20,7 +19,6 @@ Use Warp on Web to:
 Warp on Web can also be used by your teammates and peers who don't have Warp downloaded yet to view your shared sessions, notebooks, and workflows."#;
 
 /// Create a static "home page" pane.
-#[cfg(not(feature = "warp_lite"))]
 pub fn create_home_pane(ctx: &mut ViewContext<Workspace>) -> Box<dyn AnyPaneContent> {
     let pane = FilePane::new(
         None,

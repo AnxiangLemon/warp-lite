@@ -1,3 +1,6 @@
 mod view;
 
-pub use view::{AutoHandoffSleepModal, AutoHandoffSleepModalEvent, init};
+#[cfg(feature = "agent_runtime")]
+pub use view::init;
+#[cfg(feature = "agent_runtime")]
+pub use view::{AutoHandoffSleepModal, AutoHandoffSleepModalEvent};

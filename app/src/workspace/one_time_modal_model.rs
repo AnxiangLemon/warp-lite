@@ -18,6 +18,7 @@ use crate::auth::auth_manager::AuthManagerEvent;
 use crate::auth::{AuthManager, AuthStateProvider};
 use crate::channel::{Channel, ChannelState};
 use crate::root_view::has_completed_local_onboarding;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::cloud_preferences_syncer::{
     CloudPreferencesSyncer, CloudPreferencesSyncerEvent,
 };
@@ -111,6 +112,7 @@ impl OneTimeModalModel {
             if is_existing_user {
                 // Settings modals settings are synced to the cloud, not respecting the user's sync setting, so they
                 // must all await initial load to be triggered, else we risk reading a stale triggered value.
+                #[cfg(feature = "agent_runtime")]
                 ctx.subscribe_to_model(
                     &CloudPreferencesSyncer::handle(ctx),
                     move |me, _, event, ctx| {

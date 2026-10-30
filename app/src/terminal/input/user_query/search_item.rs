@@ -11,7 +11,6 @@ use warpui::scene::{CornerRadius, Radius};
 use warpui::text_layout::ClipConfig;
 use warpui::{AppContext, Element, SingletonEntity};
 
-use crate::ai::agent::AIAgentExchangeId;
 use crate::appearance::Appearance;
 use crate::search::{ItemHighlightState, SearchItem};
 use crate::terminal::input::inline_menu::styles::{
@@ -19,6 +18,7 @@ use crate::terminal::input::inline_menu::styles::{
     item_background, menu_background_color, primary_text_color,
 };
 use crate::terminal::input::user_query::data_source::SelectUserQuery;
+use crate::terminal::session_types::AIAgentExchangeId;
 
 const ICON_PADDING: f32 = 4.;
 

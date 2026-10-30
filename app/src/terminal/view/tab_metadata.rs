@@ -34,6 +34,9 @@ impl TerminalView {
     }
 
     pub fn current_git_branch(&self, ctx: &AppContext) -> Option<String> {
+        if cfg!(feature = "warp_lite") {
+            return None;
+        }
         self.prompt_chip_value(&ContextChipKind::ShellGitBranch, ctx)
             .or_else(|| {
                 self.git_status_metadata(ctx)
@@ -70,6 +73,9 @@ impl TerminalView {
     }
 
     pub fn current_pull_request_url(&self, ctx: &AppContext) -> Option<String> {
+        if cfg!(feature = "warp_lite") {
+            return None;
+        }
         self.current_prompt
             .as_ref(ctx)
             .latest_chip_value(&ContextChipKind::GithubPullRequest, ctx)
@@ -78,6 +84,9 @@ impl TerminalView {
     }
 
     pub fn current_diff_line_changes(&self, ctx: &AppContext) -> Option<GitLineChanges> {
+        if cfg!(feature = "warp_lite") {
+            return None;
+        }
         // Prefer the externally-updated GitRepoStatusModel (local filesystem
         // watcher or remote daemon push receiver) over parsing the raw shell
         // chip output. This matches the preference order used by the prompt

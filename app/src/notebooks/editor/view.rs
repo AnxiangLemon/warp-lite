@@ -77,7 +77,7 @@ use crate::util::tooltips::{
 use crate::view_components::DismissibleToast;
 use crate::workspace::WorkspaceAction;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "view_tests.rs"]
 mod tests;
 

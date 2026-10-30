@@ -1,3 +1,5 @@
+#[cfg(feature = "warp_lite")]
+pub mod backgrounds;
 pub mod default_themes;
 pub mod theme;
 pub mod theme_chooser;

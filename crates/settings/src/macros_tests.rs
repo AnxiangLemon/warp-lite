@@ -1129,3 +1129,71 @@ fn test_manager_read_local_setting_value_respects_hierarchy_with_settings_file()
         });
     });
 }
+
+mod schema_disabled {
+    use crate::{SupportedPlatforms, SyncToCloud};
+
+    define_settings_group!(SchemaDisabledSettings, schema_cfg: any(), settings: [
+        local_value: SchemaDisabledLocalValue {
+            type: bool,
+            default: false,
+            supported_platforms: SupportedPlatforms::ALL,
+            sync_to_cloud: SyncToCloud::Never,
+            surface: crate::SettingSurfaces::GUI,
+            private: false,
+            toml_path: "schema_gate.disabled",
+            max_table_depth: 1,
+        },
+    ]);
+}
+
+mod schema_enabled {
+    use crate::{SupportedPlatforms, SyncToCloud};
+
+    define_settings_group!(SchemaEnabledSettings, schema_cfg: all(), settings: [
+        local_value: SchemaEnabledLocalValue {
+            type: bool,
+            default: false,
+            supported_platforms: SupportedPlatforms::ALL,
+            sync_to_cloud: SyncToCloud::Never,
+            surface: crate::SettingSurfaces::GUI,
+            private: false,
+            toml_path: "schema_gate.enabled",
+        },
+    ]);
+}
+
+#[test]
+fn lite_schema_gate_excludes_metadata_and_keeps_local_setting_updates() {
+    use schema_disabled::{SchemaDisabledLocalValue, SchemaDisabledSettings};
+    use schema_enabled::SchemaEnabledSettings;
+
+    assert!(
+        !inventory::iter::<crate::schema::SettingSchemaEntry>
+            .into_iter()
+            .any(|entry| entry.hierarchy == Some("schema_gate") && entry.storage_key == "disabled")
+    );
+    assert!(
+        inventory::iter::<crate::schema::SettingSchemaEntry>
+            .into_iter()
+            .any(|entry| entry.hierarchy == Some("schema_gate") && entry.storage_key == "enabled")
+    );
+
+    warpui_core::App::test((), |mut app| async move {
+        app.update(init_and_register_preferences);
+        app.add_singleton_model(|_| SettingsManager::default());
+        SchemaDisabledSettings::register(&mut app);
+        SchemaEnabledSettings::register(&mut app);
+        SchemaDisabledSettings::handle(&app).update(&mut app, |settings, ctx| {
+            settings.local_value.set_value(true, ctx).unwrap();
+        });
+        app.read(|ctx| {
+            assert!(*SchemaDisabledSettings::as_ref(ctx).local_value);
+            assert!(!*SchemaEnabledSettings::as_ref(ctx).local_value);
+            assert_eq!(
+                SchemaDisabledLocalValue::toml_path(),
+                Some("schema_gate.disabled")
+            );
+        });
+    });
+}

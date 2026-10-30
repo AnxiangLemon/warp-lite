@@ -3,12 +3,12 @@ use warp_errors::report_if_error;
 use warpui::{App, SingletonEntity as _};
 
 use super::{ParsedSlashCommandInput, SlashCommandEntryState};
-use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::blocklist::{QueuedQuery, QueuedQueryModel, QueuedQueryOrigin};
 use crate::search::slash_command_menu::static_commands::commands;
 use crate::settings::AISettings;
 use crate::terminal::input::slash_commands::SlashCommandDataSource as _;
 use crate::terminal::input::tests::{add_window_with_bootstrapped_terminal, initialize_app};
+use crate::terminal::session_types::AIConversationId;
 
 #[test]
 fn test_parse_input_requires_slash_at_start() {

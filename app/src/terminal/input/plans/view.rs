@@ -4,9 +4,8 @@ use ai::document::AIDocumentId;
 use warpui::elements::ChildView;
 use warpui::{Element, Entity, ModelHandle, View, ViewContext, ViewHandle};
 
-use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::blocklist::agent_view::AgentViewController;
-use ai::document::AIDocumentVersion;
+use crate::ai::document::ai_document_model::AIDocumentVersion;
 use crate::search::data_source::Query;
 use crate::search::mixer::SearchMixer;
 use crate::terminal::input::buffer_model::{InputBufferModel, InputBufferUpdateEvent};
@@ -16,6 +15,7 @@ use crate::terminal::input::plans::data_source::PlanMenuDataSource;
 use crate::terminal::input::suggestions_mode_model::{
     InputSuggestionsModeEvent, InputSuggestionsModeModel,
 };
+use crate::terminal::session_types::AIConversationId;
 
 /// Events emitted by InlinePlanMenuView.
 #[derive(Debug, Clone)]
@@ -59,6 +59,7 @@ impl InlinePlanMenuView {
                 mixer.clone(),
                 positioner.clone(),
                 &input_suggestions_model,
+                #[cfg(feature = "agent_runtime")]
                 agent_view_controller,
                 ctx,
             )

@@ -16,6 +16,8 @@ mod history;
 mod input;
 mod keyboard_protocol;
 mod launch_configs;
+#[cfg(target_os = "windows")]
+mod lite;
 mod notebooks;
 mod osc8_hyperlinks;
 mod pane_restoration;
@@ -40,7 +42,6 @@ mod websockets;
 mod workflows;
 mod workspace;
 
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -49,7 +50,6 @@ use std::time::Duration;
 pub use agent_mode::*;
 pub use ai_assistant::*;
 pub use ai_document::*;
-use anyhow::{Result, anyhow};
 pub use block_filtering::*;
 pub use bootstrapping::*;
 pub use code_review::*;
@@ -62,6 +62,8 @@ pub use history::*;
 pub use input::*;
 pub use keyboard_protocol::*;
 pub use launch_configs::*;
+#[cfg(target_os = "windows")]
+pub use lite::*;
 pub use notebooks::*;
 pub use osc8_hyperlinks::*;
 pub use pane_restoration::*;
@@ -73,7 +75,6 @@ pub use preview_config_migration::*;
 pub use remote_server::*;
 pub use rich_input_ctrl_enter::*;
 pub use rules::*;
-use rust_embed::RustEmbed;
 pub use secrets::*;
 pub use session_restoration::*;
 use settings::Setting as _;
@@ -193,9 +194,7 @@ use warpui_core::platform::keyboard::KeyCode;
 use warpui_core::platform::{OperatingSystem, TerminationMode};
 use warpui_core::units::Lines;
 use warpui_core::windowing::WindowManager;
-use warpui_core::{
-    AssetProvider, Event, SingletonEntity, UpdateView, ViewHandle, async_assert, async_assert_eq,
-};
+use warpui_core::{Event, SingletonEntity, UpdateView, ViewHandle, async_assert, async_assert_eq};
 pub use websockets::*;
 pub use workflows::*;
 pub use workspace::*;
@@ -206,19 +205,8 @@ use crate::{Builder, user_defaults};
 
 const ADD_NEXT_OCCURRENCE_KEYBINDING: &str = "ctrl-g";
 
-#[derive(Clone, Copy, RustEmbed)]
-#[folder = "tests/data/"]
-pub struct TestOnlyAssets;
-
-pub static TEST_ONLY_ASSETS: TestOnlyAssets = TestOnlyAssets;
-
-impl AssetProvider for TestOnlyAssets {
-    fn get(&self, path: &str) -> Result<Cow<'_, [u8]>> {
-        <Self as RustEmbed>::get(path)
-            .map(|f| f.data)
-            .ok_or_else(|| anyhow!("no asset exists at path {}", path))
-    }
-}
+mod assets;
+pub use assets::{TEST_ONLY_ASSETS, TestOnlyAssets};
 
 use super::util::{self, write_all_rc_files_for_test, write_rc_files_for_test};
 

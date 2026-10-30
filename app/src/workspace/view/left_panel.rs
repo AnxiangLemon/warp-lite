@@ -30,11 +30,10 @@ use crate::code::buffer_location::LocalOrRemotePath;
 use crate::code::file_tree::FileTreeEvent;
 use crate::code::file_tree::FileTreeView;
 use crate::coding_panel_enablement_state::CodingPanelEnablementState;
-#[cfg(not(feature = "warp_lite"))]
-use crate::drive::panel::{DrivePanel, DrivePanelEvent};
-#[cfg(not(feature = "warp_lite"))]
-use crate::settings::WarpDriveSettings;
-use crate::workspace::sidebar_constants::{MAX_SIDEBAR_WIDTH_RATIO, MIN_SIDEBAR_WIDTH};
+use crate::drive::panel::{
+    DrivePanel, DrivePanelEvent, MAX_SIDEBAR_WIDTH_RATIO, MIN_SIDEBAR_WIDTH,
+};
+use crate::drive::settings::WarpDriveSettings;
 use crate::pane_group::pane::view::header::PANE_HEADER_HEIGHT;
 use crate::pane_group::pane::view::header::components::HEADER_EDGE_PADDING;
 use crate::pane_group::working_directories::WorkingDirectory;
@@ -58,7 +57,6 @@ use crate::util::openable_file_type::{
     EditorLayout, is_markdown_file, resolve_file_target_with_editor_choice,
 };
 use crate::workspace::WorkspaceAction;
-#[cfg(not(feature = "warp_lite"))]
 use crate::workspace::view::conversation_list::view::{
     ConversationListView, Event as ConversationListViewEvent,
 };
@@ -85,9 +83,7 @@ struct MouseStateHandles {
 pub enum LeftPanelAction {
     ProjectExplorer,
     GlobalSearch { entry_focus: GlobalSearchEntryFocus },
-    #[cfg(not(feature = "warp_lite"))]
     WarpDrive,
-    #[cfg(not(feature = "warp_lite"))]
     ConversationListView,
     SignIn,
 }
@@ -105,7 +101,6 @@ impl ToolPanelView {
             ToolPanelView::ProjectExplorer | ToolPanelView::GlobalSearch { .. } => {
                 ToolPanelAvailability::Available
             }
-            #[cfg(not(feature = "warp_lite"))]
             ToolPanelView::WarpDrive => {
                 if WarpDriveSettings::is_warp_drive_available(app) {
                     ToolPanelAvailability::Available
@@ -113,7 +108,6 @@ impl ToolPanelView {
                     ToolPanelAvailability::RequiresAccount
                 }
             }
-            #[cfg(not(feature = "warp_lite"))]
             ToolPanelView::ConversationListView => {
                 if AuthStateProvider::as_ref(app)
                     .get()
@@ -134,7 +128,6 @@ impl ToolPanelView {
 pub enum LeftPanelEvent {
     #[cfg_attr(not(feature = "local_fs"), allow(dead_code))]
     FileTree(pane_group::Event),
-    #[cfg(not(feature = "warp_lite"))]
     WarpDrive(DrivePanelEvent),
     #[cfg_attr(not(feature = "local_fs"), allow(dead_code))]
     OpenFileWithTarget {
@@ -155,9 +148,7 @@ pub enum LeftPanelEvent {
 pub enum ToolPanelView {
     ProjectExplorer,
     GlobalSearch { entry_focus: GlobalSearchEntryFocus },
-    #[cfg(not(feature = "warp_lite"))]
     WarpDrive,
-    #[cfg(not(feature = "warp_lite"))]
     ConversationListView,
 }
 
@@ -185,20 +176,20 @@ mod active_view_state {
         new_view: ToolPanelView,
         ctx: &mut ViewContext<super::LeftPanelView>,
     ) {
+        if cfg!(feature = "warp_lite") {
+            return;
+        }
         let previous = left_panel.active_view.0;
         left_panel.active_view.0 = new_view;
         left_panel.update_button_active_states();
         ctx.notify();
 
-        #[cfg(not(feature = "warp_lite"))]
-        {
-            let was_conversation_list_open = previous == ToolPanelView::ConversationListView;
-            let is_conversation_list_open = new_view == ToolPanelView::ConversationListView;
-            if was_conversation_list_open && !is_conversation_list_open {
-                left_panel.on_conversation_list_view_visibility_changed(false, ctx);
-            } else if !was_conversation_list_open && is_conversation_list_open {
-                left_panel.on_conversation_list_view_visibility_changed(true, ctx);
-            }
+        let was_conversation_list_open = previous == ToolPanelView::ConversationListView;
+        let is_conversation_list_open = new_view == ToolPanelView::ConversationListView;
+        if was_conversation_list_open && !is_conversation_list_open {
+            left_panel.on_conversation_list_view_visibility_changed(false, ctx);
+        } else if !was_conversation_list_open && is_conversation_list_open {
+            left_panel.on_conversation_list_view_visibility_changed(true, ctx);
         }
 
         left_panel.update_active_file_tree_subscription_state(ctx);
@@ -227,9 +218,7 @@ pub struct LeftPanelView {
     resizable_state_handle: ResizableStateHandle,
     mouse_state_handles: MouseStateHandles,
     close_button_mouse_state: MouseStateHandle,
-    #[cfg(not(feature = "warp_lite"))]
     warp_drive_view: ViewHandle<DrivePanel>,
-    #[cfg(not(feature = "warp_lite"))]
     conversation_list_view: ViewHandle<ConversationListView>,
     active_view: active_view_state::ActiveViewState,
     toolbelt_buttons: Vec<ToolbeltButtonConfig>,
@@ -238,17 +227,6 @@ pub struct LeftPanelView {
     working_directories_model: ModelHandle<WorkingDirectoriesModel>,
     is_agent_management_view_open: bool,
     panel_position: super::PanelPosition,
-}
-
-fn default_left_panel_tool_view() -> ToolPanelView {
-    #[cfg(not(feature = "warp_lite"))]
-    {
-        ToolPanelView::WarpDrive
-    }
-    #[cfg(feature = "warp_lite")]
-    {
-        ToolPanelView::ProjectExplorer
-    }
 }
 
 fn toolbelt_tooltip_keybinding(binding_names: &[&'static str], app: &AppContext) -> Option<String> {
@@ -279,42 +257,22 @@ impl LeftPanelView {
         availability: ToolPanelAvailability,
     ) -> Box<dyn Element> {
         let (title, description) = match (view, availability) {
-            #[cfg(not(feature = "warp_lite"))]
             (ToolPanelView::WarpDrive, ToolPanelAvailability::RequiresAccount) => (
                 "Sign in to access Warp Drive",
                 "Create an account to save and share workflows, notebooks, prompts, and more.",
             ),
-            #[cfg(not(feature = "warp_lite"))]
             (ToolPanelView::ConversationListView, ToolPanelAvailability::RequiresAccount) => (
                 "Sign in to access Agent conversations",
                 "Create an account and enable AI to access your conversation history.",
             ),
-            #[cfg(not(feature = "warp_lite"))]
             (ToolPanelView::ConversationListView, ToolPanelAvailability::RequiresAi) => (
                 "Turn on AI to access Agent conversations",
                 "Enable Warp AI to access your conversation history.",
             ),
-            #[cfg(not(feature = "warp_lite"))]
             (
                 ToolPanelView::ProjectExplorer
                 | ToolPanelView::GlobalSearch { .. }
                 | ToolPanelView::WarpDrive,
-                ToolPanelAvailability::RequiresAi,
-            )
-            | (
-                ToolPanelView::ProjectExplorer | ToolPanelView::GlobalSearch { .. },
-                ToolPanelAvailability::RequiresAccount,
-            )
-            | (_, ToolPanelAvailability::Available) => {
-                debug_assert!(false, "unexpected locked tool-panel state");
-                (
-                    "Feature unavailable",
-                    "This feature is currently unavailable.",
-                )
-            }
-            #[cfg(feature = "warp_lite")]
-            (
-                ToolPanelView::ProjectExplorer | ToolPanelView::GlobalSearch { .. },
                 ToolPanelAvailability::RequiresAi,
             )
             | (
@@ -381,9 +339,12 @@ impl LeftPanelView {
     }
     pub fn new(
         working_directories_model: ModelHandle<WorkingDirectoriesModel>,
-        views: Vec<ToolPanelView>,
+        mut views: Vec<ToolPanelView>,
         ctx: &mut ViewContext<Self>,
     ) -> Self {
+        if cfg!(feature = "warp_lite") {
+            views.clear();
+        }
         let resizable_data_handle = ResizableData::handle(ctx);
         let resizable_state_handle = match resizable_data_handle
             .as_ref(ctx)
@@ -395,17 +356,13 @@ impl LeftPanelView {
                 resizable_state_handle(600.0)
             }
         };
-        #[cfg(not(feature = "warp_lite"))]
         let warp_drive_view = ctx.add_typed_action_view(DrivePanel::new);
-        #[cfg(not(feature = "warp_lite"))]
         let conversation_list_view = ctx.add_typed_action_view(ConversationListView::new);
 
-        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&warp_drive_view, |_me, _, event, ctx| {
             ctx.emit(LeftPanelEvent::WarpDrive(event.clone()));
         });
 
-        #[cfg(not(feature = "warp_lite"))]
         ctx.subscribe_to_view(&conversation_list_view, |_me, _, event, ctx| match event {
             ConversationListViewEvent::NewConversationInNewTab => {
                 ctx.emit(LeftPanelEvent::NewConversationInNewTab);
@@ -426,7 +383,11 @@ impl LeftPanelView {
         let active_view = views
             .first()
             .copied()
-            .unwrap_or(default_left_panel_tool_view());
+            .unwrap_or(if cfg!(feature = "warp_lite") {
+                ToolPanelView::ProjectExplorer
+            } else {
+                ToolPanelView::WarpDrive
+            });
         let toolbelt_buttons = views
             .iter()
             .map(|view| Self::create_toolbelt_button_config(view, ctx))
@@ -517,9 +478,7 @@ impl LeftPanelView {
             resizable_state_handle,
             mouse_state_handles: Default::default(),
             close_button_mouse_state: Default::default(),
-            #[cfg(not(feature = "warp_lite"))]
             warp_drive_view,
-            #[cfg(not(feature = "warp_lite"))]
             conversation_list_view,
             active_view: active_view_state::new(active_view),
             toolbelt_buttons,
@@ -551,9 +510,12 @@ impl LeftPanelView {
     /// If the currently active view is no longer available, switches to the first available view.
     pub fn update_available_views(
         &mut self,
-        views: Vec<ToolPanelView>,
+        mut views: Vec<ToolPanelView>,
         ctx: &mut ViewContext<Self>,
     ) {
+        if cfg!(feature = "warp_lite") {
+            views.clear();
+        }
         // Check if the current active view is still available
         let current_view = self.active_view.get();
         let is_current_view_available = views.iter().any(|v| {
@@ -587,7 +549,6 @@ impl LeftPanelView {
             .as_ref()
             .and_then(|pane_group| pane_group.upgrade(ctx))
             .is_some_and(|pane_group| pane_group.as_ref(ctx).left_panel_open);
-        #[cfg(not(feature = "warp_lite"))]
         self.on_conversation_list_view_visibility_changed(is_left_panel_open, ctx);
 
         ctx.notify();
@@ -632,7 +593,6 @@ impl LeftPanelView {
                     tooltip_keybinding_names,
                 }
             }
-            #[cfg(not(feature = "warp_lite"))]
             ToolPanelView::WarpDrive => {
                 let tooltip_keybinding_names = vec![
                     LEFT_PANEL_WARP_DRIVE_BINDING_NAME,
@@ -649,7 +609,6 @@ impl LeftPanelView {
                     tooltip_keybinding_names,
                 }
             }
-            #[cfg(not(feature = "warp_lite"))]
             ToolPanelView::ConversationListView => {
                 let tooltip_keybinding_names = vec![
                     LEFT_PANEL_AGENT_CONVERSATIONS_BINDING_NAME,
@@ -751,7 +710,6 @@ impl LeftPanelView {
         self.active_view.get()
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     pub fn is_warp_drive_active(&self) -> bool {
         self.active_view.get() == ToolPanelView::WarpDrive
     }
@@ -760,7 +718,6 @@ impl LeftPanelView {
         self.active_view.get() == ToolPanelView::ProjectExplorer
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     pub fn warp_drive_view(&self) -> &ViewHandle<DrivePanel> {
         &self.warp_drive_view
     }
@@ -921,14 +878,12 @@ impl LeftPanelView {
                     ctx,
                 );
             }
-            #[cfg(not(feature = "warp_lite"))]
             ToolPanelView::WarpDrive => {
                 ctx.focus(&self.warp_drive_view);
                 self.warp_drive_view.update(ctx, |view, ctx| {
                     view.reset_focused_index_in_warp_drive(true, ctx);
                 });
             }
-            #[cfg(not(feature = "warp_lite"))]
             ToolPanelView::ConversationListView => {
                 self.conversation_list_view.update(ctx, |view, ctx| {
                     view.on_left_panel_focused(ctx);
@@ -1096,9 +1051,7 @@ impl LeftPanelView {
                 LeftPanelAction::GlobalSearch { .. } => {
                     matches!(self.active_view.get(), ToolPanelView::GlobalSearch { .. })
                 }
-                #[cfg(not(feature = "warp_lite"))]
                 LeftPanelAction::WarpDrive => self.active_view.get() == ToolPanelView::WarpDrive,
-                #[cfg(not(feature = "warp_lite"))]
                 LeftPanelAction::ConversationListView => {
                     self.active_view.get() == ToolPanelView::ConversationListView
                 }
@@ -1181,6 +1134,9 @@ impl LeftPanelView {
         force_open: bool,
         ctx: &mut ViewContext<Self>,
     ) {
+        if cfg!(feature = "warp_lite") {
+            return;
+        }
         match action {
             LeftPanelAction::ProjectExplorer => {
                 active_view_state::set(self, ToolPanelView::ProjectExplorer, ctx);
@@ -1220,7 +1176,6 @@ impl LeftPanelView {
                     send_telemetry_from_ctx!(TelemetryEvent::GlobalSearchOpened, ctx);
                 }
             }
-            #[cfg(not(feature = "warp_lite"))]
             LeftPanelAction::WarpDrive => {
                 active_view_state::set(self, ToolPanelView::WarpDrive, ctx);
                 if self.active_view_availability(ctx) == ToolPanelAvailability::Available {
@@ -1243,7 +1198,6 @@ impl LeftPanelView {
                     }
                 }
             }
-            #[cfg(not(feature = "warp_lite"))]
             LeftPanelAction::ConversationListView => {
                 active_view_state::set(self, ToolPanelView::ConversationListView, ctx);
                 if self.active_view_availability(ctx) == ToolPanelAvailability::Available {
@@ -1257,7 +1211,6 @@ impl LeftPanelView {
     }
 
     pub fn on_left_panel_visibility_changed(&self, is_now_open: bool, ctx: &mut ViewContext<Self>) {
-        #[cfg(not(feature = "warp_lite"))]
         if ToolPanelView::ConversationListView == self.active_view.get() {
             self.on_conversation_list_view_visibility_changed(is_now_open, ctx);
         }
@@ -1307,7 +1260,6 @@ impl LeftPanelView {
     /// When the conversation list view's visibility changes,
     /// we need to update the conversation and tasks model to reflect the new state
     /// (this information is used to decide whether or not we should poll for new tasks).
-    #[cfg(not(feature = "warp_lite"))]
     fn on_conversation_list_view_visibility_changed(
         &self,
         is_now_open: bool,
@@ -1356,15 +1308,16 @@ impl View for LeftPanelView {
                         ctx.focus(&view);
                     }
                 }
-                #[cfg(not(feature = "warp_lite"))]
                 ToolPanelView::WarpDrive => ctx.focus(&self.warp_drive_view),
-                #[cfg(not(feature = "warp_lite"))]
                 ToolPanelView::ConversationListView => ctx.focus(&self.conversation_list_view),
             }
         }
     }
 
     fn render(&self, app: &AppContext) -> Box<dyn Element> {
+        if cfg!(feature = "warp_lite") {
+            return Empty::new().finish();
+        }
         let appearance = Appearance::as_ref(app);
 
         let mouse_state_handles = vec![
@@ -1426,7 +1379,6 @@ impl View for LeftPanelView {
                     _ => Shrinkable::new(1.0, Container::new(Empty::new().finish()).finish())
                         .finish(),
                 },
-                #[cfg(not(feature = "warp_lite"))]
                 ToolPanelView::WarpDrive => Shrinkable::new(
                     1.0,
                     Container::new(ChildView::new(&self.warp_drive_view).finish())
@@ -1435,7 +1387,6 @@ impl View for LeftPanelView {
                         .finish(),
                 )
                 .finish(),
-                #[cfg(not(feature = "warp_lite"))]
                 ToolPanelView::ConversationListView => {
                     Shrinkable::new(1.0, ChildView::new(&self.conversation_list_view).finish())
                         .finish()

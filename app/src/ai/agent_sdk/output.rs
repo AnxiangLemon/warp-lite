@@ -322,6 +322,6 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "output_tests.rs"]
 mod tests;

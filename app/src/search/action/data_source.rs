@@ -19,7 +19,7 @@ pub struct CommandBindingDataSource {
 }
 
 impl CommandBindingDataSource {
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
     pub fn new(binding_source: ModelHandle<BindingSource>, ctx: &mut ModelContext<Self>) -> Self {
         if warp_core::features::FeatureFlag::UseTantivySearch.is_enabled() {
             Self::new_full_text(binding_source, ctx)
@@ -28,12 +28,12 @@ impl CommandBindingDataSource {
         }
     }
 
-    #[cfg(target_family = "wasm")]
+    #[cfg(any(target_family = "wasm", not(feature = "full_text_search")))]
     pub fn new(binding_source: ModelHandle<BindingSource>, ctx: &mut ModelContext<Self>) -> Self {
         Self::new_fuzzy(binding_source, ctx)
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
     fn new_full_text(
         binding_source: ModelHandle<BindingSource>,
         ctx: &mut ModelContext<Self>,
@@ -82,6 +82,9 @@ impl CommandBindingDataSource {
             .key_bindings_for_view(window_id, view_id)
             .into_iter()
             .filter_map(|lens| CommandBinding::from_lens(lens, ctx))
+            .filter(|binding| {
+                !cfg!(feature = "warp_lite") || crate::command_palette::is_lite_binding(binding)
+            })
             .filter(|binding| binding_filter_fn.as_ref().is_none_or(|f| f(binding)))
             .map(Arc::new)
             .map(|binding| (binding.id, binding))
@@ -178,7 +181,7 @@ impl ActionSearcher for FuzzyActionSearcher {
     }
 }
 
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
 mod full_text_searcher {
     use std::collections::HashMap;
     use std::sync::Arc;

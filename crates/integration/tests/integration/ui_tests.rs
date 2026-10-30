@@ -7,6 +7,20 @@
 use super::integration_tests;
 
 integration_tests! {
+    #[cfg(target_os = "windows")]
+    test_lite_chinese_settings,
+    #[cfg(target_os = "windows")]
+    test_lite_close_confirmation,
+    #[cfg(target_os = "windows")]
+    test_lite_fixed_background,
+    #[cfg(target_os = "windows")]
+    test_lite_missing_background,
+    #[cfg(target_os = "windows")]
+    test_lite_corrupt_background,
+    #[cfg(target_os = "windows")]
+    test_lite_oversized_background,
+    #[cfg(target_os = "windows")]
+    test_lite_terminal_management,
     test_add_many_sessions,
     test_ctrl_tab_session_switching,
     test_hover_over_menu,

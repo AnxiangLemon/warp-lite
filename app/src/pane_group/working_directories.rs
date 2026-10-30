@@ -22,13 +22,14 @@ use warpui::{AppContext, SingletonEntity as _};
 use warpui::{Entity, EntityId, ModelContext, ModelHandle, ViewHandle};
 
 use crate::code::buffer_location::LocalOrRemotePath;
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", not(feature = "warp_lite")))]
 use crate::code::file_tree::FileTreeView;
 use crate::code_review::code_review_view::CodeReviewView;
 use crate::code_review::comments::{
     AttachedReviewComment, PendingImportedReviewComment, ReviewCommentBatch,
 };
 use crate::code_review::diff_state::{DiffMode, DiffStateModel};
+#[cfg(not(feature = "warp_lite"))]
 use crate::workspace::view::global_search::view::GlobalSearchView;
 
 /// Type-safe wrapper around the map of `LocalOrRemotePath` → `DiffStateModel`.
@@ -298,7 +299,9 @@ pub struct WorkingDirectoriesModel {
     /// leaves the pane group's session and returns to it later, even if the auto-selection
     /// logic would otherwise pick a different default.
     selected_review_repo: HashMap<EntityId, LocalOrRemotePath>,
+    #[cfg(not(feature = "warp_lite"))]
     global_search_views: HashMap<EntityId, ViewHandle<GlobalSearchView>>,
+    #[cfg(not(feature = "warp_lite"))]
     file_tree_views: HashMap<EntityId, ViewHandle<FileTreeView>>,
 }
 
@@ -519,6 +522,7 @@ impl WorkingDirectoriesModel {
         self.selected_review_repo.remove(&pane_group_id);
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn store_global_search_view(
         &mut self,
         pane_group_id: EntityId,
@@ -527,6 +531,7 @@ impl WorkingDirectoriesModel {
         self.global_search_views.insert(pane_group_id, view);
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn get_global_search_view(
         &self,
         pane_group_id: EntityId,
@@ -534,6 +539,7 @@ impl WorkingDirectoriesModel {
         self.global_search_views.get(&pane_group_id).cloned()
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn store_file_tree_view(
         &mut self,
         pane_group_id: EntityId,
@@ -542,6 +548,7 @@ impl WorkingDirectoriesModel {
         self.file_tree_views.insert(pane_group_id, view);
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn get_file_tree_view(&self, pane_group_id: EntityId) -> Option<ViewHandle<FileTreeView>> {
         self.file_tree_views.get(&pane_group_id).cloned()
     }
@@ -556,8 +563,11 @@ impl WorkingDirectoriesModel {
 
         // Clean up views that should persist in handle_empty_pane_group e.g. there's only a settings pane in the pane group
         // but need to be removed when the pane group is destroyed
-        self.global_search_views.remove(&pane_group_id);
-        self.file_tree_views.remove(&pane_group_id);
+        #[cfg(not(feature = "warp_lite"))]
+        {
+            self.global_search_views.remove(&pane_group_id);
+            self.file_tree_views.remove(&pane_group_id);
+        }
         self.code_review_views.remove(&pane_group_id);
         self.focused_repo.remove(&pane_group_id);
         self.selected_review_repo.remove(&pane_group_id);
@@ -1070,6 +1080,7 @@ impl WorkingDirectoriesModel {
 
     pub fn clear_selected_review_repo(&mut self, _pane_group_id: EntityId) {}
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn store_global_search_view(
         &mut self,
         _pane_group_id: EntityId,
@@ -1077,6 +1088,7 @@ impl WorkingDirectoriesModel {
     ) {
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn get_global_search_view(
         &self,
         _pane_group_id: EntityId,
@@ -1084,6 +1096,7 @@ impl WorkingDirectoriesModel {
         None
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn store_file_tree_view(
         &mut self,
         _pane_group_id: EntityId,
@@ -1091,6 +1104,7 @@ impl WorkingDirectoriesModel {
     ) {
     }
 
+    #[cfg(not(feature = "warp_lite"))]
     pub fn get_file_tree_view(
         &self,
         _pane_group_id: EntityId,

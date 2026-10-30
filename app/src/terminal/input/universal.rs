@@ -1,27 +1,43 @@
+#[cfg(feature = "agent_runtime")]
 use settings::Setting;
+#[cfg(feature = "agent_runtime")]
 use warpui::elements::{
     Border, ChildView, Container, CornerRadius, DropTarget, Element, Flex, Hoverable,
     ParentElement, Radius, SavePosition, Stack,
 };
+#[cfg(feature = "agent_runtime")]
 use warpui::{AppContext, SingletonEntity};
 
+#[cfg(feature = "agent_runtime")]
 use super::Input;
+#[cfg(feature = "agent_runtime")]
 use super::common::{
     add_command_xray_overlay, add_input_suggestions_overlays, add_vim_status_to_stack,
     add_voltron_overlay, add_workflow_info_overlay, maybe_add_buy_credits_banner,
     wrap_input_with_terminal_padding_and_focus_handler,
 };
-use crate::ai::blocklist::InputType;
+#[cfg(feature = "agent_runtime")]
 use crate::appearance::Appearance;
+#[cfg(feature = "agent_runtime")]
 use crate::context_chips::spacing;
+#[cfg(feature = "agent_runtime")]
 use crate::features::FeatureFlag;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::{AppEditorSettings, InputModeSettings};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::block_list_viewport::InputMode;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::input::{InputAction, InputDropTargetData};
+#[cfg(feature = "agent_runtime")]
+use crate::terminal::session_types::InputType;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::settings::TerminalSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::view::TerminalAction;
+#[cfg(feature = "agent_runtime")]
 use crate::themes::theme::color::internal_colors;
 
+#[cfg(feature = "agent_runtime")]
 impl Input {
     /// Renders the universal input. This is used when `FeatureFlag::AgentView` is disabled and the
     /// user has 'universal' input type selected in settings.
@@ -115,6 +131,7 @@ impl Input {
             true, // use adjusted padding for UDI
         ));
 
+        #[cfg(feature = "agent_runtime")]
         if let Some(selected_workflow_state) = self.workflows_state.selected_workflow_state.as_ref()
             && selected_workflow_state.should_show_more_info_view
         {
@@ -126,6 +143,7 @@ impl Input {
             );
         }
 
+        #[cfg(feature = "agent_runtime")]
         if self.is_voltron_open && self.is_pane_focused(app) {
             add_voltron_overlay(&mut stack, &self.voltron_view, menu_positioning);
         }
@@ -145,7 +163,6 @@ impl Input {
             );
         }
 
-        #[cfg(not(feature = "warp_lite"))]
         maybe_add_buy_credits_banner(
             &mut stack,
             &self.buy_credits_banner,
@@ -205,10 +222,8 @@ impl Input {
 
         if input_mode.is_pinned_to_top() {
             column.add_child(input);
-            #[cfg(not(feature = "warp_lite"))]
             column.add_child(ChildView::new(&self.agent_status_view).finish());
         } else {
-            #[cfg(not(feature = "warp_lite"))]
             column.add_child(ChildView::new(&self.agent_status_view).finish());
             column.add_child(input);
         }

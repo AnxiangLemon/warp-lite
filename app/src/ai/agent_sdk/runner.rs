@@ -601,6 +601,6 @@ impl TableFormat for RunnerInfo {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "runner_tests.rs"]
 mod tests;

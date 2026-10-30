@@ -15,9 +15,7 @@ use crate::ai::agent::{
 };
 use crate::ai::block_context::BlockContext;
 use crate::ai::blocklist::{BlocklistAIContextModel, SessionContext};
-use ai::document::AIDocumentId;
-#[cfg(not(feature = "warp_lite"))]
-use crate::ai::document::ai_document_model::AIDocumentModel;
+use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentModel};
 use crate::ai::facts::CloudAIFactModel;
 use crate::ai::skills::list_skills_if_changed;
 use crate::cloud_object::model::generic_string_model::{CloudStringObject, GenericStringObjectId};
@@ -182,8 +180,6 @@ pub(super) fn parse_context_attachments(
             let id_str = object_id_match.as_str();
 
             if object_type_str == "plan" {
-                #[cfg(not(feature = "warp_lite"))]
-                {
                 // For plans, id_str is ai_document_id
                 let ai_doc_id = match AIDocumentId::try_from(id_str) {
                     Ok(id) => id,
@@ -216,11 +212,9 @@ pub(super) fn parse_context_attachments(
                 } else {
                     log::warn!("Plan not found for ai_document_id: {ai_doc_id}");
                 }
-                }
             } else {
                 let object_type = match object_type_str {
                     "workflow" => ObjectType::Workflow,
-                    #[cfg(not(feature = "warp_lite"))]
                     "notebook" => ObjectType::Notebook,
                     "rule" => ObjectType::GenericStringObject(GenericStringObjectFormat::Json(
                         JsonObjectType::AIFact,
@@ -255,7 +249,6 @@ pub(super) fn parse_context_attachments(
     }
 
     // Add pending AI document as attachment if present
-    #[cfg(not(feature = "warp_lite"))]
     if let Some(document_id) = context_model.pending_document_id()
         && let Some(content) = AIDocumentModel::as_ref(ctx).get_document_content(&document_id, ctx)
     {

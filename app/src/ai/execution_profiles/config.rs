@@ -585,6 +585,6 @@ impl TryFrom<ExecutionProfileFile> for AIExecutionProfile {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "config_tests.rs"]
 mod tests;

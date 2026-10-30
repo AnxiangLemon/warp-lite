@@ -1,5 +1,10 @@
+use settings::Setting;
+#[cfg(feature = "agent_runtime")]
+use settings::SyncToCloud;
+#[cfg(feature = "agent_runtime")]
 use settings::schema::SettingSchemaEntry;
-use settings::{Setting, SettingSurfaces, SettingsMode, SyncToCloud};
+#[cfg(feature = "agent_runtime")]
+use settings::{SettingSurfaces, SettingsMode};
 use settings_value::SettingsValue;
 
 use super::{TuiVoiceInputHoldKey, TuiVoiceInputHoldKeySetting};
@@ -22,6 +27,7 @@ fn tui_voice_setting_defaults_to_none_and_round_trips() {
 }
 
 #[test]
+#[cfg(feature = "agent_runtime")]
 fn tui_voice_setting_is_local_and_tui_only() {
     assert_eq!(
         TuiVoiceInputHoldKeySetting::toml_path(),

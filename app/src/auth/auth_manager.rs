@@ -41,9 +41,11 @@ use crate::server::server_api::auth::{
 use crate::server::server_api::{ServerApi, ServerApiProvider};
 use crate::server::telemetry::AnonymousUserSignupEntrypoint;
 use crate::settings::PrivacySettings;
+#[cfg(feature = "agent_runtime")]
 use crate::settings::cloud_preferences_syncer::CloudPreferencesSyncer;
 use crate::settings::initializer::SettingsInitializer;
 use crate::terminal::general_settings::GeneralSettings;
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::manager::Manager as SharedSessionManager;
 #[cfg(target_family = "wasm")]
 use crate::uri::browser_url_handler::{parse_current_url, update_browser_url};
@@ -449,6 +451,7 @@ impl AuthManager {
                     model.initiate_data_pollers(false, ctx);
                 });
 
+                #[cfg(feature = "agent_runtime")]
                 CloudPreferencesSyncer::handle(ctx).update(ctx, |model, ctx| {
                     model.handle_user_fetched(self.auth_state.clone(), ctx)
                 });
@@ -474,6 +477,7 @@ impl AuthManager {
                 }
 
                 // Force refresh for shared sessions if user may have changed.
+                #[cfg(feature = "agent_runtime")]
                 if !from_refresh {
                     SharedSessionManager::handle(ctx).update(ctx, |manager, ctx| {
                         manager.stop_all_shared_sessions(ctx);

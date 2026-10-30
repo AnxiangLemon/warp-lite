@@ -54,6 +54,15 @@ pub(crate) fn is_transient_http_error(e: &anyhow::Error) -> bool {
     // human-friendly Display, so the typed error sits somewhere in the chain rather than as
     // the top-level error object — walk the chain.
     for cause in e.chain() {
+        if cause.is::<crate::server::CloudServicesUnavailable>() {
+            return false;
+        }
+        if matches!(
+            cause.downcast_ref::<GraphQLError>(),
+            Some(GraphQLError::Unavailable)
+        ) {
+            return false;
+        }
         if let Some(http_err) = cause.downcast_ref::<HttpStatusError>() {
             return is_transient_status(http_err.status);
         }
@@ -75,6 +84,7 @@ pub(crate) fn is_transient_graphql_or_http_error(e: &anyhow::Error) -> bool {
                 GraphQLError::HttpError { status, .. } => is_transient_status(status.as_u16()),
                 GraphQLError::StagingAccessBlocked
                 | GraphQLError::IapChallengeBlocked
+                | GraphQLError::Unavailable
                 | GraphQLError::ResponseError(_) => false,
             };
         }
@@ -150,3 +160,7 @@ where
         "retry loop exhausted without attempting operation (MAX_ATTEMPTS={MAX_ATTEMPTS})"
     ))
 }
+
+#[cfg(test)]
+#[path = "retry_strategies_tests.rs"]
+mod tests;

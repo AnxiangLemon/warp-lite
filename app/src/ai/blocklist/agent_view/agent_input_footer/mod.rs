@@ -273,7 +273,11 @@ impl AgentInputFooter {
             return;
         }
         self.ambient_agent_view_model = Some(ambient_agent_view_model.clone());
-        self.display_chip_config.ambient_agent_view_model = Some(ambient_agent_view_model.clone());
+        #[cfg(feature = "agent_runtime")]
+        {
+            self.display_chip_config.ambient_agent_view_model =
+                Some(ambient_agent_view_model.clone());
+        }
 
         // Push the model into the model/harness selector chip too. It captured `None` at
         // construction on this link-join path, so without this it shows the local default model
@@ -786,6 +790,7 @@ impl AgentInputFooter {
                 ctx.notify()
             }
         });
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(
             &display_chip_config.agent_view_controller,
             |me, _, _, ctx| {

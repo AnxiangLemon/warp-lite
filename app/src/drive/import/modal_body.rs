@@ -39,7 +39,7 @@ const FILE_TYPE_DOCS_URL: &str =
     "https://docs.warp.dev/knowledge-and-collaboration/warp-drive#import-and-export";
 const SUPPORTED_FILE_TYPE_TEXT: &str = "md, yaml, yml";
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "import_tests.rs"]
 mod import_tests;
 

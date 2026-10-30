@@ -163,7 +163,6 @@ pub mod text {
                     FileGlobV2Result::Cancelled => writeln!(w, "{CANCELLED_MESSAGE}"),
                 },
                 AIAgentActionResultType::ReadMCPResource(result) => match result {
-                    #[cfg(feature = "mcp_client")]
                     ReadMCPResourceResult::Success { resource_contents } => {
                         for resource in resource_contents {
                             write!(w, "- ")?;
@@ -191,10 +190,6 @@ pub mod text {
                         }
                         Ok(())
                     }
-                    #[cfg(not(feature = "mcp_client"))]
-                    ReadMCPResourceResult::Success { .. } => {
-                        writeln!(w, "MCP resource read (MCP client disabled)")
-                    }
                     ReadMCPResourceResult::Error(error) => {
                         writeln!(w, "Reading MCP resource failed: {error}")
                     }
@@ -202,7 +197,6 @@ pub mod text {
                 },
                 AIAgentActionResultType::CallMCPTool(result) => {
                     match result {
-                        #[cfg(feature = "mcp_client")]
                         CallMCPToolResult::Success { result } => {
                             for content in &result.content {
                                 write!(w, "- ")?;
@@ -251,10 +245,6 @@ pub mod text {
                                 }
                             }
                             Ok(())
-                        }
-                        #[cfg(not(feature = "mcp_client"))]
-                        CallMCPToolResult::Success { .. } => {
-                            writeln!(w, "MCP tool call completed (MCP client disabled)")
                         }
                         CallMCPToolResult::Error(error) => {
                             writeln!(w, "Calling MCP tool failed: {error}")
@@ -705,9 +695,7 @@ pub mod json {
         SearchCodebase(JsonFileCollectionResult<'a>),
         Grep(JsonFileCollectionResult<'a>),
         FileGlob(JsonFileCollectionResult<'a>),
-        #[cfg(feature = "mcp_client")]
         ReadMcpResource(JsonReadMcpResourceResult<'a>),
-        #[cfg(feature = "mcp_client")]
         CallMcpTool(JsonCallMcpToolResult<'a>),
     }
 
@@ -767,13 +755,11 @@ pub mod json {
         #[serde(skip_serializing_if = "Vec::is_empty")]
         lines: Vec<Range<usize>>,
     }
-    #[cfg(feature = "mcp_client")]
     #[derive(Serialize)]
     struct JsonReadMcpResourceResult<'a> {
         resource_contents: &'a [rmcp::model::ResourceContents],
     }
 
-    #[cfg(feature = "mcp_client")]
     #[derive(Serialize)]
     struct JsonCallMcpToolResult<'a> {
         result: &'a rmcp::model::CallToolResult,
@@ -1022,30 +1008,20 @@ pub mod json {
                     FileGlobResult::Cancelled => Some(JsonMessage::ToolCanceled),
                 },
                 AIAgentActionResultType::ReadMCPResource(result) => match result {
-                    #[cfg(feature = "mcp_client")]
                     ReadMCPResourceResult::Success { resource_contents } => {
                         Some(JsonMessage::ToolResult(JsonToolResult::ReadMcpResource(
                             JsonReadMcpResourceResult { resource_contents },
                         )))
                     }
-                    #[cfg(not(feature = "mcp_client"))]
-                    ReadMCPResourceResult::Success { .. } => Some(JsonMessage::ToolError {
-                        error: Cow::Borrowed("MCP client is disabled"),
-                    }),
                     ReadMCPResourceResult::Error(error) => Some(JsonMessage::ToolError {
                         error: Cow::Borrowed(error.as_str()),
                     }),
                     ReadMCPResourceResult::Cancelled => Some(JsonMessage::ToolCanceled),
                 },
                 AIAgentActionResultType::CallMCPTool(result) => match result {
-                    #[cfg(feature = "mcp_client")]
                     CallMCPToolResult::Success { result } => Some(JsonMessage::ToolResult(
                         JsonToolResult::CallMcpTool(JsonCallMcpToolResult { result }),
                     )),
-                    #[cfg(not(feature = "mcp_client"))]
-                    CallMCPToolResult::Success { .. } => Some(JsonMessage::ToolError {
-                        error: Cow::Borrowed("MCP client is disabled"),
-                    }),
                     CallMCPToolResult::Error(error) => Some(JsonMessage::ToolError {
                         error: Cow::Borrowed(error.as_str()),
                     }),

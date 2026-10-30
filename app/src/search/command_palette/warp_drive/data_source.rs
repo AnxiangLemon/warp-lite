@@ -10,9 +10,9 @@ use crate::cloud_object::model::persistence::{CloudModel, CloudModelEvent};
 use crate::cloud_object::{
     CloudObject, CloudObjectLocation, GenericStringObjectFormat, JsonObjectType, ObjectType, Space,
 };
-use crate::cloud_object::CloudFolder;
+use crate::drive::folders::CloudFolder;
 use crate::env_vars::CloudEnvVarCollection;
-use crate::cloud_object::CloudNotebook;
+use crate::notebooks::CloudNotebook;
 use crate::search::QueryFilter;
 use crate::search::command_palette::mixer::CommandPaletteItemAction;
 use crate::search::data_source::{DataSourceSearchError, Query, QueryResult};
@@ -66,7 +66,7 @@ pub struct DataSource {
 }
 
 impl DataSource {
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
     pub fn new(window_id: WindowId, ctx: &mut ModelContext<Self>) -> Self {
         if warp_core::features::FeatureFlag::UseTantivySearch.is_enabled() {
             Self::new_full_text(window_id, ctx)
@@ -75,7 +75,7 @@ impl DataSource {
         }
     }
 
-    #[cfg(target_family = "wasm")]
+    #[cfg(any(target_family = "wasm", not(feature = "full_text_search")))]
     pub fn new(window_id: WindowId, ctx: &mut ModelContext<Self>) -> Self {
         Self::new_fuzzy(window_id, ctx)
     }
@@ -84,7 +84,7 @@ impl DataSource {
         Self::new_with_searcher(window_id, Box::new(FuzzyWarpDriveSearcher::default()), ctx)
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
     fn new_full_text(window_id: WindowId, ctx: &mut ModelContext<Self>) -> Self {
         let searcher = Box::new(full_text_searcher::FullTextWarpDriveSearcher::new(
             ctx.background_executor(),
@@ -657,7 +657,7 @@ impl WarpDriveSearcher for FuzzyWarpDriveSearcher {
     }
 }
 
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), feature = "full_text_search"))]
 mod full_text_searcher {
     use std::sync::Arc;
 
@@ -671,9 +671,9 @@ mod full_text_searcher {
     use crate::cloud_object::{
         CloudObject, CloudObjectLocation, GenericStringObjectFormat, JsonObjectType, ObjectType,
     };
-    use crate::cloud_object::CloudFolder;
+    use crate::drive::folders::CloudFolder;
     use crate::env_vars::CloudEnvVarCollection;
-    use crate::cloud_object::CloudNotebook;
+    use crate::notebooks::CloudNotebook;
     use crate::notebooks::manager::NotebookManager;
     use crate::search::command_palette::warp_drive::data_source::{WarpDriveSearcher, WindowScope};
     use crate::search::command_palette::warp_drive::env_var_collection_search_item::{

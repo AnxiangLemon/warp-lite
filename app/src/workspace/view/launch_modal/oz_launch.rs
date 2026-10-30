@@ -151,15 +151,12 @@ impl Slide for OzLaunchSlide {
                     ctx
                 );
                 ctx.emit(LaunchModalEvent::Close);
-                #[cfg(not(feature = "warp_lite"))]
-                {
-                    ctx.dispatch_typed_action(&WorkspaceAction::StartAgentOnboardingTutorial(
-                        OnboardingTutorial::NoProject {
-                            intention: OnboardingIntention::AgentDrivenDevelopment,
-                        },
-                    ));
-                    ctx.dispatch_typed_action(&WorkspaceAction::AddAmbientAgentTab);
-                }
+                ctx.dispatch_typed_action(&WorkspaceAction::StartAgentOnboardingTutorial(
+                    OnboardingTutorial::NoProject {
+                        intention: OnboardingIntention::AgentDrivenDevelopment,
+                    },
+                ));
+                ctx.dispatch_typed_action(&WorkspaceAction::AddAmbientAgentTab);
             }),
         }
     }
@@ -193,7 +190,6 @@ impl Slide for OzLaunchSlide {
     }
 
     fn on_close(&self, ctx: &mut warpui::ViewContext<super::LaunchModal<Self>>) {
-        #[cfg(not(feature = "warp_lite"))]
         ctx.dispatch_typed_action(&WorkspaceAction::StartAgentOnboardingTutorial(
             OnboardingTutorial::NoProject {
                 intention: OnboardingIntention::AgentDrivenDevelopment,

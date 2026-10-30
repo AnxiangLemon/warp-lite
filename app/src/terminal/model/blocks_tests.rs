@@ -5,13 +5,13 @@ use warpui::elements::DEFAULT_UI_LINE_HEIGHT_RATIO;
 use warpui::units::IntoLines;
 
 use super::*;
-use crate::ai::agent::AIAgentActionId;
 use crate::settings::TerminalSpacing;
 use crate::terminal::event::Event;
 use crate::terminal::model::ansi::Handler;
 use crate::terminal::model::block::AgentInteractionMetadata;
 use crate::terminal::model::test_utils;
 use crate::terminal::model::test_utils::TestBlockListBuilder;
+use crate::terminal::session_types::AIAgentActionId;
 use crate::terminal::view::{InlineBannerItem, InlineBannerType};
 use crate::terminal::{BlockListSettings, SizeUpdateReason};
 

@@ -1,8 +1,10 @@
 use std::any::Any;
+#[cfg(feature = "agent_runtime")]
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::PathBuf;
+#[cfg(feature = "agent_runtime")]
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::mpsc::{SendError, SyncSender};
@@ -25,8 +27,8 @@ use super::shell::{ShellStarter, ShellStarterSource};
 #[cfg(unix)]
 use super::terminal_attributes::TerminalAttributesPoller;
 use super::{mio_channel, recorder};
+#[cfg(feature = "agent_runtime")]
 use crate::ai::aws_credentials::AwsCredentialRefresher as _;
-use crate::ai::blocklist::SerializedBlockListItem;
 use crate::auth::AuthStateProvider;
 use crate::auth::auth_state::AuthState;
 use crate::banner::BannerState;
@@ -43,6 +45,7 @@ use crate::terminal::event_listener::ChannelEventListener;
 #[cfg(unix)]
 use crate::terminal::local_tty::terminal_attributes::Event as TerminalAttributesPollerEvent;
 use crate::terminal::local_tty::{Pty, PtyOptions};
+use crate::terminal::model::block::SerializedBlockListItem;
 use crate::terminal::model::session::Sessions;
 #[cfg(unix)]
 use crate::terminal::model::terminal_model::BlockIndex;
@@ -51,6 +54,7 @@ use crate::terminal::model::terminal_model::ExitReason;
 use crate::terminal::model_events::ModelEvent as TerminalModelEvent;
 use crate::terminal::model_events::{ModelEventDispatcher, SshRemoteServerSupport};
 use crate::terminal::session_settings::{SessionSettings, ToolbarChipSelection};
+#[cfg(feature = "agent_runtime")]
 use crate::terminal::shared_session::sharer::network::Network;
 use crate::terminal::shared_session::{IsSharedSessionCreator, SharedSessionStatus};
 use crate::terminal::shell::ShellName;
@@ -109,6 +113,7 @@ pub struct TerminalManager<S> {
 
     /// The sharer side of the session sharing protocol. [`Some`] only when a
     /// shared session connection is ongoing.
+    #[cfg(feature = "agent_runtime")]
     pub(super) session_sharer: Rc<RefCell<Option<ModelHandle<Network>>>>,
 }
 
@@ -325,6 +330,7 @@ impl<S> TerminalManager<S> {
         });
 
         // Have ApiKeyManager subscribe to block completion events for AWS credential refresh
+        #[cfg(feature = "agent_runtime")]
         ai::api_keys::ApiKeyManager::handle(ctx).update(ctx, |manager, ctx| {
             manager.register_model_event_dispatcher(&model_events, ctx);
         });
@@ -439,6 +445,7 @@ impl<S> TerminalManager<S> {
             #[cfg(feature = "integration_tests")]
             pid: None,
             inactive_pty_reads_rx,
+            #[cfg(feature = "agent_runtime")]
             session_sharer: Rc::new(RefCell::new(None)),
         };
 

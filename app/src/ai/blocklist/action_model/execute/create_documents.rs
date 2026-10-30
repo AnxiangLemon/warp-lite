@@ -10,10 +10,8 @@ use crate::ai::agent::{
 };
 use crate::ai::artifacts::Artifact;
 use crate::ai::blocklist::BlocklistAIHistoryModel;
-use ai::document::{AIDocumentVersion};
-use crate::ai::document::ai_document_model::AIDocumentModel;
+use crate::ai::document::ai_document_model::{AIDocumentModel, AIDocumentVersion};
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
-#[cfg(not(feature = "warp_lite"))]
 use crate::notebooks::editor::model::FileLinkResolutionContext;
 use crate::terminal::model::session::active_session::ActiveSession;
 
@@ -85,33 +83,19 @@ impl CreateDocumentsExecutor {
                     let session = self.active_session.as_ref(ctx);
                     let working_directory = session.current_working_directory().cloned();
                     let shell_launch_data = session.shell_launch_data(ctx);
-                    #[cfg(not(feature = "warp_lite"))]
                     let file_link_resolution_context =
                         working_directory.map(|working_directory| FileLinkResolutionContext {
                             working_directory,
                             shell_launch_data,
                         });
                     model.update(ctx, |model, model_ctx| {
-                        #[cfg(not(feature = "warp_lite"))]
-                        {
-                            model.create_document(
-                                &document.title,
-                                document.content.clone(),
-                                conversation_id,
-                                file_link_resolution_context.clone(),
-                                model_ctx,
-                            )
-                        }
-                        #[cfg(feature = "warp_lite")]
-                        {
-                            model.create_document(
-                                &document.title,
-                                document.content.clone(),
-                                conversation_id,
-                                None,
-                                model_ctx,
-                            )
-                        }
+                        model.create_document(
+                            &document.title,
+                            document.content.clone(),
+                            conversation_id,
+                            file_link_resolution_context.clone(),
+                            model_ctx,
+                        )
                     })
                 };
 

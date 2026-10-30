@@ -182,6 +182,6 @@ fn sort_environments_for_orchestration_default(environments: &mut [CloudAmbientA
     });
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "catalog_tests.rs"]
 mod tests;

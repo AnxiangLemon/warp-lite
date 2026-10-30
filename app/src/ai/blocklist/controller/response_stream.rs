@@ -808,6 +808,6 @@ impl Entity for ResponseStream {
     type Event = ResponseStreamEvent;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "response_stream_tests.rs"]
 mod tests;

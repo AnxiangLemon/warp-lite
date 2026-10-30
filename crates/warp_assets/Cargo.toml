@@ -7,12 +7,16 @@ license.workspace = true
 publish.workspace = true
 
 [features]
+lite = ["dep:rust-embed-compressed"]
 standalone = []
 
 [dependencies]
 anyhow.workspace = true
 rust-embed.workspace = true
 warpui_core.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+rust-embed-compressed = { package = "rust-embed", version = "=6.8.1", default-features = false, features = ["compression", "include-exclude"], optional = true }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 # Make sure we embed the data into the wasm binary even when running in debug

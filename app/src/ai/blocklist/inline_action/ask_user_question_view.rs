@@ -1462,6 +1462,6 @@ impl Element for MeasureOnly {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "ask_user_question_view_tests.rs"]
 mod tests;

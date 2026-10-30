@@ -873,6 +873,6 @@ impl RemoteDiffStateModel {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "remote_tests.rs"]
 mod remote_tests;

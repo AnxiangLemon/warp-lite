@@ -8,8 +8,10 @@
 use warpui::integration::AssertionCallback;
 use warpui::{App, Entity, View, ViewHandle, WindowId, async_assert};
 
+#[cfg(feature = "agent_runtime")]
 use crate::ai_assistant::panel::AIAssistantPanelView;
 use crate::input_suggestions::InputSuggestions;
+#[cfg(feature = "agent_runtime")]
 use crate::notebooks::notebook::NotebookView;
 use crate::pane_group::{PaneGroup, PaneView};
 use crate::root_view::RootView;
@@ -20,7 +22,9 @@ use crate::terminal::TerminalView;
 use crate::terminal::input::Input;
 use crate::themes::theme_chooser::ThemeChooser;
 use crate::view_components::find::{Find, FindEvent, FindModel};
+#[cfg(feature = "agent_runtime")]
 use crate::workflows::CategoriesView;
+#[cfg(feature = "agent_runtime")]
 use crate::workflows::workflow_view::WorkflowView;
 use crate::workspace::Workspace;
 
@@ -162,6 +166,7 @@ pub fn input_view(
 }
 
 /// Panics if there isn't a notebook view at the given tab and pane index.
+#[cfg(feature = "agent_runtime")]
 pub fn notebook_view(
     app: &App,
     window_id: WindowId,
@@ -178,6 +183,7 @@ pub fn notebook_view(
 }
 
 /// Panics if there isn't a workflow view at the given tab and pane index.
+#[cfg(feature = "agent_runtime")]
 pub fn workflow_view(
     app: &App,
     window_id: WindowId,
@@ -218,11 +224,13 @@ pub fn keybindings_view(app: &App, window_id: WindowId) -> ViewHandle<Keybinding
 }
 
 /// Panics if there isn't a single workflows view in the view hierarchy.
+#[cfg(feature = "agent_runtime")]
 pub fn workflow_categories_view(app: &App, window_id: WindowId) -> ViewHandle<CategoriesView> {
     singleton_view_of_type(app, window_id)
 }
 
 /// Panics if there isn't a single ai assistant panel view in the view hierarchy.
+#[cfg(feature = "agent_runtime")]
 pub fn ai_assistant_panel_view(app: &App, window_id: WindowId) -> ViewHandle<AIAssistantPanelView> {
     singleton_view_of_type(app, window_id)
 }

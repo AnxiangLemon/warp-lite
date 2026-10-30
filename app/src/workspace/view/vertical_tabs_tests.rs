@@ -1228,3 +1228,27 @@ fn summary_search_fragments_include_hidden_overflow_values() {
     assert!(search_fragments_contain_query(&fragments, "+2"));
     assert!(search_fragments_contain_query(&fragments, "-3"));
 }
+
+#[test]
+#[cfg(feature = "warp_lite")]
+fn lite_sidebar_uses_directory_and_command_instead_of_saved_git_branch_options() {
+    use crate::workspace::tab_settings::{VerticalTabsCompactSubtitle, VerticalTabsPrimaryInfo};
+    assert_eq!(
+        super::resolve_primary_info(VerticalTabsPrimaryInfo::Branch),
+        VerticalTabsPrimaryInfo::WorkingDirectory
+    );
+    assert_eq!(
+        super::resolve_compact_subtitle(
+            VerticalTabsPrimaryInfo::Command,
+            VerticalTabsCompactSubtitle::Branch
+        ),
+        VerticalTabsCompactSubtitle::WorkingDirectory
+    );
+    assert_eq!(
+        super::resolve_compact_subtitle(
+            VerticalTabsPrimaryInfo::WorkingDirectory,
+            VerticalTabsCompactSubtitle::Branch
+        ),
+        VerticalTabsCompactSubtitle::Command
+    );
+}

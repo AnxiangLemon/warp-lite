@@ -19,7 +19,7 @@ use crate::util::bindings::{
     CustomAction, keybinding_name_to_display_string, trigger_to_keystroke,
 };
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "context_menu_tests.rs"]
 mod tests;
 

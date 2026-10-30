@@ -80,7 +80,7 @@ impl From<&WarpTheme> for TuiTheme {
     }
 }
 
-define_settings_group!(TuiThemeSettings, settings: [
+define_settings_group!(TuiThemeSettings, schema_cfg: feature = "agent_runtime", settings: [
     theme: TuiThemeSetting {
         type: TuiTheme,
         default: TuiTheme::default(),

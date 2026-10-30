@@ -3,16 +3,13 @@ use warp_terminal::model::Point;
 use warp_terminal::model::grid::Dimensions;
 
 use super::{Block, SerializedAIMetadata};
-use crate::ai::agent::AIAgentActionId;
-use crate::ai::agent::conversation::AIConversationId;
-use crate::ai::agent::task::TaskId;
-use crate::ai::blocklist::block::cli_controller::{
-    LongRunningCommandControlState, UserTakeOverReason,
-};
 use crate::terminal::event::Event;
 use crate::terminal::model::RespectObfuscatedSecrets;
 use crate::terminal::model::grid::RespectDisplayedOutput;
 use crate::terminal::model::grid::grid_handler::GridHandler;
+use crate::terminal::session_types::{
+    AIAgentActionId, AIConversationId, LongRunningCommandControlState, TaskId, UserTakeOverReason,
+};
 
 impl Block {
     /// `true` if the command is executing and the user has opened the agent mode input.
@@ -473,95 +470,7 @@ impl Default for InteractionMode {
     }
 }
 
-/// Blocklist AI metadata associated with this block.
-#[derive(Debug, Clone)]
-pub struct AgentInteractionMetadata {
-    /// The ID of the `AIAgentAction` associated with this block's requested command execution.
-    /// This is optional because not all AI-related blocks are associated with a requested command.
-    requested_command_action_id: Option<AIAgentActionId>,
-
-    /// The ID of the conversation to which this action belongs.
-    conversation_id: AIConversationId,
-
-    /// The task ID for the CLI subagent interaction with this block if any.
-    subagent_task_id: Option<TaskId>,
-
-    /// State governing user/agent interaction with the command in this block.
-    long_running_control_state: Option<LongRunningCommandControlState>,
-
-    /// `true` if the agent has previously written to this block.
-    has_agent_written_to_block: bool,
-
-    /// `true` if this block should be hidden from the user (as is the case with AI-requested
-    /// commands, for example).
-    should_hide_block: bool,
-}
-
-impl AgentInteractionMetadata {
-    /// Creates a new metadata instance with fully specified fields.
-    pub fn new(
-        requested_command_action_id: Option<AIAgentActionId>,
-        conversation_id: AIConversationId,
-        subagent_task_id: Option<TaskId>,
-        long_running_control_state: Option<LongRunningCommandControlState>,
-        has_agent_written_to_block: bool,
-        should_hide_block: bool,
-    ) -> Self {
-        AgentInteractionMetadata {
-            requested_command_action_id,
-            conversation_id,
-            subagent_task_id,
-            long_running_control_state,
-            has_agent_written_to_block,
-            should_hide_block,
-        }
-    }
-
-    /// Convenience constructor for the common "hidden by default" case used for requested commands.
-    pub fn new_hidden(
-        requested_command_action_id: AIAgentActionId,
-        conversation_id: AIConversationId,
-    ) -> Self {
-        Self::new(
-            Some(requested_command_action_id),
-            conversation_id,
-            None,
-            None,
-            false,
-            true,
-        )
-    }
-
-    pub fn requested_command_action_id(&self) -> Option<&AIAgentActionId> {
-        self.requested_command_action_id.as_ref()
-    }
-
-    pub fn conversation_id(&self) -> &AIConversationId {
-        &self.conversation_id
-    }
-
-    pub fn subagent_task_id(&self) -> Option<&TaskId> {
-        self.subagent_task_id.as_ref()
-    }
-
-    pub fn is_agent_in_control(&self) -> bool {
-        self.long_running_control_state
-            .as_ref()
-            .is_some_and(|state| state.is_agent_in_control())
-    }
-
-    pub fn long_running_control_state(&self) -> Option<&LongRunningCommandControlState> {
-        self.long_running_control_state.as_ref()
-    }
-
-    pub fn has_agent_written_to_block(&self) -> bool {
-        self.has_agent_written_to_block
-    }
-
-    pub fn should_hide_block(&self) -> bool {
-        self.should_hide_block
-    }
-}
+pub use crate::terminal::session_types::AgentInteractionMetadata;
 
 /// String representation of the cursor to interpolate in the terminal contents string.
 pub const CURSOR_MARKER: &str = "<|cursor|>";

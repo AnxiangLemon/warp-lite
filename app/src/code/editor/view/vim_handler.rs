@@ -1032,6 +1032,6 @@ fn trim_one_end_match(s: &str, ch: char) -> &str {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "vim_handler_tests.rs"]
 mod tests;

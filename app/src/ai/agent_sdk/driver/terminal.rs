@@ -874,6 +874,6 @@ impl TerminalDriver {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "terminal_tests.rs"]
 mod tests;

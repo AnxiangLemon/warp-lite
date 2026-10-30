@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
-use warpui::{Entity, EntityId, ModelContext, SingletonEntity, WindowId};
+use warpui::{Entity, SingletonEntity, WindowId};
+#[cfg(feature = "agent_runtime")]
+use warpui::{EntityId, ModelContext};
 
 use crate::PaneViewLocator;
 use crate::ai::execution_profiles::ExecutionProfileId;
+#[cfg(feature = "agent_runtime")]
 use crate::pane_group::{ExecutionProfileEditorPane, PaneContent};
 
 /// Manages execution profile editor panes across different windows and profiles.
@@ -34,6 +37,7 @@ impl ExecutionProfileEditorManager {
             .map(|d| d.locator)
     }
 
+    #[cfg(feature = "agent_runtime")]
     pub fn register_pane(
         &mut self,
         pane: &ExecutionProfileEditorPane,

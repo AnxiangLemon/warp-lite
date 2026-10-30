@@ -450,6 +450,22 @@ where
         ctx.notify();
     }
 
+    #[cfg(all(feature = "integration_tests", feature = "warp_lite"))]
+    pub(crate) fn item_labels_for_integration_test(&self, app: &AppContext) -> Vec<String> {
+        self.dropdown
+            .as_ref(app)
+            .items()
+            .iter()
+            .filter_map(|item| {
+                if let MenuItem::Item(fields) = item {
+                    Some(fields.label().to_string())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     pub fn add_items(&mut self, items: Vec<DropdownItem<A>>, ctx: &mut ViewContext<Self>) {
         self.dropdown.update(ctx, |dropdown, ctx| {
             dropdown.add_items(items.iter().map(|item| item.into()));

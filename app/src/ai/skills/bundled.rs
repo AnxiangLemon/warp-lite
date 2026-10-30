@@ -568,6 +568,6 @@ pub(crate) fn activation_for_bundled_skill(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "bundled_tests.rs"]
 mod tests;

@@ -1,6 +1,9 @@
 mod view;
 
+#[cfg(feature = "agent_runtime")]
+pub use view::init;
+pub use view::{FEATURE_INTROS, FeatureIntroId};
+#[cfg(feature = "agent_runtime")]
 pub use view::{
-    FEATURE_INTROS, FeatureIntroCtaTarget, FeatureIntroId, FeatureIntroModal,
-    FeatureIntroModalEvent, feature_intro_by_id, init,
+    FeatureIntroCtaTarget, FeatureIntroModal, FeatureIntroModalEvent, feature_intro_by_id,
 };

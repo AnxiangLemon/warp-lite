@@ -1,41 +1,59 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
+#[cfg(feature = "cloud_services")]
+use anyhow::anyhow;
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use cynic::{MutationBuilder, QueryBuilder};
 #[cfg(test)]
 use mockall::automock;
+use warp_graphql::mutations::create_simple_integration::CreateSimpleIntegrationOutput;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_simple_integration::{
-    CreateSimpleIntegration, CreateSimpleIntegrationOutput, CreateSimpleIntegrationResult,
-    CreateSimpleIntegrationVariables, SimpleIntegrationConfig,
+    CreateSimpleIntegration, CreateSimpleIntegrationResult, CreateSimpleIntegrationVariables,
+    SimpleIntegrationConfig,
 };
+use warp_graphql::queries::get_integrations_using_environment::GetIntegrationsUsingEnvironmentOutput;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_integrations_using_environment::{
     GetIntegrationsUsingEnvironment, GetIntegrationsUsingEnvironmentInput,
-    GetIntegrationsUsingEnvironmentOutput, GetIntegrationsUsingEnvironmentResult,
-    GetIntegrationsUsingEnvironmentVariables,
+    GetIntegrationsUsingEnvironmentResult, GetIntegrationsUsingEnvironmentVariables,
 };
+use warp_graphql::queries::get_oauth_connect_tx_status::OauthConnectTxStatus;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_oauth_connect_tx_status::{
     GetOAuthConnectTxStatus, GetOAuthConnectTxStatusInput, GetOAuthConnectTxStatusResult,
-    GetOAuthConnectTxStatusVariables, OauthConnectTxStatus,
+    GetOAuthConnectTxStatusVariables,
 };
+use warp_graphql::queries::get_simple_integrations::SimpleIntegrationsOutput;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_simple_integrations::{
-    SimpleIntegrations, SimpleIntegrationsInput, SimpleIntegrationsOutput,
-    SimpleIntegrationsResult, SimpleIntegrationsVariables,
+    SimpleIntegrations, SimpleIntegrationsInput, SimpleIntegrationsResult,
+    SimpleIntegrationsVariables,
 };
+use warp_graphql::queries::suggest_cloud_environment_image::SuggestCloudEnvironmentImageResult;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::suggest_cloud_environment_image::{
     RepoInput as SuggestCloudEnvironmentImageRepoInput, SuggestCloudEnvironmentImage,
-    SuggestCloudEnvironmentImageInput, SuggestCloudEnvironmentImageResult,
-    SuggestCloudEnvironmentImageVariables,
+    SuggestCloudEnvironmentImageInput, SuggestCloudEnvironmentImageVariables,
 };
+use warp_graphql::queries::user_github_info::UserGithubInfoResult;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::user_github_info::{
-    GithubAuthRequiredOutput, UserGithubInfo, UserGithubInfoResult, UserGithubInfoVariables,
+    GithubAuthRequiredOutput, UserGithubInfo, UserGithubInfoVariables,
 };
+use warp_graphql::queries::user_repo_auth_status::UserRepoAuthStatusOutput;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::user_repo_auth_status::{
     RepoInput as UserRepoAuthStatusRepoInput, UserRepoAuthStatus, UserRepoAuthStatusInput,
-    UserRepoAuthStatusOutput, UserRepoAuthStatusResult, UserRepoAuthStatusVariables,
+    UserRepoAuthStatusResult, UserRepoAuthStatusVariables,
 };
 
 use super::ServerApi;
+#[cfg(feature = "cloud_services")]
 use crate::channel::ChannelState;
+#[cfg(feature = "cloud_services")]
 use crate::features::FeatureFlag;
+#[cfg(feature = "cloud_services")]
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
 
 #[cfg(not(target_family = "wasm"))]
@@ -62,7 +80,10 @@ pub trait IntegrationsClient: 'static + IntegrationsClientBounds {
     async fn check_user_repo_auth_status(
         &self,
         repos: Vec<(String, String)>,
-    ) -> Result<UserRepoAuthStatusOutput>;
+    ) -> Result<UserRepoAuthStatusOutput> {
+        let _ = repos;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Creates or updates a simple integration on the server.
     ///
@@ -88,7 +109,20 @@ pub trait IntegrationsClient: 'static + IntegrationsClientBounds {
         remove_mcp_server_names: Option<Vec<String>>,
         worker_host: Option<String>,
         enabled: bool,
-    ) -> Result<CreateSimpleIntegrationOutput>;
+    ) -> Result<CreateSimpleIntegrationOutput> {
+        let _ = (
+            integration_type,
+            is_update,
+            environment_uid,
+            base_prompt,
+            model_id,
+            mcp_servers_json,
+            remove_mcp_server_names,
+            worker_host,
+            enabled,
+        );
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Lists simple integrations for a fixed set of provider slugs.
     ///
@@ -97,7 +131,10 @@ pub trait IntegrationsClient: 'static + IntegrationsClientBounds {
     async fn list_simple_integrations(
         &self,
         providers: Vec<String>,
-    ) -> Result<SimpleIntegrationsOutput>;
+    ) -> Result<SimpleIntegrationsOutput> {
+        let _ = providers;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Polls the status of an OAuth connect transaction.
     ///
@@ -107,7 +144,10 @@ pub trait IntegrationsClient: 'static + IntegrationsClientBounds {
     /// # Returns
     /// * `Ok(OauthConnectTxStatus)` - The current status of the transaction
     /// * `Err` - If the transaction is not found or polling fails
-    async fn poll_oauth_connect_status(&self, tx_id: String) -> Result<OauthConnectTxStatus>;
+    async fn poll_oauth_connect_status(&self, tx_id: String) -> Result<OauthConnectTxStatus> {
+        let _ = tx_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Gets the list of integration provider names that are using the specified environment.
     ///
@@ -120,22 +160,31 @@ pub trait IntegrationsClient: 'static + IntegrationsClientBounds {
     async fn get_integrations_using_environment(
         &self,
         environment_id: String,
-    ) -> Result<GetIntegrationsUsingEnvironmentOutput>;
+    ) -> Result<GetIntegrationsUsingEnvironmentOutput> {
+        let _ = environment_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Gets the user's GitHub connection info, including accessible repos.
     ///
     /// # Returns
     /// * `Ok(UserGithubInfoResult)` - Either connected with repos, or auth required
     /// * `Err` - If the query fails
-    async fn get_user_github_info(&self) -> Result<UserGithubInfoResult>;
+    async fn get_user_github_info(&self) -> Result<UserGithubInfoResult> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Suggests a Docker image for a cloud environment based on the provided repos.
     async fn suggest_cloud_environment_image(
         &self,
         repos: Vec<(String, String)>,
-    ) -> Result<SuggestCloudEnvironmentImageResult>;
+    ) -> Result<SuggestCloudEnvironmentImageResult> {
+        let _ = repos;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 }
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 impl IntegrationsClient for ServerApi {
@@ -347,3 +396,8 @@ impl IntegrationsClient for ServerApi {
         }
     }
 }
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl IntegrationsClient for ServerApi {}

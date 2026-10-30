@@ -2,8 +2,6 @@ use warpui::prelude::ChildView;
 use warpui::{Element, EntityId, View, ViewContext, ViewHandle};
 
 use super::{InitStepBlock, InitStepKind};
-use crate::ai::agent::AIAgentExchangeId;
-use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::blocklist::AIBlock;
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
 use crate::ai::blocklist::block::PendingUserQueryBlock;
@@ -14,6 +12,7 @@ use crate::terminal::block_list_viewport::ScrollPositionUpdate;
 use crate::terminal::model::blocks::{RemovableBlocklistItem, RichContentItem};
 use crate::terminal::model::rich_content::RichContentType;
 use crate::terminal::model::terminal_model::BlockIndex;
+use crate::terminal::session_types::{AIAgentExchangeId, AIConversationId};
 use crate::terminal::view::ambient_agent::AmbientAgentEntryBlock;
 use crate::terminal::view::init_environment::InitEnvironmentBlock;
 use crate::terminal::view::ssh_remote_server_choice_view::SshRemoteServerChoiceView;
@@ -290,6 +289,7 @@ impl TerminalView {
         // Agent view entry blocks, inline agent view headers, and terminal zero state blocks
         // should not be associated with any conversation, as they always belong in the top-level
         // terminal view and should be hidden while agent view is active.
+        #[cfg(feature = "agent_runtime")]
         let is_agent_view_scoped_terminal_content = matches!(
             metadata,
             Some(
@@ -298,32 +298,51 @@ impl TerminalView {
                     | RichContentMetadata::TerminalViewZeroState
             )
         );
+        #[cfg(feature = "agent_runtime")]
         let is_use_agent_footer = handle.id() == self.use_agent_footer.id();
 
-        let (agent_view_conversation_id, should_hide) = if is_agent_view_scoped_terminal_content {
-            (None, self.agent_view_controller.as_ref(ctx).is_active())
-        } else if is_use_agent_footer {
-            (
-                self.agent_view_controller
-                    .as_ref(ctx)
-                    .agent_view_state()
-                    .fullscreen_conversation_id(),
-                false,
-            )
-        } else {
-            (
-                self.agent_view_controller
-                    .as_ref(ctx)
-                    .agent_view_state()
-                    .active_conversation_id(),
-                false,
-            )
+        let (agent_view_conversation_id, should_hide) = {
+            #[cfg(feature = "agent_runtime")]
+            {
+                if is_agent_view_scoped_terminal_content {
+                    (None, self.agent_view_controller.as_ref(ctx).is_active())
+                } else if is_use_agent_footer {
+                    (
+                        self.agent_view_controller
+                            .as_ref(ctx)
+                            .agent_view_state()
+                            .fullscreen_conversation_id(),
+                        false,
+                    )
+                } else {
+                    (
+                        self.agent_view_controller
+                            .as_ref(ctx)
+                            .agent_view_state()
+                            .active_conversation_id(),
+                        false,
+                    )
+                }
+            }
+            #[cfg(not(feature = "agent_runtime"))]
+            {
+                (None, false)
+            }
         };
-        let is_agent_transcript_user_query = match &metadata {
-            Some(RichContentMetadata::AIBlock(AIBlockMetadata {
-                ai_block_handle, ..
-            })) => ai_block_handle.as_ref(ctx).has_user_input(ctx),
-            _ => false,
+        let is_agent_transcript_user_query = {
+            #[cfg(feature = "agent_runtime")]
+            {
+                match &metadata {
+                    Some(RichContentMetadata::AIBlock(AIBlockMetadata {
+                        ai_block_handle, ..
+                    })) => ai_block_handle.as_ref(ctx).has_user_input(ctx),
+                    _ => false,
+                }
+            }
+            #[cfg(not(feature = "agent_runtime"))]
+            {
+                false
+            }
         };
         let item = RichContentItem::new_with_agent_transcript_user_query(
             content_type,

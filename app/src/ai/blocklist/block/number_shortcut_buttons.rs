@@ -435,6 +435,6 @@ impl Entity for NumberShortcutButtons {
     type Event = NumberShortcutButtonsEvent;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "number_shortcut_buttons_tests.rs"]
 mod tests;

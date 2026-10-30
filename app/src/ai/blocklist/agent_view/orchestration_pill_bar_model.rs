@@ -128,6 +128,6 @@ pub enum OrchestrationPillBarEvent {
     PinSetChanged,
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "orchestration_pill_bar_model_tests.rs"]
 mod tests;

@@ -2472,6 +2472,6 @@ impl GlobalBufferModel {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "global_buffer_model_tests.rs"]
 mod global_buffer_model_tests;

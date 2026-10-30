@@ -127,3 +127,75 @@ fn header_toolbar_chip_selection_custom_empty_reports_all_absent() {
         assert!(!config.contains_item(&item));
     }
 }
+
+#[test]
+#[cfg(feature = "warp_lite")]
+fn lite_sidebar_migrates_old_horizontal_layout_once() {
+    use warp_core::user_preferences::GetUserPreferences;
+
+    App::test((), |mut app| async move {
+        initialize_settings_for_tests(&mut app);
+        app.update(|ctx| {
+            ctx.private_user_preferences()
+                .remove_value(LITE_SIDEBAR_MIGRATION_KEY)
+                .unwrap();
+            TabSettings::handle(ctx).update(ctx, |settings, ctx| {
+                settings.use_vertical_tabs.set_value(false, ctx).unwrap();
+                settings
+                    .header_toolbar_chip_selection
+                    .set_value(
+                        HeaderToolbarChipSelection::Custom {
+                            left: vec![],
+                            right: vec![HeaderToolbarItemKind::TabsPanel],
+                        },
+                        ctx,
+                    )
+                    .unwrap();
+            });
+            migrate_lite_sidebar_settings(ctx);
+            let settings = TabSettings::as_ref(ctx);
+            assert!(*settings.use_vertical_tabs);
+            assert!(*settings.show_vertical_tab_panel_in_restored_windows);
+            assert_eq!(
+                settings.vertical_tabs_primary_info,
+                VerticalTabsPrimaryInfo::WorkingDirectory
+            );
+            assert_eq!(
+                settings.vertical_tabs_compact_subtitle,
+                VerticalTabsCompactSubtitle::Command
+            );
+            assert_eq!(
+                settings.header_toolbar_chip_selection.left_items(),
+                vec![HeaderToolbarItemKind::TabsPanel]
+            );
+            assert!(
+                settings
+                    .header_toolbar_chip_selection
+                    .right_items()
+                    .is_empty()
+            );
+            assert_eq!(
+                ctx.private_user_preferences()
+                    .read_value(LITE_SIDEBAR_MIGRATION_KEY)
+                    .unwrap()
+                    .as_deref(),
+                Some("true")
+            );
+
+            TabSettings::handle(ctx).update(ctx, |settings, ctx| {
+                settings.use_vertical_tabs.set_value(false, ctx).unwrap();
+                settings
+                    .vertical_tabs_primary_info
+                    .set_value(VerticalTabsPrimaryInfo::Command, ctx)
+                    .unwrap();
+            });
+            migrate_lite_sidebar_settings(ctx);
+            let settings = TabSettings::as_ref(ctx);
+            assert!(!*settings.use_vertical_tabs);
+            assert_eq!(
+                settings.vertical_tabs_primary_info,
+                VerticalTabsPrimaryInfo::Command
+            );
+        });
+    });
+}

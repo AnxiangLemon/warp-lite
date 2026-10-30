@@ -10,7 +10,7 @@ use warpui::{Entity, EntityId, ModelContext, ModelHandle, SingletonEntity};
 
 use self::listener::CLIAgentSessionListener;
 use super::CLIAgent;
-use crate::ai::blocklist::InputConfig;
+use crate::terminal::session_types::InputConfig;
 
 /// Status of a tracked CLI agent session.
 #[derive(Debug, Clone, PartialEq, Eq)]

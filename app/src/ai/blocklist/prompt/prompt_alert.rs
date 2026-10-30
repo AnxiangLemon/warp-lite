@@ -534,6 +534,6 @@ impl TypedActionView for PromptAlertView {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "prompt_alert_tests.rs"]
 mod tests;

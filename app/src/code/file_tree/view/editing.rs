@@ -1,6 +1,6 @@
 //! Module for utilities related to editing items in the file tree.
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "editing_tests.rs"]
 mod tests;
 

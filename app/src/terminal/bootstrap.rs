@@ -236,6 +236,18 @@ pub fn init_shell_script_for_shell(
         ShellType::Fish => load_and_escape_script("bundled/bootstrap/fish_init_shell.sh", assets),
         ShellType::PowerShell => load_script("bundled/bootstrap/pwsh_init_shell.ps1", assets),
     };
+    #[cfg(all(windows, feature = "integration_tests"))]
+    let script = if crate::features::IS_LITE_BUILD
+        && warp_core::channel::ChannelState::channel() == warp_core::channel::Channel::Integration
+        && shell_type == ShellType::PowerShell
+    {
+        // Windows profile paths use Known Folders, so the test HOME alone cannot isolate them.
+        format!(
+            "$PROFILE = [pscustomobject]@{{AllUsersAllHosts='';AllUsersCurrentHost='';CurrentUserAllHosts='';CurrentUserCurrentHost=''}}; {script}"
+        )
+    } else {
+        script
+    };
     script.replace(SESSION_ID_PLACEHOLDER, &session_id.as_u64().to_string())
 }
 

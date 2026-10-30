@@ -28,15 +28,15 @@ use crate::appearance::Appearance;
 use crate::auth::auth_state::AuthStateProvider;
 use crate::cloud_object::model::persistence::{CloudModel, CloudModelEvent};
 use crate::cloud_object::{CloudObject, CloudObjectEventEntrypoint, Owner};
-use crate::cloud_object::CloudObjectTypeAndId;
-use crate::cloud_object::CloudFolder;
+use crate::drive::CloudObjectTypeAndId;
+use crate::drive::folders::CloudFolder;
 use crate::global_resource_handles::GlobalResourceHandlesProvider;
 use crate::notebooks::editor::model::{
     FileLinkResolutionContext, NotebooksEditorModel, RichTextEditorModelEvent,
 };
 use crate::notebooks::editor::rich_text_styles;
 use crate::notebooks::file::MarkdownDisplayMode;
-use crate::cloud_object::{CloudNotebookModel, NotebookId};
+use crate::notebooks::{CloudNotebookModel, NotebookId};
 use crate::persistence::ModelEvent;
 use crate::server::cloud_objects::update_manager::{
     InitiatedBy, ObjectOperation, OperationSuccessType, UpdateManager, UpdateManagerEvent,
@@ -1586,6 +1586,6 @@ impl Entity for AIDocumentModel {
 
 impl SingletonEntity for AIDocumentModel {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "ai_document_model_tests.rs"]
 mod tests;

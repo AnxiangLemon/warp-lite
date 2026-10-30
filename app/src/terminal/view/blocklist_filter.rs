@@ -38,4 +38,5 @@ pub(crate) fn exchanges_for_blocklist(conversation: &AIConversation) -> Vec<&AIA
 
 #[cfg(test)]
 #[path = "blocklist_filter_tests.rs"]
+#[cfg(feature = "agent_runtime")]
 mod tests;

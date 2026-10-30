@@ -12,13 +12,10 @@ use crate::ai::agent_conversations_model::AgentManagementFilters;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ai::blocklist::{InputConfig, SerializedBlockListItem};
 use crate::code::editor_management::CodeSource;
-#[cfg(not(feature = "warp_lite"))]
-use crate::cloud_object::OpenWarpDriveObjectSettings;
+use crate::drive::OpenWarpDriveObjectSettings;
 use crate::root_view::quake_mode_window_id;
 use crate::server::ids::{ServerId, SyncId};
-use crate::settings_view::SettingsSection;
-#[cfg(not(feature = "warp_lite"))]
-use crate::settings_view::environments_page::EnvironmentsPage;
+use crate::settings_view::{EnvironmentsPage, SettingsSection};
 use crate::tab::SelectedTabColor;
 use crate::terminal::ShellLaunchData;
 use crate::themes::theme::AnsiColorIdentifier;
@@ -138,19 +135,13 @@ pub struct LeafSnapshot {
 #[derive(Clone, Debug, PartialEq)]
 pub enum LeafContents {
     Terminal(TerminalPaneSnapshot),
-    #[cfg(not(feature = "warp_lite"))]
     Notebook(NotebookPaneSnapshot),
-    #[cfg(not(feature = "warp_lite"))]
     AIDocument(AIDocumentPaneSnapshot),
     Code(CodePaneSnapShot),
-    #[cfg(not(feature = "warp_lite"))]
     EnvVarCollection(EnvVarCollectionPaneSnapshot),
-    #[cfg(not(feature = "warp_lite"))]
     EnvironmentManagement(EnvironmentManagementPaneSnapshot),
-    #[cfg(not(feature = "warp_lite"))]
     Workflow(WorkflowPaneSnapshot),
     Settings(SettingsPaneSnapshot),
-    #[cfg(not(feature = "warp_lite"))]
     AIFact(AIFactPaneSnapshot),
     CustomRouterEditor,
     ExecutionProfileEditor,
@@ -179,25 +170,23 @@ impl LeafContents {
             // Network log: the backing log is an in-memory ring buffer that
             // starts empty on launch; persisting would also regress back to
             // an on-disk log via the app-state database.
-            LeafContents::NetworkLog => false,
-            #[cfg(not(feature = "warp_lite"))]
+            LeafContents::NetworkLog
             // Environment management panes are opened on-demand via workspace
             // actions and have no persistable state.
-            LeafContents::EnvironmentManagement(_) => false,
+            | LeafContents::EnvironmentManagement(_) => false,
             LeafContents::Terminal(_)
+            | LeafContents::Notebook(_)
+            | LeafContents::AIDocument(_)
             | LeafContents::Code(_)
+            | LeafContents::EnvVarCollection(_)
+            | LeafContents::Workflow(_)
             | LeafContents::Settings(_)
+            | LeafContents::AIFact(_)
             | LeafContents::CustomRouterEditor
             | LeafContents::ExecutionProfileEditor
             | LeafContents::CodeReview(_)
             | LeafContents::AmbientAgent(_)
             | LeafContents::GetStarted => true,
-            #[cfg(not(feature = "warp_lite"))]
-            LeafContents::AIDocument(_)
-            | LeafContents::Notebook(_)
-            | LeafContents::EnvVarCollection(_)
-            | LeafContents::Workflow(_)
-            | LeafContents::AIFact(_) => true,
         }
     }
 }
@@ -228,7 +217,6 @@ pub struct TerminalPaneSnapshot {
     pub active_conversation_id: Option<AIConversationId>,
 }
 
-#[cfg(not(feature = "warp_lite"))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum NotebookPaneSnapshot {
     CloudNotebook {
@@ -250,7 +238,6 @@ pub enum NotebookPaneSnapshot {
     },
 }
 
-#[cfg(not(feature = "warp_lite"))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum AIDocumentPaneSnapshot {
     Local {
@@ -276,7 +263,6 @@ pub enum CodePaneSnapShot {
     },
 }
 
-#[cfg(not(feature = "warp_lite"))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum WorkflowPaneSnapshot {
     CloudWorkflow {
@@ -286,7 +272,6 @@ pub enum WorkflowPaneSnapshot {
     },
 }
 
-#[cfg(not(feature = "warp_lite"))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum EnvVarCollectionPaneSnapshot {
     // CloudEnvVarCollection snapshots operate under the same heuristics
@@ -296,7 +281,6 @@ pub enum EnvVarCollectionPaneSnapshot {
     },
 }
 
-#[cfg(not(feature = "warp_lite"))]
 #[derive(Clone, Debug, PartialEq)]
 pub struct EnvironmentManagementPaneSnapshot {
     pub mode: EnvironmentsPage,
@@ -310,7 +294,6 @@ pub enum SettingsPaneSnapshot {
     },
 }
 
-#[cfg(not(feature = "warp_lite"))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum AIFactPaneSnapshot {
     Personal,
@@ -328,9 +311,7 @@ pub enum CodeReviewPaneSnapshot {
 pub enum LeftPanelDisplayedTab {
     FileTree,
     GlobalSearch,
-    #[cfg(not(feature = "warp_lite"))]
     WarpDrive,
-    #[cfg(not(feature = "warp_lite"))]
     ConversationListView,
 }
 
@@ -339,9 +320,7 @@ impl From<ToolPanelView> for LeftPanelDisplayedTab {
         match view {
             ToolPanelView::ProjectExplorer => LeftPanelDisplayedTab::FileTree,
             ToolPanelView::GlobalSearch { .. } => LeftPanelDisplayedTab::GlobalSearch,
-            #[cfg(not(feature = "warp_lite"))]
             ToolPanelView::WarpDrive => LeftPanelDisplayedTab::WarpDrive,
-            #[cfg(not(feature = "warp_lite"))]
             ToolPanelView::ConversationListView => LeftPanelDisplayedTab::ConversationListView,
         }
     }

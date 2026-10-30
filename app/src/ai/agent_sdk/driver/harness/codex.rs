@@ -938,6 +938,6 @@ fn write_codex_mcp_servers(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "codex_tests.rs"]
 mod tests;

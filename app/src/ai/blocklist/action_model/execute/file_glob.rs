@@ -404,6 +404,6 @@ impl Entity for FileGlobExecutor {
     type Event = ();
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "file_glob_tests.rs"]
 mod tests;

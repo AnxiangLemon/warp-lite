@@ -36,6 +36,6 @@ impl OrchestrationAvatar {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "orchestration_avatar_tests.rs"]
 mod tests;

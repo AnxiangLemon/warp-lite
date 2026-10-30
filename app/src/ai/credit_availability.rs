@@ -106,6 +106,6 @@ impl From<GqlAICreditAvailability> for AICreditAvailability {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "credit_availability_tests.rs"]
 mod tests;

@@ -6,8 +6,7 @@ use super::{ActionExecution, AnyActionExecution, ExecuteActionInput, PreprocessA
 use crate::ai::agent::{
     AIAgentAction, AIAgentActionType, DocumentContext, ReadDocumentsRequest, ReadDocumentsResult,
 };
-use ai::document::{AIDocumentId};
-use crate::ai::document::ai_document_model::AIDocumentModel;
+use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentModel};
 
 pub struct ReadDocumentsExecutor;
 
@@ -107,6 +106,6 @@ fn try_read_document(id: &AIDocumentId, ctx: &AppContext) -> Option<DocumentCont
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "read_documents_tests.rs"]
 mod tests;

@@ -444,6 +444,6 @@ pub(crate) fn read_jsonl(path: &Path) -> Result<Vec<Value>> {
     Ok(entries)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "claude_transcript_tests.rs"]
 mod tests;

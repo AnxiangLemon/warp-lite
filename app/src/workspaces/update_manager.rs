@@ -70,6 +70,13 @@ impl TeamUpdateManager {
         let team_tester_status = TeamTesterStatus::handle(ctx);
         ctx.subscribe_to_model(&team_tester_status, Self::handle_team_tester_status_changed);
 
+        Self::new_offline(team_client, model_event_sender)
+    }
+
+    pub fn new_offline(
+        team_client: Arc<dyn TeamClient>,
+        model_event_sender: Option<SyncSender<ModelEvent>>,
+    ) -> Self {
         Self {
             team_client,
             model_event_sender,

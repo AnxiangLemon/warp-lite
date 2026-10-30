@@ -27,7 +27,7 @@ pub fn initialize_settings_for_tests_with_mode(
     use warp_core::semantic_selection::SemanticSelection;
 
     use crate::ai::cloud_agent_settings::CloudAgentSettings;
-    use crate::settings::WarpDriveSettings;
+    use crate::drive::settings::WarpDriveSettings;
     use crate::search::command_search::settings::CommandSearchSettings;
     use crate::settings::app_icon::AppIconSettings;
     use crate::settings::manager::SettingsManager;
@@ -123,6 +123,7 @@ pub fn initialize_settings_for_tests_with_mode(
     CodeSettings::register(app);
     SemanticSelection::register(app);
 
+    #[cfg(feature = "agent_runtime")]
     app.update(|ctx| {
         // Add settings models that are backed by secure storage, not user preferences.
         ctx.add_singleton_model(ai::api_keys::ApiKeyManager::new);

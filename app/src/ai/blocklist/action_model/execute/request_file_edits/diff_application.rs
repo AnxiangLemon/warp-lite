@@ -820,6 +820,6 @@ async fn apply_v4a_update<F, Fut>(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "diff_application_tests.rs"]
 mod tests;

@@ -10,9 +10,13 @@ use warpui::platform::Cursor;
 use warpui::{AppContext, Element, Entity, SingletonEntity, TypedActionView, View, ViewContext};
 
 use crate::appearance::Appearance;
-use crate::settings::{WarpDriveSettings, WarpDriveSettingsChangedEvent};
+use crate::drive::settings::WarpDriveSettings;
+#[cfg(feature = "agent_runtime")]
+use crate::drive::settings::WarpDriveSettingsChangedEvent;
 use crate::search::{FilterChipRenderer, QueryFilter};
-use crate::settings::{AISettings, AISettingsChangedEvent};
+use crate::settings::AISettings;
+#[cfg(feature = "agent_runtime")]
+use crate::settings::AISettingsChangedEvent;
 
 lazy_static! {
     /// Map of sample queries to the [`QueryFilter`]s they employ.
@@ -50,12 +54,16 @@ pub struct CommandSearchZeroStateView {
 
 impl CommandSearchZeroStateView {
     pub fn new(ctx: &mut ViewContext<Self>) -> Self {
+        #[cfg(not(feature = "agent_runtime"))]
+        let _ = ctx;
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(&AISettings::handle(ctx), |_, _, event, ctx| {
             if let AISettingsChangedEvent::IsAnyAIEnabled { .. } = event {
                 ctx.notify();
             }
         });
 
+        #[cfg(feature = "agent_runtime")]
         ctx.subscribe_to_model(&WarpDriveSettings::handle(ctx), |_, _, event, ctx| {
             if let WarpDriveSettingsChangedEvent::EnableWarpDrive { .. } = event {
                 ctx.notify();

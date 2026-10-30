@@ -241,6 +241,6 @@ impl Entity for SendMessageToAgentExecutor {
     type Event = ();
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "send_message_tests.rs"]
 mod tests;

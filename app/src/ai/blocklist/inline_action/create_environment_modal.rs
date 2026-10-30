@@ -104,6 +104,6 @@ impl View for CreateEnvironmentModal {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "create_environment_modal_tests.rs"]
 mod tests;

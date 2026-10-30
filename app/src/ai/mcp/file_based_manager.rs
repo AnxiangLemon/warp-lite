@@ -750,6 +750,6 @@ impl Entity for FileBasedMCPManager {
 
 impl SingletonEntity for FileBasedMCPManager {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "file_based_manager_tests.rs"]
 mod tests;

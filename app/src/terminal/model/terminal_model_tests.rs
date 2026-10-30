@@ -11,7 +11,6 @@ use warpui::r#async::executor::Background;
 use warpui::text::{SelectionType, str_to_byte_vec};
 
 use super::*;
-use crate::ai::agent::conversation::AIConversationId;
 use crate::terminal::color;
 use crate::terminal::event_listener::ChannelEventListener;
 use crate::terminal::model::ObfuscateSecrets;
@@ -23,6 +22,7 @@ use crate::terminal::model::image_map::StoredImageMetadata;
 use crate::terminal::model::index::Side;
 use crate::terminal::model::selection::ExpandedSelectionRange;
 use crate::terminal::model::test_utils::block_size;
+use crate::terminal::session_types::AIConversationId;
 use crate::terminal::shared_session::SharedSessionStatus;
 
 /// Helper function to create a SerializedBlock with default values,
@@ -85,7 +85,7 @@ fn take_typeahead_for_input_advances_incremental_typeahead() {
 fn take_typeahead_for_input_ignores_agent_requested_commands() {
     let mut model = TerminalModel::mock(None, None);
     model.simulate_long_running_block("sleep 5", "");
-    let action_id: crate::ai::agent::AIAgentActionId = "action".to_owned().into();
+    let action_id: crate::terminal::session_types::AIAgentActionId = "action".to_owned().into();
     model
         .block_list_mut()
         .active_block_mut()

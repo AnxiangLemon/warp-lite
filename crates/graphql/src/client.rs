@@ -1,10 +1,15 @@
 use std::borrow::Cow;
 
-use cynic::{GraphQlResponse, QueryFragment, QueryVariables};
+use cynic::GraphQlResponse;
+#[cfg(feature = "network_transport")]
+use cynic::{QueryFragment, QueryVariables};
 use http::StatusCode;
 use instant::Duration;
+#[cfg(feature = "network_transport")]
 use reqwest::header::CONTENT_TYPE;
+#[cfg(feature = "network_transport")]
 use serde::Serialize;
+#[cfg(feature = "network_transport")]
 use serde::de::DeserializeOwned;
 use warp_core::channel::ChannelState;
 use warp_core::operating_system_info::OperatingSystemInfo;
@@ -39,6 +44,8 @@ pub trait Operation<QF> {
 /// warp-server.
 #[derive(Debug, thiserror::Error)]
 pub enum GraphQLError {
+    #[error("Cloud services are unavailable in this build")]
+    Unavailable,
     /// Encountered an error while sending the request.
     #[error("error sending request")]
     RequestError(#[source] reqwest::Error),
@@ -67,12 +74,14 @@ pub struct RequestOptions {
     pub path_prefix: Option<String>,
 }
 
+#[cfg(feature = "network_transport")]
 pub(crate) struct Request {
     req: http_client::Request,
     operation_name: String,
 }
 
 /// Builds a [`Request`] that can be sent using [`send_graphql_request`].
+#[cfg(feature = "network_transport")]
 pub(crate) fn build_graphql_request<Q, V>(
     client: &http_client::Client,
     operation: cynic::Operation<Q, V>,
@@ -114,6 +123,7 @@ where
 }
 
 /// Sends a [`Request`] to the server and returns the response.
+#[cfg(feature = "network_transport")]
 pub(crate) async fn send_graphql_request<Q>(
     client: &http_client::Client,
     req: Request,
@@ -235,8 +245,16 @@ macro_rules! define_operation {
             where
                 Self: Sized,
             {
-                let req = $crate::client::build_graphql_request(&client, self, options).map_err($crate::client::GraphQLError::RequestError);
-                Box::pin(async move { $crate::client::send_graphql_request(&client, req?).await })
+                #[cfg(feature = "network_transport")]
+                {
+                    let req = $crate::client::build_graphql_request(&client, self, options).map_err($crate::client::GraphQLError::RequestError);
+                    Box::pin(async move { $crate::client::send_graphql_request(&client, req?).await })
+                }
+                #[cfg(not(feature = "network_transport"))]
+                {
+                    drop((self, client, options));
+                    Box::pin(async { Err($crate::client::GraphQLError::Unavailable) })
+                }
             }
         }
     };

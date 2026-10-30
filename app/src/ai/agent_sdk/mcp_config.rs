@@ -228,6 +228,6 @@ fn validate_string_map_field(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "mcp_config_tests.rs"]
 mod tests;

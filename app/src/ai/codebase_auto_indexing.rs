@@ -77,6 +77,6 @@ where
     candidates
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "codebase_auto_indexing_tests.rs"]
 mod tests;

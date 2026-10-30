@@ -9,46 +9,60 @@ use ai::index::full_source_code_embedding::{
 };
 use anyhow::anyhow;
 use async_trait::async_trait;
+#[cfg(feature = "cloud_services")]
 use base64::Engine;
 use chrono::{DateTime, Utc};
 use cynic::{MutationBuilder, QueryBuilder};
+#[cfg(feature = "cloud_services")]
 use itertools::Itertools;
 #[cfg(test)]
 use mockall::automock;
+#[cfg(feature = "cloud_services")]
 use prost::Message;
+#[cfg(feature = "cloud_services")]
 use warp_core::channel::ChannelState;
+#[cfg(feature = "cloud_services")]
 use warp_core::features::FeatureFlag;
 use warp_errors::report_error;
 use warp_graphql::ai::{AgentTaskState, PlatformErrorCode};
+#[cfg(feature = "cloud_services")]
 use warp_graphql::client::Operation;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::confirm_file_artifact_upload::{
     ConfirmFileArtifactUpload, ConfirmFileArtifactUploadInput, ConfirmFileArtifactUploadResult,
     ConfirmFileArtifactUploadVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_agent_task::{
     CreateAgentTask, CreateAgentTaskInput, CreateAgentTaskResult, CreateAgentTaskVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::create_file_artifact_upload_target::{
     CreateFileArtifactUploadTarget, CreateFileArtifactUploadTargetInput,
     CreateFileArtifactUploadTargetResult, CreateFileArtifactUploadTargetVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::delete_ai_conversation::{
     DeleteAIConversation, DeleteAIConversationVariables, DeleteConversationInput,
     DeleteConversationResult,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::generate_code_embeddings::{
     GenerateCodeEmbeddings, GenerateCodeEmbeddingsInput, GenerateCodeEmbeddingsResult,
     GenerateCodeEmbeddingsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::generate_commands::{
     GenerateCommands, GenerateCommandsInput, GenerateCommandsResult, GenerateCommandsStatus,
     GenerateCommandsVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::generate_dialogue::{
     GenerateDialogue, GenerateDialogueInput,
     GenerateDialogueResult as GenerateDialogueResultGraphql, GenerateDialogueStatus,
     GenerateDialogueVariables, TranscriptPart as TranscriptPartGraphql,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::generate_metadata_for_command::{
     GenerateMetadataForCommand, GenerateMetadataForCommandInput, GenerateMetadataForCommandResult,
     GenerateMetadataForCommandStatus, GenerateMetadataForCommandVariables,
@@ -56,15 +70,18 @@ use warp_graphql::mutations::generate_metadata_for_command::{
 use warp_graphql::mutations::populate_merkle_tree_cache::{
     PopulateMerkleTreeCache, PopulateMerkleTreeCacheResult, PopulateMerkleTreeCacheVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::request_bonus::{
     ProvideNegativeFeedbackResponseForAiConversation,
     ProvideNegativeFeedbackResponseForAiConversationInput,
     ProvideNegativeFeedbackResponseForAiConversationVariables, RequestsRefundedResult,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::update_agent_task::{
     AgentTaskStatusMessageInput, UpdateAgentTask, UpdateAgentTaskInput, UpdateAgentTaskResult,
     UpdateAgentTaskVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::mutations::update_merkle_tree::{
     MerkleTreeNode, UpdateMerkleTree, UpdateMerkleTreeInput, UpdateMerkleTreeResult,
     UpdateMerkleTreeVariables,
@@ -72,33 +89,42 @@ use warp_graphql::mutations::update_merkle_tree::{
 use warp_graphql::queries::codebase_context_config::{
     CodebaseContextConfigQuery, CodebaseContextConfigResult, CodebaseContextConfigVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::free_available_models::{
     FreeAvailableModels, FreeAvailableModelsInput, FreeAvailableModelsResult,
     FreeAvailableModelsVariables,
 };
+#[cfg(feature = "cloud_services")]
 #[cfg(not(feature = "agent_mode_evals"))]
 use warp_graphql::queries::get_ai_credit_availability::{
     GetAICreditAvailability, GetAICreditAvailabilityVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_available_harnesses::{
     GetAvailableHarnesses, GetAvailableHarnessesVariables,
 };
+use warp_graphql::queries::get_conversation_usage::ConversationUsage;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_conversation_usage::{
-    ConversationUsage, GetConversationUsage, GetConversationUsageVariables, UserResult,
+    GetConversationUsage, GetConversationUsageVariables, UserResult,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_feature_model_choices::{
     GetFeatureModelChoices, GetFeatureModelChoicesVariables,
 };
 use warp_graphql::queries::get_relevant_fragments::{
     GetRelevantFragmentsQuery, GetRelevantFragmentsResult, GetRelevantFragmentsVariables,
 };
+#[cfg(feature = "cloud_services")]
 #[cfg(not(feature = "agent_mode_evals"))]
 use warp_graphql::queries::get_request_limit_info::{
     GetRequestLimitInfo, GetRequestLimitInfoVariables,
 };
+use warp_graphql::queries::get_scheduled_agent_history::ScheduledAgentHistory;
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::get_scheduled_agent_history::{
-    GetScheduledAgentHistory, GetScheduledAgentHistoryVariables, ScheduledAgentHistory,
-    ScheduledAgentHistoryInput, ScheduledAgentHistoryResult,
+    GetScheduledAgentHistory, GetScheduledAgentHistoryVariables, ScheduledAgentHistoryInput,
+    ScheduledAgentHistoryResult,
 };
 use warp_graphql::queries::rerank_fragments::{
     RerankFragments, RerankFragmentsResult, RerankFragmentsVariables,
@@ -106,9 +132,11 @@ use warp_graphql::queries::rerank_fragments::{
 use warp_graphql::queries::sync_merkle_tree::{
     SyncMerkleTree, SyncMerkleTreeInput, SyncMerkleTreeResult, SyncMerkleTreeVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::task_attachments::{
     Task as TaskAttachmentsQuery, TaskInput, TaskResult, TaskVariables,
 };
+#[cfg(feature = "cloud_services")]
 use warp_graphql::queries::task_git_credentials::{
     TaskGitCredentials, TaskGitCredentialsInput, TaskGitCredentialsResult,
     TaskGitCredentialsVariables,
@@ -116,9 +144,11 @@ use warp_graphql::queries::task_git_credentials::{
 use warp_multi_agent_api::ConversationData;
 
 use super::ServerApi;
+#[cfg(feature = "cloud_services")]
 #[cfg(not(target_family = "wasm"))]
 use super::download::write_response_body_to_path;
 use super::harness_support::{UploadField, UploadFieldValue, UploadTarget};
+#[cfg(feature = "cloud_services")]
 #[cfg(not(feature = "agent_mode_evals"))]
 use crate::ai::BonusGrant;
 pub use crate::ai::agent::UserQueryMode;
@@ -143,6 +173,7 @@ use crate::ai::llms::{
     AvailableLLMs, DisableReason, LLMContextWindow, LLMInfo, LLMModelHost, LLMSpec,
     LLMUsageMetadata, ModelsByFeature, RoutingHostConfig,
 };
+#[cfg(feature = "cloud_services")]
 #[cfg(feature = "agent_mode_evals")]
 use crate::ai::request_usage_model::RequestLimitInfo;
 use crate::ai::{AICreditAvailability, RequestUsageInfo};
@@ -150,11 +181,11 @@ use crate::ai_assistant::execution_context::WarpAiExecutionContext;
 use crate::ai_assistant::requests::GenerateDialogueResult;
 use crate::ai_assistant::utils::TranscriptPart;
 use crate::ai_assistant::{AIGeneratedCommand, GenerateCommandsFromNaturalLanguageError};
-#[cfg(not(feature = "warp_lite"))]
 use crate::drive::workflows::ai_assist::{GeneratedCommandMetadata, GeneratedCommandMetadataError};
 use crate::persistence::model::ConversationUsageMetadata;
 use crate::server::graphql::{get_request_context, get_user_facing_error_message};
 use crate::terminal::model::block::SerializedBlock;
+#[cfg(feature = "cloud_services")]
 #[cfg(not(feature = "agent_mode_evals"))]
 use crate::{
     server::ids::ServerId,
@@ -1150,26 +1181,38 @@ pub trait AIClient: 'static + Send + Sync {
         &self,
         prompt: String,
         ai_execution_context: Option<WarpAiExecutionContext>,
-    ) -> Result<Vec<AIGeneratedCommand>, GenerateCommandsFromNaturalLanguageError>;
+    ) -> Result<Vec<AIGeneratedCommand>, GenerateCommandsFromNaturalLanguageError> {
+        let _ = (prompt, ai_execution_context);
+        Err(GenerateCommandsFromNaturalLanguageError::Unavailable)
+    }
 
     async fn generate_dialogue_answer(
         &self,
         transcript: Vec<TranscriptPart>,
         prompt: String,
         ai_execution_context: Option<WarpAiExecutionContext>,
-    ) -> anyhow::Result<GenerateDialogueResult>;
+    ) -> anyhow::Result<GenerateDialogueResult> {
+        let _ = (transcript, prompt, ai_execution_context);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    #[cfg(not(feature = "warp_lite"))]
     async fn generate_metadata_for_command(
         &self,
         command: String,
-    ) -> Result<GeneratedCommandMetadata, GeneratedCommandMetadataError>;
+    ) -> Result<GeneratedCommandMetadata, GeneratedCommandMetadataError> {
+        let _ = command;
+        Err(GeneratedCommandMetadataError::Unavailable)
+    }
 
-    async fn get_request_limit_info(&self) -> Result<RequestUsageInfo, anyhow::Error>;
+    async fn get_request_limit_info(&self) -> Result<RequestUsageInfo, anyhow::Error> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Fetches the server-authoritative decision on whether the authenticated
     /// user can start an interactive AI request.
-    async fn get_ai_credit_availability(&self) -> Result<AICreditAvailability, anyhow::Error>;
+    async fn get_ai_credit_availability(&self) -> Result<AICreditAvailability, anyhow::Error> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Returns conversation usage history for the current user over the requested number of days.
     ///
@@ -1179,14 +1222,23 @@ pub trait AIClient: 'static + Send + Sync {
         days: Option<i32>,
         limit: Option<i32>,
         last_updated_end_timestamp: Option<warp_graphql::scalars::Time>,
-    ) -> Result<Vec<ConversationUsage>, anyhow::Error>;
+    ) -> Result<Vec<ConversationUsage>, anyhow::Error> {
+        let _ = (days, limit, last_updated_end_timestamp);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn get_feature_model_choices(&self) -> Result<ModelsByFeature, anyhow::Error>;
+    async fn get_feature_model_choices(&self) -> Result<ModelsByFeature, anyhow::Error> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn get_available_harnesses(&self) -> Result<Vec<HarnessAvailability>, anyhow::Error>;
+    async fn get_available_harnesses(&self) -> Result<Vec<HarnessAvailability>, anyhow::Error> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
     async fn list_connected_self_hosted_workers(
         &self,
-    ) -> Result<ListConnectedSelfHostedWorkersResponse, anyhow::Error>;
+    ) -> Result<ListConnectedSelfHostedWorkersResponse, anyhow::Error> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Fetches the free-tier available models without requiring authentication.
     /// Used during pre-login onboarding so logged-out users see an accurate model list
@@ -1194,13 +1246,19 @@ pub trait AIClient: 'static + Send + Sync {
     async fn get_free_available_models(
         &self,
         referrer: Option<String>,
-    ) -> Result<ModelsByFeature, anyhow::Error>;
+    ) -> Result<ModelsByFeature, anyhow::Error> {
+        let _ = referrer;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn update_merkle_tree(
         &self,
         embedding_config: EmbeddingConfig,
         nodes: Vec<IntermediateNode>,
-    ) -> anyhow::Result<HashMap<NodeHash, bool>>;
+    ) -> anyhow::Result<HashMap<NodeHash, bool>> {
+        let _ = (embedding_config, nodes);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn generate_code_embeddings(
         &self,
@@ -1208,13 +1266,19 @@ pub trait AIClient: 'static + Send + Sync {
         fragments: Vec<full_source_code_embedding::Fragment>,
         root_hash: NodeHash,
         repo_metadata: RepoMetadata,
-    ) -> anyhow::Result<HashMap<ContentHash, bool>>;
+    ) -> anyhow::Result<HashMap<ContentHash, bool>> {
+        let _ = (embedding_config, fragments, root_hash, repo_metadata);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn provide_negative_feedback_response_for_ai_conversation(
         &self,
         conversation_id: String,
         request_ids: Vec<String>,
-    ) -> anyhow::Result<i32, anyhow::Error>;
+    ) -> anyhow::Result<i32, anyhow::Error> {
+        let _ = (conversation_id, request_ids);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn create_agent_task(
         &self,
@@ -1222,7 +1286,10 @@ pub trait AIClient: 'static + Send + Sync {
         environment_uid: Option<String>,
         parent_run_id: Option<String>,
         config: Option<AgentConfigSnapshot>,
-    ) -> anyhow::Result<AmbientAgentTaskId, anyhow::Error>;
+    ) -> anyhow::Result<AmbientAgentTaskId, anyhow::Error> {
+        let _ = (prompt, environment_uid, parent_run_id, config);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Updates a run's server-side record. Every argument is independently optional; omitted
     /// fields are left untouched rather than cleared.
@@ -1238,247 +1305,392 @@ pub trait AIClient: 'static + Send + Sync {
         conversation_id: Option<String>,
         status_message: Option<TaskStatusUpdate>,
         session_debug_until: Option<DateTime<Utc>>,
-    ) -> anyhow::Result<(), anyhow::Error>;
+    ) -> anyhow::Result<(), anyhow::Error> {
+        let _ = (
+            task_id,
+            task_state,
+            session_id,
+            conversation_id,
+            status_message,
+            session_debug_until,
+        );
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn spawn_agent(
         &self,
         request: SpawnAgentRequest,
-    ) -> anyhow::Result<SpawnAgentResponse, anyhow::Error>;
+    ) -> anyhow::Result<SpawnAgentResponse, anyhow::Error> {
+        let _ = request;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Allocate an initial snapshot token and presigned upload URLs for staging local-to-cloud
     /// handoff snapshot files before the corresponding cloud task exists.
     async fn upload_local_handoff_snapshot(
         &self,
         request: UploadLocalHandoffSnapshotRequest,
-    ) -> anyhow::Result<UploadLocalHandoffSnapshotResponse, anyhow::Error>;
+    ) -> anyhow::Result<UploadLocalHandoffSnapshotResponse, anyhow::Error> {
+        let _ = request;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Materialize a server-side fork of a conversation.
     async fn fork_conversation(
         &self,
         conversation_id: String,
         title: Option<String>,
-    ) -> anyhow::Result<ForkConversationResponse, anyhow::Error>;
+    ) -> anyhow::Result<ForkConversationResponse, anyhow::Error> {
+        let _ = (conversation_id, title);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Rename a server-side conversation and return the normalized title.
     async fn rename_conversation(
         &self,
         conversation_id: String,
         title: String,
-    ) -> anyhow::Result<RenameConversationResponse, anyhow::Error>;
+    ) -> anyhow::Result<RenameConversationResponse, anyhow::Error> {
+        let _ = (conversation_id, title);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn list_ambient_agent_tasks(
         &self,
         limit: i32,
         filter: TaskListFilter,
-    ) -> anyhow::Result<Vec<AmbientAgentTask>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<AmbientAgentTask>, anyhow::Error> {
+        let _ = (limit, filter);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// List agent runs and return the raw server JSON response.
     async fn list_agent_runs_raw(
         &self,
         limit: i32,
         filter: TaskListFilter,
-    ) -> anyhow::Result<serde_json::Value, anyhow::Error>;
+    ) -> anyhow::Result<serde_json::Value, anyhow::Error> {
+        let _ = (limit, filter);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_ambient_agent_task(
         &self,
         task_id: &AmbientAgentTaskId,
-    ) -> anyhow::Result<AmbientAgentTask, anyhow::Error>;
+    ) -> anyhow::Result<AmbientAgentTask, anyhow::Error> {
+        let _ = task_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Fetch a single agent run and return the raw server JSON response.
     async fn get_agent_run_raw(
         &self,
         task_id: &AmbientAgentTaskId,
-    ) -> anyhow::Result<serde_json::Value, anyhow::Error>;
+    ) -> anyhow::Result<serde_json::Value, anyhow::Error> {
+        let _ = task_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     #[cfg(not(target_family = "wasm"))]
     async fn download_run_transcript_to_path(
         &self,
         run_id: &AmbientAgentTaskId,
         destination: &Path,
-    ) -> anyhow::Result<(), anyhow::Error>;
+    ) -> anyhow::Result<(), anyhow::Error> {
+        let _ = (run_id, destination);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn submit_run_followup(
         &self,
         run_id: &AmbientAgentTaskId,
         request: RunFollowupRequest,
-    ) -> anyhow::Result<(), anyhow::Error>;
+    ) -> anyhow::Result<(), anyhow::Error> {
+        let _ = (run_id, request);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_scheduled_agent_history(
         &self,
         schedule_id: &str,
-    ) -> anyhow::Result<ScheduledAgentHistory, anyhow::Error>;
+    ) -> anyhow::Result<ScheduledAgentHistory, anyhow::Error> {
+        let _ = schedule_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_ai_conversation(
         &self,
         server_conversation_token: ServerConversationToken,
-    ) -> anyhow::Result<(ConversationData, ServerAIConversationMetadata), anyhow::Error>;
+    ) -> anyhow::Result<(ConversationData, ServerAIConversationMetadata), anyhow::Error> {
+        let _ = server_conversation_token;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn list_ai_conversation_metadata(
         &self,
         conversation_ids: Option<Vec<String>>,
-    ) -> anyhow::Result<Vec<ServerAIConversationMetadata>>;
+    ) -> anyhow::Result<Vec<ServerAIConversationMetadata>> {
+        let _ = conversation_ids;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_ai_conversation_format(
         &self,
         server_conversation_token: ServerConversationToken,
-    ) -> anyhow::Result<AIAgentConversationFormat, anyhow::Error>;
+    ) -> anyhow::Result<AIAgentConversationFormat, anyhow::Error> {
+        let _ = server_conversation_token;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_block_snapshot(
         &self,
         server_conversation_token: ServerConversationToken,
-    ) -> anyhow::Result<SerializedBlock, anyhow::Error>;
+    ) -> anyhow::Result<SerializedBlock, anyhow::Error> {
+        let _ = server_conversation_token;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn delete_ai_conversation(
         &self,
         server_conversation_token: String,
-    ) -> anyhow::Result<(), anyhow::Error>;
+    ) -> anyhow::Result<(), anyhow::Error> {
+        let _ = server_conversation_token;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn list_skills(
         &self,
         repo: Option<String>,
-    ) -> anyhow::Result<Vec<AgentSkillItem>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<AgentSkillItem>, anyhow::Error> {
+        let _ = repo;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn list_agents(&self) -> anyhow::Result<Vec<AgentResponse>, anyhow::Error>;
+    async fn list_agents(&self) -> anyhow::Result<Vec<AgentResponse>, anyhow::Error> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn list_agents_raw(&self) -> anyhow::Result<serde_json::Value, anyhow::Error>;
+    async fn list_agents_raw(&self) -> anyhow::Result<serde_json::Value, anyhow::Error> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn get_agent(&self, uid: &str) -> anyhow::Result<AgentResponse, anyhow::Error>;
+    async fn get_agent(&self, uid: &str) -> anyhow::Result<AgentResponse, anyhow::Error> {
+        let _ = uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn get_agent_raw(&self, uid: &str) -> anyhow::Result<serde_json::Value, anyhow::Error>;
+    async fn get_agent_raw(&self, uid: &str) -> anyhow::Result<serde_json::Value, anyhow::Error> {
+        let _ = uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn create_agent(
         &self,
         request: CreateAgentRequest,
-    ) -> anyhow::Result<AgentResponse, anyhow::Error>;
+    ) -> anyhow::Result<AgentResponse, anyhow::Error> {
+        let _ = request;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn create_agent_raw(
         &self,
         request: CreateAgentRequest,
-    ) -> anyhow::Result<serde_json::Value, anyhow::Error>;
+    ) -> anyhow::Result<serde_json::Value, anyhow::Error> {
+        let _ = request;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn update_agent(
         &self,
         uid: &str,
         request: UpdateAgentRequest,
-    ) -> anyhow::Result<AgentResponse, anyhow::Error>;
+    ) -> anyhow::Result<AgentResponse, anyhow::Error> {
+        let _ = (uid, request);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn update_agent_raw(
         &self,
         uid: &str,
         request: UpdateAgentRequest,
-    ) -> anyhow::Result<serde_json::Value, anyhow::Error>;
+    ) -> anyhow::Result<serde_json::Value, anyhow::Error> {
+        let _ = (uid, request);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn delete_agent(&self, uid: &str) -> anyhow::Result<(), anyhow::Error>;
+    async fn delete_agent(&self, uid: &str) -> anyhow::Result<(), anyhow::Error> {
+        let _ = uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn list_memory_stores(&self) -> anyhow::Result<Vec<MemoryStoreItem>, anyhow::Error>;
+    async fn list_memory_stores(&self) -> anyhow::Result<Vec<MemoryStoreItem>, anyhow::Error> {
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn list_memory_store_memories(
         &self,
         store_uid: &str,
-    ) -> anyhow::Result<Vec<MemoryItem>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<MemoryItem>, anyhow::Error> {
+        let _ = store_uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn create_memory_store_memory(
         &self,
         store_uid: &str,
         request: CreateMemoryRequest,
-    ) -> anyhow::Result<CreateMemoryResponse, anyhow::Error>;
+    ) -> anyhow::Result<CreateMemoryResponse, anyhow::Error> {
+        let _ = (store_uid, request);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn update_memory_store_memory(
         &self,
         store_uid: &str,
         memory_uid: &str,
         request: UpdateMemoryRequest,
-    ) -> anyhow::Result<UpdateMemoryResponse, anyhow::Error>;
+    ) -> anyhow::Result<UpdateMemoryResponse, anyhow::Error> {
+        let _ = (store_uid, memory_uid, request);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn delete_memory_store_memory(
         &self,
         store_uid: &str,
         memory_uid: &str,
-    ) -> anyhow::Result<(), anyhow::Error>;
+    ) -> anyhow::Result<(), anyhow::Error> {
+        let _ = (store_uid, memory_uid);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_memory_store(
         &self,
         store_uid: &str,
-    ) -> anyhow::Result<MemoryStoreItem, anyhow::Error>;
+    ) -> anyhow::Result<MemoryStoreItem, anyhow::Error> {
+        let _ = store_uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn update_memory_store(
         &self,
         store_uid: &str,
         request: UpdateMemoryStoreRequest,
-    ) -> anyhow::Result<MemoryStoreItem, anyhow::Error>;
+    ) -> anyhow::Result<MemoryStoreItem, anyhow::Error> {
+        let _ = (store_uid, request);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn list_memory_store_agents(
         &self,
         store_uid: &str,
-    ) -> anyhow::Result<Vec<AgentAttachmentItem>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<AgentAttachmentItem>, anyhow::Error> {
+        let _ = store_uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn list_memory_versions(
         &self,
         store_uid: &str,
         memory_uid: &str,
-    ) -> anyhow::Result<Vec<MemoryVersionItem>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<MemoryVersionItem>, anyhow::Error> {
+        let _ = (store_uid, memory_uid);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn cancel_ambient_agent_task(
         &self,
         task_id: &AmbientAgentTaskId,
-    ) -> anyhow::Result<(), anyhow::Error>;
+    ) -> anyhow::Result<(), anyhow::Error> {
+        let _ = task_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_task_git_credentials(
         &self,
         task_id: String,
         workload_token: String,
-    ) -> anyhow::Result<Vec<GitCredential>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<GitCredential>, anyhow::Error> {
+        let _ = (task_id, workload_token);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_task_attachments(
         &self,
         task_id: String,
-    ) -> anyhow::Result<Vec<TaskAttachment>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<TaskAttachment>, anyhow::Error> {
+        let _ = task_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn create_file_artifact_upload_target(
         &self,
         request: CreateFileArtifactUploadRequest,
-    ) -> anyhow::Result<CreateFileArtifactUploadResponse, anyhow::Error>;
+    ) -> anyhow::Result<CreateFileArtifactUploadResponse, anyhow::Error> {
+        let _ = request;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn confirm_file_artifact_upload(
         &self,
         artifact_uid: String,
         checksum: String,
-    ) -> anyhow::Result<FileArtifactRecord, anyhow::Error>;
+    ) -> anyhow::Result<FileArtifactRecord, anyhow::Error> {
+        let _ = (artifact_uid, checksum);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_artifact_download(
         &self,
         artifact_uid: &str,
-    ) -> anyhow::Result<ArtifactDownloadResponse, anyhow::Error>;
+    ) -> anyhow::Result<ArtifactDownloadResponse, anyhow::Error> {
+        let _ = artifact_uid;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn prepare_attachments_for_upload(
         &self,
         task_id: &AmbientAgentTaskId,
         files: &[AttachmentFileInfo],
-    ) -> anyhow::Result<PrepareAttachmentUploadsResponse, anyhow::Error>;
+    ) -> anyhow::Result<PrepareAttachmentUploadsResponse, anyhow::Error> {
+        let _ = (task_id, files);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn download_task_attachments(
         &self,
         task_id: &AmbientAgentTaskId,
         attachment_ids: &[String],
-    ) -> anyhow::Result<DownloadAttachmentsResponse, anyhow::Error>;
+    ) -> anyhow::Result<DownloadAttachmentsResponse, anyhow::Error> {
+        let _ = (task_id, attachment_ids);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn get_handoff_snapshot_attachments(
         &self,
         task_id: &AmbientAgentTaskId,
-    ) -> anyhow::Result<Vec<TaskAttachment>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<TaskAttachment>, anyhow::Error> {
+        let _ = task_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     // --- Orchestrations V2 messaging ---
 
     async fn send_agent_message(
         &self,
         request: SendAgentMessageRequest,
-    ) -> anyhow::Result<SendAgentMessageResponse, anyhow::Error>;
+    ) -> anyhow::Result<SendAgentMessageResponse, anyhow::Error> {
+        let _ = request;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn list_agent_messages(
         &self,
         run_id: &str,
         request: ListAgentMessagesRequest,
-    ) -> anyhow::Result<Vec<AgentMessageHeader>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<AgentMessageHeader>, anyhow::Error> {
+        let _ = (run_id, request);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Persists the latest observed event sequence number for a run on the
     /// server. Used to keep the server-side cursor in sync with the client so
@@ -1488,37 +1700,58 @@ pub trait AIClient: 'static + Send + Sync {
         &self,
         run_id: &str,
         sequence: i64,
-    ) -> anyhow::Result<(), anyhow::Error>;
+    ) -> anyhow::Result<(), anyhow::Error> {
+        let _ = (run_id, sequence);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn report_agent_event(
         &self,
         run_id: &str,
         request: ReportAgentEventRequest,
-    ) -> anyhow::Result<ReportAgentEventResponse, anyhow::Error>;
+    ) -> anyhow::Result<ReportAgentEventResponse, anyhow::Error> {
+        let _ = (run_id, request);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
     async fn post_agent_run_client_event(
         &self,
         run_id: &AmbientAgentTaskId,
         request: AgentRunClientEventRequest,
-    ) -> anyhow::Result<(), anyhow::Error>;
+    ) -> anyhow::Result<(), anyhow::Error> {
+        let _ = (run_id, request);
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
-    async fn mark_message_delivered(&self, message_id: &str) -> anyhow::Result<(), anyhow::Error>;
+    async fn mark_message_delivered(&self, message_id: &str) -> anyhow::Result<(), anyhow::Error> {
+        let _ = message_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     async fn read_agent_message(
         &self,
         message_id: &str,
-    ) -> anyhow::Result<ReadAgentMessageResponse, anyhow::Error>;
+    ) -> anyhow::Result<ReadAgentMessageResponse, anyhow::Error> {
+        let _ = message_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Fetch a normalized conversation by conversation ID.
     async fn get_public_conversation(
         &self,
         conversation_id: &str,
-    ) -> anyhow::Result<serde_json::Value, anyhow::Error>;
+    ) -> anyhow::Result<serde_json::Value, anyhow::Error> {
+        let _ = conversation_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Fetch a normalized conversation by run ID.
     async fn get_run_conversation(
         &self,
         run_id: &str,
-    ) -> anyhow::Result<serde_json::Value, anyhow::Error>;
+    ) -> anyhow::Result<serde_json::Value, anyhow::Error> {
+        let _ = run_id;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 
     /// Generates AI copy for code-review flows: commit messages at dialog-open
     /// time and PR titles / bodies at confirm time. `output_type` in the
@@ -1526,7 +1759,10 @@ pub trait AIClient: 'static + Send + Sync {
     async fn generate_code_review_content(
         &self,
         request: GenerateCodeReviewContentRequest,
-    ) -> Result<GenerateCodeReviewContentResponse, anyhow::Error>;
+    ) -> Result<GenerateCodeReviewContentResponse, anyhow::Error> {
+        let _ = request;
+        Err(crate::server::CloudServicesUnavailable.into())
+    }
 }
 
 fn into_file_artifact_record(
@@ -1636,6 +1872,7 @@ fn convert_upload_field(
     })
 }
 
+#[cfg(feature = "cloud_services")]
 #[cfg_attr(not(target_family = "wasm"), async_trait)]
 #[cfg_attr(target_family = "wasm", async_trait(?Send))]
 impl AIClient for ServerApi {
@@ -1732,7 +1969,6 @@ impl AIClient for ServerApi {
         }
     }
 
-    #[cfg(not(feature = "warp_lite"))]
     async fn generate_metadata_for_command(
         &self,
         command: String,
@@ -3557,3 +3793,8 @@ impl StoreClient for ServerApi {
 #[cfg(test)]
 #[path = "ai_tests.rs"]
 mod tests;
+
+#[cfg(not(feature = "cloud_services"))]
+#[cfg_attr(not(target_family = "wasm"), async_trait)]
+#[cfg_attr(target_family = "wasm", async_trait(?Send))]
+impl AIClient for ServerApi {}

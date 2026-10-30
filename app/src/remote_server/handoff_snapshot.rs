@@ -7,13 +7,16 @@
 //! host, all filesystem and git operations are genuinely local — no SSH
 //! tunneling overhead.
 
+#[cfg(feature = "agent_runtime")]
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
 use warp_util::standardized_path::StandardizedPath;
 
+#[cfg(feature = "agent_runtime")]
 use crate::ai::agent_sdk::driver::upload_snapshot_for_handoff;
+#[cfg(feature = "agent_runtime")]
 use crate::ai::blocklist::handoff::touched_repos::derive_touched_workspace;
 use crate::server::server_api::ai::{AIClient, InitialSnapshotToken};
 
@@ -30,6 +33,7 @@ use crate::server::server_api::ai::{AIClient, InitialSnapshotToken};
 /// Returns `Ok(Some(token))` when the upload succeeds and a token was minted,
 /// `Ok(None)` when the workspace was empty or the manifest failed, and `Err`
 /// for hard failures (auth, network).
+#[cfg(feature = "agent_runtime")]
 pub(crate) async fn gather_and_upload_handoff_snapshot(
     paths: Vec<StandardizedPath>,
     ai_client: Arc<dyn AIClient>,
@@ -64,4 +68,14 @@ pub(crate) async fn gather_and_upload_handoff_snapshot(
     );
 
     upload_snapshot_for_handoff(repo_paths, orphan_file_paths, ai_client, http).await
+}
+
+#[cfg(not(feature = "agent_runtime"))]
+pub(crate) async fn gather_and_upload_handoff_snapshot(
+    paths: Vec<StandardizedPath>,
+    ai_client: Arc<dyn AIClient>,
+    http: &http_client::Client,
+) -> Result<Option<InitialSnapshotToken>> {
+    let _ = (paths, ai_client, http);
+    anyhow::bail!("Cloud agent snapshot upload is unavailable in this build")
 }

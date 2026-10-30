@@ -235,6 +235,7 @@ impl AsyncDataSource for WarpAIDataSource {
 impl DataSourceRunError for GenerateCommandsFromNaturalLanguageError {
     fn user_facing_error(&self) -> String {
         match self {
+            Self::Unavailable => "AI services are not included in this build.",
             Self::BadPrompt => "No results found. Please try again with a more specific query.",
             Self::AiProviderError => "Something went wrong. Please try again.",
             Self::RateLimited => "Looks like you're out of AI credits. Please try again later.",

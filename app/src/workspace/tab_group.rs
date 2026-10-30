@@ -53,3 +53,20 @@ impl Default for TabGroup {
         Self::new()
     }
 }
+
+#[cfg(feature = "warp_lite")]
+pub(crate) fn directory_group_name(directory: &str) -> Option<String> {
+    let directory = directory.trim();
+    if directory.is_empty() {
+        return None;
+    }
+    let trimmed = directory.trim_end_matches(['/', '\\']);
+    if trimmed.is_empty() || (trimmed.len() == 2 && trimmed.ends_with(':')) {
+        return Some(directory.to_string());
+    }
+    trimmed.rsplit(['/', '\\']).next().map(str::to_string)
+}
+
+#[cfg(all(test, feature = "warp_lite"))]
+#[path = "tab_group_tests.rs"]
+mod tests;

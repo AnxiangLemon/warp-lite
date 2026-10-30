@@ -133,6 +133,6 @@ pub fn empty_env_recommendation_message(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "agent_runtime"))]
 #[path = "validation_tests.rs"]
 mod tests;

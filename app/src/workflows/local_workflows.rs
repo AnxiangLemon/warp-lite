@@ -180,6 +180,18 @@ fn app_workflows() -> Vec<Workflow> {
 /// directory.
 #[cfg(feature = "local_fs")]
 pub(super) fn load_project_workflows(path: &Path) -> Vec<Workflow> {
+    #[cfg(not(feature = "agent_runtime"))]
+    {
+        path.ancestors()
+            .find(|directory| directory.join(".git").exists())
+            .map(|directory| {
+                load_workflows(&workflows_dir(
+                    directory.join(warp_core::paths::WARP_CONFIG_DIR),
+                ))
+            })
+            .unwrap_or_default()
+    }
+    #[cfg(feature = "agent_runtime")]
     match git2::Repository::discover(path) {
         Ok(repository) => repository.workdir().map_or(Vec::new(), |workdir| {
             load_workflows(&workflows_dir(
