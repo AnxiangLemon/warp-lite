@@ -17,3 +17,22 @@
 - 未验证 GUI 行为或 macOS / Linux 构建。旧 `dist/` 分发包与历史成功日志不作为当前源码可构建的证据。
 
 应先完成 Lite 接口对齐和缺失模块修复，再重新执行格式化、Clippy 与相关测试。当前整理结果属于开发中的源码快照，不是已验证的发布版本。
+
+## 独立仓库自动化清理
+
+本次仅修改 `.github/` 配置和文档，未修改 Rust 源码、依赖或运行资源。
+删除上游专用 workflows、actions、维护脚本、发布配置及私有 Dependabot 配置，
+仅保留本仓库的只读 `Repository checks`，Issue / PR 模板与手动 triage 提示。
+
+已完成验证：
+
+- 所有保留 YAML 与 JSON 可解析，文档相对链接有效。
+- 自动化仅有 push / PR / 手动触发，权限为 `contents: read`；不包含定时任务、
+  上游组织引用、私有 secrets 或私有 runner。
+- workflow 的 Bash 脚本语法检查通过。
+- 在隔离的临时 Git 仓库执行实际 workflow 脚本：正常变更、手动执行与首次 push 均通过；
+  trailing whitespace 和误提交 `dist/` 产物均被正确拒绝。
+- 暂存区 `git diff --cached --check` 通过。
+
+Rust 构建状态保持上文记录，未重复执行已知失败的 Rust 检查；依照维护者已授权的
+开发快照方式提交发布。轻量 workflow 不替代应用构建与测试。

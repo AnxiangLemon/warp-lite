@@ -60,4 +60,15 @@ cargo clippy -p warp --bin warp-lite --no-default-features --features warp_lite 
 
 提交前检查 `git status --short`、`git diff --check` 与暂存区内容，确认没有缓存、分发目录或本地配置。源码拆分所需的 `*_lite.rs` 和 `*_full.rs` 需要一并提交，不能仅提交引用它们的模块声明。
 
-目标仓库为 `AnxiangLemon/warp-lite`，上游为 `warpdotdev/warp`。保持上游历史便于追踪来源和后续同步。向已有分支推送时使用正常的 fast-forward 或 merge 流程，保留远端已有提交。
+目标仓库为 `AnxiangLemon/warp-lite`，默认分支为 `main`。本地默认远端 `origin` 指向本仓库；
+上游历史仅用于追踪来源，仓库不配置自动拉取或合并上游更新。推送使用正常的 fast-forward
+或 merge 流程，保留远端已有提交。
+
+## 自动化范围
+
+仅保留轻量的 `Repository checks`，检查变更行的 whitespace 与误提交的构建产物。
+移除上游私有 runner、云端发布、同步、Oz 机器人和通知等自动化依赖。
+具体触发条件与权限见 [.github/workflows/README.md](../.github/workflows/README.md)。
+
+这项清理不改变 `Cargo.toml` / `Cargo.lock` 中已有的编译依赖；其中仍包含由上游维护的 Git
+库。完全独立的依赖镜像或 vendoring 需要另行验证，不能通过删除工作流实现。

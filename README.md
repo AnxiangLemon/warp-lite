@@ -47,7 +47,7 @@ Git Bash 可用 `./script/run-lite` 或 `./script/run-lite --release`。macOS / 
 ## 开发与文档
 
 - [开发说明](docs/development.md)：源码结构、检查命令、资源与提交规则。
-- [上游贡献指南](CONTRIBUTING.md)：上游开发流程。
+- [贡献指南](CONTRIBUTING.md)：本仓库的反馈与开发流程。
 - [工程约定](AGENTS.md)：仓库编码与验证要求。
 
 Lite 通过 `warp_lite` Cargo feature 选择精简模块与兼容接口。源码仍保留上游完整实现，部分共享依赖与数据类型仍参与编译，因此仓库大小和缓存大小不等于最终程序大小。默认 `release` 不等于经过专门体积优化与打包的分发版本。

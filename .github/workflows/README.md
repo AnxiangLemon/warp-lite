@@ -1,19 +1,14 @@
-# Release Configurations
+# Warp Lite 自动化
 
-This README file documents the format of the `release_configurations.json` file located in this directory.  The file defines Warp's various release channels, and provides values for the various variables that are necessary to run the `create_new_releases.yml` GitHub workflow.
+仅保留 `repository-checks.yml`：在 `main` 的 push、PR 或手动触发时检查变更行的
+whitespace，以及是否误提交构建产物、排错日志和本地配置。
 
-At some point, we may want to replace this document with a JSON schema file (which could be used to validate the correctness of the configuration as part of PR presubmit).
+使用一个 GitHub-hosted Linux runner、只读仓库权限和固定版本的官方 checkout action。
+不安装 Rust 或下载 LFS 模型，不编译应用，也不需要维护者配置 secrets。
 
-## Fields
+已移除上游同步、发布、缓存预热、容器镜像、Slack / 文档通知、Oz 机器人、
+自动分派审核与 skill 更新等 workflows，以及它们专用的 actions、脚本和发布配置。
+Dependabot 的上游私有仓库凭据与团队指派配置也已移除。
 
-* **channel**: The channel's unique identifier
-* **type**: The release cadence.  At present, the valid values are "nightly" or "weekly".
-* **is_prerelease**: If true, the GitHub release for this channel will be marked as prerelease.
-* **is_autopush**: If true, this channel uses the "latest" keyword in `channel_versions.json` to automatically deploy new release candidates.  Non-autopush channels require a manual change in order to deploy them.
-* **release_base_name**: The base name of GitHub releases created for this channel.
-* **release_body_text**: The body text for GitHub releases created for this channel.
-* **sentry_project**: Which Sentry project should receive crash and error reports for this channel.
-* **sentry_environment**: The Sentry environment that corresponds to this channel.
-* **changelog_slack_channel**: The Slack channel where new changelogs will be posted whenever a new release candidates is cut.
-* **gcs_cache_control_value**: The value of the cache-control response header for release DMGs.
-  - **IMPORTANT!!**: the value of the cache-control header _must_ be all lowercase; uppercase values will not be respected by Cloud CDN.
+这个检查通过只表示仓库检查通过；构建状态以 `docs/validation.md` 和本地构建结果为准。
+后续需要正式构建或发布时，应为 Lite 单独添加流程，不复用上游私有基础设施。
