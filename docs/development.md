@@ -60,10 +60,50 @@ Lite 背景按 `background.png`、`background.jpg`、`background.jpeg` 顺序查
 界面。WSL 主目录查询异步执行，Windows 启动器使用本地目录，Linux 工作目录仍通过
 `WARP_INITIAL_WORKING_DIR` 传给 shell。
 
-排查启动可临时设置 `RUST_LOG=info,warp=debug`，本地日志中的 `Lite startup timings:`
-记录初始化至实际首帧绘制的分阶段毫秒数。`Shell is bootstrapped` 是后续 shell 就绪里程碑，
-不能将窗口出现时间当作 shell 就绪时间。性能对照须固定构建类型、背景、会话和配置，避开
-并行编译；`WARP_DATA_PROFILE` 仅能隔离 Debug 构建，不能用于隔离发布版。
+Windows 的 ConPTY 创建与进程启动在后台并行执行，恢复多个标签页不会在界面线程上逐个
+等待。PowerShell 首次握手只枚举已加载的命令，完整命令发现继续在后台执行；后台命令的
+runspace pool 在首次使用时创建，从各一个 runspace 开始增长，保留原有并发上限。
+
+排查启动可临时设置 `RUST_LOG=info,warp::startup=debug,warpui::startup=debug`。
+`Lite startup timings:` 记录初始化至实际首帧绘制的分阶段毫秒数，附加日志区分 GPU、
+pipeline、shell 路径解析、PTY 创建和 `shell_ready`。最后一项是 shell integration 的
+Bootstrapped 事件，不是窗口出现时间，也不是首条用户命令的执行耗时。
+
+Lite 启用 `warp_core/data_profiles`，因此本次起的优化构建也支持 `WARP_DATA_PROFILE`。
+名称必须为 1–64 个 ASCII 字母、数字、下划线或连字符；未设置时仍使用正常数据目录。
+旧发布版不支持该隔离方式，不能直接套用到下面的测量脚本。
+
+`script/measure-lite-startup.ps1` 对两份支持 profile 隔离的完整包做交替测量。种子目录需
+包含安全快照 `warp.sqlite` 和 `settings.toml`；脚本为每次启动复制独立 profile，保留
+原数据，先预热一对，再默认测量五对。两包须使用相同 DLL、背景、会话和设置，并在编译
+结束后运行。脚本不关闭 WSL 或清空系统缓存，结果属于重复热启动。示例：
+
+本机清理后的基线包和会话种子归档在 `.note/startup-cleanup-2026-10-31/`（不提交）。
+重跑本机对照前，可将 `startup-baseline-package.zip` 解压至
+`target/lite-release-startup-before-package/`，并将归档目录中的 `startup-evidence/lite-startup-seed/`
+复制到 `target/lite-startup-seed/`。其他开发机需准备自己的基线包和安全会话快照。
+
+```powershell
+./script/measure-lite-startup.ps1 `
+  -BeforeExecutable 'target/lite-release-startup-before-package/warp-lite.exe' `
+  -AfterExecutable 'dist/Warp Lite Fast Startup/warp-lite.exe' `
+  -SeedDirectory 'target/lite-startup-seed' `
+  -ExpectedShells 5 -Pairs 5 -OutputPath 'target/lite-release-startup-comparison.json'
+```
+
+要测量 PowerShell 的首次提示符，先用 `script/prepare-lite-startup-probe.py SOURCE DEST`
+为两包各制作一个独立副本，再把副本路径传给测量脚本，并加
+`-ExpectedPowerShellPrompts 3`（改为快照中实际 PowerShell 数量）。探针在首次
+post-bootstrap Precmd 发出后记录跨进程 Stopwatch 时间，属于提示符准备完成的里程碑；
+仍不等同于首条用户命令的往返时间。探针副本仅供测量，不应作为正常使用的包分发。
+
+PowerShell bootstrap 的批量输出、错误帧、取消和按需 pool 生命周期可单独验证：
+
+```powershell
+python script/test-pwsh-bootstrap.py `
+  --shell "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" `
+  --shell "$env:LOCALAPPDATA/Microsoft/WindowsApps/pwsh.exe"
+```
 
 格式和完整 workspace 的 Clippy 命令以 `script/presubmit` 为准，使用 Git Bash：
 
@@ -124,6 +164,8 @@ OpenGL 可用 `WGPU_BACKEND=gl` 单独验证。当前原生 OpenGL surface 不�
 
 保留 `Cargo.lock`、数据库 migrations、ConPTY / OpenConsole、字体、shell bootstrap 与许可证。不要用全局 `*.exe`、`*.dll` 或 `*.txt` 规则排除运行资源。
 
-`target*/`、`dist/`、`.note/`、排错日志和一次性 import 改写脚本不提交。提交前检查 `git diff --check` 和暂存区；不将旧分发包作为当前源码的构建证明。
+`target*/`、`dist/`、`.note/` 和排错日志不提交。性能对照的脱敏数值样本保存在
+`docs/benchmarks/`；原始日志、会话种子与包副本只留在本机归档。提交前检查
+`git diff --check` 和暂存区；不将旧分发包作为当前源码的构建证明。
 
 本仓库默认远端 `origin` 指向 `AnxiangLemon/warp-lite`，不配置自动合并上游。GitHub Actions 的范围见 [.github/workflows/README.md](../.github/workflows/README.md)。

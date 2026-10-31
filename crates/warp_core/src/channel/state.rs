@@ -134,11 +134,12 @@ impl ChannelState {
     /// Returns a profile name for isolating user data. This should be used to
     /// sandbox how user data is stored.
     ///
-    /// This is a debugging tool for isolating development instances of Warp, and is not
-    /// supported in release builds.
+    /// Available in development builds and builds with explicit data profile support.
     pub fn data_profile() -> Option<String> {
-        if cfg!(debug_assertions) {
-            std::env::var("WARP_DATA_PROFILE").ok()
+        if cfg!(any(debug_assertions, feature = "data_profiles")) {
+            std::env::var("WARP_DATA_PROFILE")
+                .ok()
+                .filter(|profile| valid_data_profile(profile))
         } else {
             None
         }
@@ -146,9 +147,7 @@ impl ChannelState {
 
     /// Returns a value that should be used for namespacing persisted data.
     ///
-    /// In release builds, this is identical to the app ID; in debug builds,
-    /// it optionally includes a suffix derived from the `WARP_DATA_PROFILE`
-    /// environment variable.
+    /// Appends the optional `WARP_DATA_PROFILE` suffix in builds supporting data profiles.
     pub fn data_domain() -> String {
         match Self::data_profile() {
             Some(profile) => format!("{}-{profile}", Self::app_id()),
@@ -399,6 +398,14 @@ impl ChannelState {
             Channel::Oss => "warposs",
         }
     }
+}
+
+fn valid_data_profile(profile: &str) -> bool {
+    !profile.is_empty()
+        && profile.len() <= 64
+        && profile
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
 }
 
 /// Derives an HTTP(S) origin URL from a WebSocket URL by rewriting the scheme

@@ -6,6 +6,7 @@ publish.workspace = true
 license.workspace = true
 
 [features]
+data_profiles = []
 integration_tests = []
 local_fs = []
 release_bundle = []

@@ -416,6 +416,7 @@ impl Sessions {
 
         let bootstrap_duration_seconds =
             pending_session_start_time.map(|start| start.elapsed().as_secs_f64());
+        log::debug!(target: "warp::startup", "shell_ready session_id={session_id:?} elapsed_ms={:.3} bootstrap_seconds={bootstrap_duration_seconds:?} rcfiles_seconds={rcfiles_duration_seconds:?}", crate::startup_diagnostics::elapsed_ms());
         let warp_attributed_bootstrap_duration_seconds =
             match (bootstrap_duration_seconds, rcfiles_duration_seconds) {
                 (Some(total), Some(rcfiles)) => Some(total - rcfiles),

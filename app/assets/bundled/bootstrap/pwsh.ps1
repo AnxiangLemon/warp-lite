@@ -32,6 +32,7 @@ $null = New-Module -Name Warp-Module -ScriptBlock {
     # This script block contains commands and constants that are needed in background threads.
     # If you want to be able to use it in a background thread, stick it in this block
     $warpCommon = {
+        $oscEnd = "$([char]0x07)"
         # OSC used to mark the start of in-band command output.
         #
         # Printable characters received this OSC and oscEndGeneratorOutput are parsed and handled as
@@ -122,7 +123,7 @@ $null = New-Module -Name Warp-Module -ScriptBlock {
             } catch {
                 # This catches a terminating error (ex: entering a command that does not exist)
                 # In this case, we return an error code of 1
-                Write-Output "$commandId;1;"
+                Write-Output "$commandId;;1"
             }
         }
     }
@@ -142,27 +143,13 @@ $null = New-Module -Name Warp-Module -ScriptBlock {
         (Get-Variable | Select-Object -ExpandProperty Name) -join ' '
         $aliasesRaw = Get-Command -CommandType Alias | Select-Object -ExpandProperty DisplayName
         $aliases = $aliasesRaw -join [Environment]::NewLine
-        # Only query modules that ship with PowerShell itself. This keeps bootstrap fast by
-        # avoiding Windows system modules and third-party modules from the Gallery. The rest are
-        # loaded asynchronously later.
-        $corePsModules = @(
-            'Microsoft.PowerShell.*', # All built-in PS modules (cross-platform)
-            'Microsoft.WSMan.*', # WS-Management (Windows PS)
-            'CimCmdlets', # CIM/WMI (Windows)
-            'PackageManagement', # Package management
-            'PowerShellGet', # Package get
-            'PSReadLine', # Line editor bundled with PS
-            'ThreadJob', # Thread jobs (PS 7)
-            'PSDiagnostics', # PS diagnostics
-            'PSDesiredStateConfiguration', # DSC (Windows PS)
-            'PSWorkflow', # Legacy workflow (Windows PS 5)
-            'PSWorkflowUtility'        # Legacy workflow utility (Windows PS 5)
-        )
-        $functionNamesRaw = Get-Command -CommandType Function -Module $corePsModules |
+        # Discover unloaded modules through the existing background command-name queries.
+        # Scanning PSModulePath here delays the interactive prompt, even with a module filter.
+        $functionNamesRaw = Get-Command -ListImported -CommandType Function |
             Where-Object { -not $_.Name.StartsWith('Warp') } |
             Select-Object -ExpandProperty Name
         $functionNames = $functionNamesRaw -join [Environment]::NewLine
-        $builtinsRaw = Get-Command -CommandType Cmdlet -Module $corePsModules | Select-Object -ExpandProperty Name
+        $builtinsRaw = Get-Command -ListImported -CommandType Cmdlet | Select-Object -ExpandProperty Name
         $builtins = $builtinsRaw -join [Environment]::NewLine
         $shellVersion = $PSVersionTable.PSVersion.ToString()
         # PowerShell wasn't cross-platform until version 6. Anything before that is definitely on Windows.
@@ -624,27 +611,30 @@ $null = New-Module -Name Warp-Module -ScriptBlock {
     $script:threadInner = @{}
     $script:threadOuter = @{}
 
-    # The inner runspace pool maintains a pool of runspaces that can execute
-    # arbitrary commands against the user's current environment without
-    # writing to the screen. Initialize to minimum of 10 runspaces
-    # to handle double the number of context chips we currently have
-    # that use in-band commands
-    $script:innerRunspacePool = [runspacefactory]::CreateRunspacePool(10, 20)
-    $script:innerRunspacePool.ApartmentState = [System.Threading.ApartmentState]::STA
-    $script:innerRunspacePool.ThreadOptions = 'ReuseThread'
-    $script:innerRunspacePool.Open() | Out-Null
+    $script:innerRunspacePool = $null
+    $script:outerRunspacePool = $null
 
-    # The outer runspace pool maintains a pool of runspaces that
-    # share the same host as the user's session. This allows them
-    # to send OSC commands via Write-Host. These outer runspaces
-    # handle receiving results from the inner runspaces and formatting
-    # those results into OSCs.
-    # Initialized to minimum of 5 runspaces since we currently do not
-    # run more than one outer command at a time.
-    $script:outerRunspacePool = [runspacefactory]::CreateRunspacePool(5, 10, $Host)
-    $script:outerRunspacePool.ApartmentState = [System.Threading.ApartmentState]::STA
-    $script:outerRunspacePool.ThreadOptions = 'ReuseThread'
-    $script:outerRunspacePool.Open() | Out-Null
+    function Warp-Initialize-GeneratorPools {
+        if ($null -ne $script:innerRunspacePool) { return }
+
+        # Grow only when concurrent generators need capacity. The outer pool shares the host
+        # so background results can still be delivered as OSCs without blocking the prompt.
+        $inner = [runspacefactory]::CreateRunspacePool(1, 20)
+        $outer = [runspacefactory]::CreateRunspacePool(1, 10, $Host)
+        try {
+            foreach ($pool in @($inner, $outer)) {
+                $pool.ApartmentState = [System.Threading.ApartmentState]::STA
+                $pool.ThreadOptions = 'ReuseThread'
+                $pool.Open()
+            }
+        } catch {
+            $inner.Dispose()
+            $outer.Dispose()
+            throw
+        }
+        $script:innerRunspacePool = $inner
+        $script:outerRunspacePool = $outer
+    }
 
     class WarpGeneratorCommand {
         [string]$CommandId
@@ -655,6 +645,8 @@ $null = New-Module -Name Warp-Module -ScriptBlock {
         param(
             [WarpGeneratorCommand[]]$commands
         )
+
+        Warp-Initialize-GeneratorPools
 
         $jobNumber = $script:inBandCommandCount++
 
@@ -675,7 +667,7 @@ $null = New-Module -Name Warp-Module -ScriptBlock {
                     Warp-Run-InBandGenerator -commandId $commandId -command "$command"
                 }).AddParameters(@($PWD.Path, $commandId, "$command")) | Out-Null
 
-            $script:threadInner["Warp-Inner-$jobNumber-$batchNumber"] = $psInner
+            $script:threadInner["Warp-Inner-$jobNumber-$batchNumber"] = $ps
             $batchNumber++
 
             @{
@@ -705,16 +697,16 @@ $null = New-Module -Name Warp-Module -ScriptBlock {
                     $ps = $_.ps
                     $async = $_.async
 
-                    $output = "$commandId;1;"
+                    $output = "$commandId;;1"
 
                     try {
                         $output = $ps.EndInvoke($async)
                     } catch {
-                        $output = "$commandId;1;"
+                        $output = "$commandId;;1"
                     }
                     Warp-Send-GeneratorOutputOsc $output
                 }
-            }).AddParameters(@($jobs)) | Out-Null
+            }).AddArgument($jobs) | Out-Null
 
         # Note: we are beginning the invocation, but are explicitly
         # not stopping it as we do not want to block the main thread.

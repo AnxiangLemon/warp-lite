@@ -17,7 +17,6 @@ use environment::get_shell_environment_variables;
 pub use environment::get_user_and_system_env_variable;
 use thiserror::Error;
 use warp_errors::{report_error, report_if_error};
-use warpui::{AppContext, SingletonEntity};
 use windows::Win32::Foundation::{CloseHandle, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows::Win32::System::Console::{COORD, HPCON};
 use windows::Win32::System::Threading::{
@@ -390,36 +389,31 @@ impl Pty {
         options: PtyOptions,
         is_crash_reporting_enabled: bool,
         event_loop_tx: mio_channel::Sender<writeable_pty::Message>,
-        ctx: &mut AppContext,
     ) -> anyhow::Result<Self> {
         let size = options.size;
-        PtySpawner::handle(ctx)
-            .update(ctx, |pty_spawner, ctx| {
-                pty_spawner.spawn_pty(options, is_crash_reporting_enabled, event_loop_tx, ctx)
-            })
-            .map(
-                |(
-                    PtySpawnResult {
-                        pty_handle,
-                        pipe,
-                        conpty_api,
-                        child_exit_watcher,
-                    },
-                    handle,
-                )| {
-                    let mut pty = Self {
-                        child_exit_watcher,
-                        handle,
-                        pty_handle,
-                        pipe,
-                        token: PTY_TOKEN,
-                        conpty_api,
-                        pty_closed: false,
-                    };
-                    pty.on_resize(&size);
-                    pty
+        PtySpawner::spawn_pty_directly(options, event_loop_tx, is_crash_reporting_enabled).map(
+            |(
+                PtySpawnResult {
+                    pty_handle,
+                    pipe,
+                    conpty_api,
+                    child_exit_watcher,
                 },
-            )
+                handle,
+            )| {
+                let mut pty = Self {
+                    child_exit_watcher,
+                    handle,
+                    pty_handle,
+                    pipe,
+                    token: PTY_TOKEN,
+                    conpty_api,
+                    pty_closed: false,
+                };
+                pty.on_resize(&size);
+                pty
+            },
+        )
     }
 
     pub fn get_pid(&self) -> u32 {

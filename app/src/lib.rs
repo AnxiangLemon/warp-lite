@@ -77,6 +77,7 @@ mod search_bar;
 mod server;
 mod session_management;
 mod shell_indicator;
+mod startup_diagnostics;
 mod suggestions;
 mod system;
 mod tab;
@@ -1063,6 +1064,7 @@ pub type TuiMountFn = Box<dyn FnOnce(&mut warpui::AppContext)>;
 /// Runs the app (or CLI / daemon). TUI entry points run after `initialize_app`
 /// in place of the GUI/CLI `launch()` path.
 fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
+    startup_diagnostics::start();
     let mut timer = IntervalTimer::new();
 
     // ── Early initialization (pre-AppBuilder) ──────────────────────
@@ -1231,6 +1233,7 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
 
     let private_preferences = settings::init_private_user_preferences();
     let (public_preferences, startup_toml_parse_error) = settings::init_public_user_preferences();
+    timer.mark_interval_end("PREFERENCES_INITIALIZED");
 
     // When the SettingsFile feature flag is enabled, public settings live in
     // the TOML-backed store. When disabled, they live in the platform-native
@@ -1254,6 +1257,7 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
     #[cfg(enable_crash_recovery)]
     let crash_recovery =
         crash_recovery::CrashRecovery::new(&launch_mode, prefs_for_public_settings);
+    timer.mark_interval_end("CRASH_RECOVERY_STARTED");
 
     // Set up the pty spawner before doing any meaningful work. We want to
     // ensure that the process is in the cleanest possible state (minimal opened
@@ -1263,6 +1267,7 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
     #[cfg(feature = "local_tty")]
     let pty_spawner =
         terminal::local_tty::spawner::PtySpawner::new().context("Failed to create pty spawner")?;
+    timer.mark_interval_end("PTY_SPAWNER_READY");
 
     // The TUI front-end skips the GUI lifecycle callbacks, which reach for
     // windows and GUI-only state, but still flushes telemetry and reporting on
@@ -1308,6 +1313,7 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
     if matches!(launch_mode, LaunchMode::Tui { .. }) {
         app_builder.enable_headless_microphone_access_query();
     }
+    timer.mark_interval_end("APP_BUILDER_CREATED");
 
     // A headless invocation has no Dock presence, so it performs no Dock-visible
     // setup at all (Dock icon, Dock menu, menu bar). See APP-2946.
@@ -1393,6 +1399,7 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
     );
 
     app_builder.run(move |ctx| {
+        timer.mark_interval_end("PLATFORM_CALLBACK_STARTED");
         #[cfg(not(target_family = "wasm"))]
         // Rotate the log files in the background.
         ctx.background_executor()
@@ -1597,6 +1604,7 @@ pub(crate) fn initialize_app(
 
     ctx.add_singleton_model(WarpConfig::new);
     ctx.add_singleton_model(|_ctx| SettingsManager::default());
+    timer.mark_interval_end("SETTINGS_WATCHERS_CREATED");
 
     let user_defaults_on_startup = settings::init(startup_toml_parse_error, ctx);
     timer.mark_interval_end("READ_USER_DEFAULTS_AND_INITIALIZE_SETTINGS");
@@ -2065,7 +2073,8 @@ pub(crate) fn initialize_app(
             timer.compute_stats()
         });
         if let Ok(timing_data) = serde_json::to_string(&timing_data) {
-            log::debug!("Lite startup timings: {timing_data}");
+            log::debug!(target: "warp::startup", "Lite startup timings: {timing_data}");
+            log::debug!(target: "warp::startup", "first_frame elapsed_ms={:.3}", startup_diagnostics::elapsed_ms());
         }
     });
 

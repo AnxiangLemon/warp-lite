@@ -5,6 +5,7 @@ mod rect;
 mod util;
 
 use frame::Frame;
+use instant::Instant;
 use pathfinder_geometry::vector::Vector2F;
 use util::with_error_scope;
 use warpui_core::platform::CapturedFrame;
@@ -29,6 +30,7 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(resources: &Resources, glyph_config: GlyphConfig) -> Self {
+        let started = Instant::now();
         let Resources { device, .. } = resources;
 
         let format = resources.surface_config.borrow().format;
@@ -43,6 +45,7 @@ impl Renderer {
             device,
             color_target.clone(),
         );
+        log::debug!(target: "warpui::startup", "rect_pipeline duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 
         let glyph_pipeline = glyph::Pipeline::new(
             resources.uniform_bind_group_layout(),
@@ -50,9 +53,11 @@ impl Renderer {
             color_target.clone(),
             glyph_config,
         );
+        log::debug!(target: "warpui::startup", "glyph_pipeline duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 
         let image_pipeline =
             image::Pipeline::new(resources.uniform_bind_group_layout(), device, color_target);
+        log::debug!(target: "warpui::startup", "image_pipeline duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 
         Self {
             rect_pipeline,

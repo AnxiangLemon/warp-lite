@@ -476,8 +476,10 @@ impl<S> TerminalManager<S> {
             let terminal_manager = box_manager(terminal_manager);
             ctx.spawn(
                 async move {
+                    let resolution_started = Instant::now();
                     // Restored UNC paths can wake WSL or wait on a network share.
                     let startup_directory = startup_directory.filter(|path| path.is_dir());
+                    log::debug!(target: "warp::startup", "cwd_resolved duration_ms={:.3}", resolution_started.elapsed().as_secs_f64() * 1000.0);
                     let shell_starter_source = match wsl_name_or_shell_starter {
                         Some(starter_source) => starter_source.to_shell_starter_source().await,
                         None => None,
@@ -488,6 +490,7 @@ impl<S> TerminalManager<S> {
                         }
                         (_, directory) => directory,
                     };
+                    log::debug!(target: "warp::startup", "shell_resolved elapsed_ms={:.3} duration_ms={:.3}", crate::startup_diagnostics::elapsed_ms(), resolution_started.elapsed().as_secs_f64() * 1000.0);
                     (shell_starter_source, startup_directory)
                 },
                 move |terminal_manager: &mut Box<dyn TerminalManagerTrait>,
@@ -650,75 +653,119 @@ fn on_shell_determined<S: TerminalSurface>(
         ShellStarter::DockerSandbox(starter) => starter.session_id(),
         ShellStarter::Wsl(starter) => starter.session_id(),
     };
+    log::debug!(target: "warp::startup", "pty_start session_id={generated_session_id:?} shell={:?} elapsed_ms={:.3}", shell_starter.shell_type(), crate::startup_diagnostics::elapsed_ms());
     manager
         .model()
         .lock()
         .register_session_id(generated_session_id);
 
-    // Enqueue the init shell script (for shells that need it), then create
-    // the PTY and start its corresponding event loop.
-    let ShellStartupResources {
-        event_loop_rx,
-        channel_event_proxy,
-        #[cfg(unix)]
-        model_events,
-    } = shell_startup_resources;
-    let model = manager.model();
-    #[cfg(windows)]
-    let event_loop_tx = manager.event_loop_tx.lock().clone();
-    let pty = match manager
+    if let Err(err) = manager
         .enqueue_init_script(&shell_starter, generated_session_id)
         .context("Failed to write shell init script to the pty")
-        .and_then(|_| {
-            TerminalManager::<S>::create_pty(
-                startup_directory,
-                shell_starter,
-                env_vars,
-                model.clone(),
-                #[cfg(windows)]
-                event_loop_tx,
-                ctx,
-            )
-        }) {
-        Ok(pty) => pty,
-        Err(err) => {
-            report_error!(&err);
-            manager.view.update(ctx, |surface, ctx| {
-                surface.on_pty_spawn_failed(err, ctx);
-            });
-            manager.model().lock().exit(ExitReason::PtySpawnFailed);
-            return;
-        }
-    };
-
-    #[cfg(feature = "integration_tests")]
-    let pid = pty.get_pid();
-    #[cfg(unix)]
-    let fd = pty.get_fd();
-
-    // Create the channel above and pass the receving side to the event loop.
-    let event_loop_handle = TerminalManager::<S>::start_pty_event_loop(
-        pty,
-        event_loop_rx,
-        model.clone(),
-        channel_event_proxy,
-    );
-
-    manager.event_loop_handle = Some(event_loop_handle);
-    #[cfg(feature = "integration_tests")]
     {
-        manager.pid = Some(pid);
+        on_pty_spawn_failed(manager, err, ctx);
+        return;
     }
 
-    manager.view.update(ctx, |surface, ctx| {
-        surface.on_shell_determined(ctx);
-        surface.on_active_shell_launch_data_updated(Some(shell_launch_data), ctx);
-    });
+    let model = manager.model();
+    let (options, is_crash_reporting_enabled) = TerminalManager::<S>::prepare_pty_options(
+        startup_directory,
+        shell_starter,
+        env_vars,
+        model.clone(),
+        ctx,
+    );
 
-    // Initialize the terminal attributes poller.
-    // TODO(CORE-2297): Implement TerminalPoller on Windows.
+    #[cfg(windows)]
+    {
+        crate::send_telemetry_from_app_ctx!(
+            TelemetryEvent::PtySpawned {
+                mode: crate::server::telemetry::PtySpawnMode::Direct
+            },
+            ctx
+        );
+        let event_loop_tx = manager.event_loop_tx.lock().clone();
+        ctx.spawn(
+            async move {
+                let pty = Pty::new(options, is_crash_reporting_enabled, event_loop_tx)?;
+                let pid = pty.get_pid();
+                let event_loop_handle = TerminalManager::<S>::start_pty_event_loop(
+                    pty,
+                    shell_startup_resources.event_loop_rx,
+                    model,
+                    shell_startup_resources.channel_event_proxy,
+                );
+                log::debug!(target: "warp::startup", "pty_ready session_id={generated_session_id:?} elapsed_ms={:.3}", crate::startup_diagnostics::elapsed_ms());
+                Ok::<_, anyhow::Error>((event_loop_handle, pid))
+            },
+            move |manager, result, ctx| {
+                let Some(manager) = manager.as_any_mut().downcast_mut::<TerminalManager<S>>() else {
+                    return;
+                };
+                match result {
+                    Ok((event_loop_handle, pid)) => {
+                        manager.event_loop_handle = Some(event_loop_handle);
+                        #[cfg(feature = "integration_tests")]
+                        {
+                            manager.pid = Some(pid);
+                        }
+                        #[cfg(not(feature = "integration_tests"))]
+                        let _ = pid;
+                        if !ctx.is_window_open(manager.view.window_id(ctx)) {
+                            manager.shutdown_event_loop();
+                            return;
+                        }
+                        manager.view.update(ctx, |surface, ctx| {
+                            surface.on_shell_determined(ctx);
+                            surface.on_active_shell_launch_data_updated(Some(shell_launch_data), ctx);
+                        });
+                    }
+                    Err(err) => on_pty_spawn_failed(manager, err, ctx),
+                }
+            },
+        );
+    }
+
     #[cfg(unix)]
     {
+        let ShellStartupResources {
+            event_loop_rx,
+            channel_event_proxy,
+            model_events,
+        } = shell_startup_resources;
+        let pty = match Pty::new(options, is_crash_reporting_enabled, ctx) {
+            Ok(pty) => pty,
+            Err(err) => {
+                on_pty_spawn_failed(manager, err, ctx);
+                return;
+            }
+        };
+
+        #[cfg(feature = "integration_tests")]
+        let pid = pty.get_pid();
+        let fd = pty.get_fd();
+
+        let event_loop_handle = TerminalManager::<S>::start_pty_event_loop(
+            pty,
+            event_loop_rx,
+            model.clone(),
+            channel_event_proxy,
+        );
+
+        manager.event_loop_handle = Some(event_loop_handle);
+        log::debug!(target: "warp::startup", "pty_ready session_id={generated_session_id:?} elapsed_ms={:.3}", crate::startup_diagnostics::elapsed_ms());
+        #[cfg(feature = "integration_tests")]
+        {
+            manager.pid = Some(pid);
+        }
+
+        manager.view.update(ctx, |surface, ctx| {
+            surface.on_shell_determined(ctx);
+            surface.on_active_shell_launch_data_updated(Some(shell_launch_data), ctx);
+        });
+
+        // Initialize the terminal attributes poller.
+        // TODO(CORE-2297): Implement TerminalPoller on Windows.
         let terminal_attributes_poller = ctx.add_model(|_| TerminalAttributesPoller::new(fd));
         wire_up_terminal_attribute_poller_with_surface(
             &terminal_attributes_poller,
@@ -730,6 +777,20 @@ fn on_shell_determined<S: TerminalSurface>(
 
         manager.terminal_attributes_poller = Some(terminal_attributes_poller);
     }
+}
+
+fn on_pty_spawn_failed<S: TerminalSurface>(
+    manager: &mut TerminalManager<S>,
+    err: anyhow::Error,
+    ctx: &mut ModelContext<Box<dyn TerminalManagerTrait>>,
+) where
+    <S as Entity>::Event: PtyIntentEvent,
+{
+    report_error!(&err);
+    manager.view.update(ctx, |surface, ctx| {
+        surface.on_pty_spawn_failed(err, ctx);
+    });
+    manager.model().lock().exit(ExitReason::PtySpawnFailed);
 }
 
 impl<S> TerminalManager<S> {
@@ -773,14 +834,13 @@ impl<S> TerminalManager<S> {
         }
     }
 
-    fn create_pty(
+    fn prepare_pty_options(
         startup_directory: Option<PathBuf>,
         shell_starter: ShellStarter,
         env_vars: HashMap<OsString, OsString>,
         model: Arc<FairMutex<TerminalModel>>,
-        #[cfg(windows)] event_loop_tx: mio_channel::Sender<Message>,
-        ctx: &mut AppContext,
-    ) -> anyhow::Result<Pty> {
+        ctx: &AppContext,
+    ) -> (PtyOptions, bool) {
         let is_shell_debug_mode_enabled = *DebugSettings::as_ref(ctx)
             .is_shell_debug_mode_enabled
             .value();
@@ -838,13 +898,7 @@ impl<S> TerminalManager<S> {
             close_fds: true,
         };
 
-        Pty::new(
-            options,
-            is_crash_reporting_enabled,
-            #[cfg(windows)]
-            event_loop_tx,
-            ctx,
-        )
+        (options, is_crash_reporting_enabled)
     }
 
     /// Start's the PTY event loop, returning a sender for the event loop and the event loop's join handle.

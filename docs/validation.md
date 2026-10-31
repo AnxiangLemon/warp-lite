@@ -216,3 +216,119 @@ SHA256、142 项单元测试、12 个 GUI 用例与 Vulkan smoke test，见
 [独立维护说明](independence.md#本轮验证记录2026-10-31)。此前单项实验的旧 SHA256 和
 内存采样保留为历史记录，不代表本次构建的产物。当前验证包为
 `dist/Lite Independence Snapshot/`，EXE 50.79 MiB，源码和正式二进制发布范围见该记录。
+
+## 2026-10-31：正式版启动分段与后台 PTY 创建
+
+使用同一台 Windows x64 主机、`lite` 优化 profile、相同 runtime DLL、1920×1080 PNG、
+设置文件和 5 个终端的 SQLite 快照（3 个 PowerShell 7.6.9、2 个 Ubuntu-24.04 Bash）。
+基线保留本轮优化前的启动逻辑及 PowerShell bootstrap，仅加入双方相同的本地计时与
+release profile 隔离支持。没有混用 Debug 与正式版，也没有关闭 WSL、清系统缓存或跳过
+用户配置。正式测量期间没有编译或 GUI 测试进程。两组均预热一对、再交替测量五对。
+
+第一组使用正常交付脚本，计时中位数与范围如下：
+
+| 指标 | 优化前 | 优化后 | 中位数减少 |
+| --- | ---: | ---: | ---: |
+| 应用入口到实际首帧 | 702.841 ms（638–708） | 513.429 ms（496–543） | 26.95% |
+| 启动程序到观测到首帧 | 750.808 ms（706–787） | 576.235 ms（564–626） | 23.25% |
+| 应用入口到首个 shell 握手完成 | 1258.314 ms | 1207.178 ms | 4.06% |
+| 应用入口到 5 个 shell 握手完成 | 2128.467 ms（2083–2247） | 1968.725 ms（1937–2112） | 7.51% |
+
+首帧来自实际绘制回调，shell 握手来自 Bootstrapped 事件。外部观测使用 20 ms 轮询，
+包含启动器和日志可见性开销。它们不能代替提示符完成或首条命令的执行耗时。
+
+第二组在两份独立包副本中加入相同的一次性 PowerShell Precmd 探针，用跨进程 Stopwatch
+记录首次 post-bootstrap Precmd 发出时间。3 个 PowerShell 提示符全部准备完成的时间为
+**2272.728 → 2073.092 ms，减少 8.78%**；范围为 2231–2356 → 2045–2242 ms。
+这组从启动程序起计时；不代表一次实际用户命令的往返测试。正常交付包不包含这些探针。
+
+已确认并修正的耗时：
+
+- Windows ConPTY / CreateProcess 原先在 UI 线程串行执行。现在后台并行创建并启动 PTY
+  event loop，回到 UI 线程更新视图。5 个 PTY 创建的总跨度中位数 **144.372 → 40.189 ms**。
+  关闭尚未启动完成的标签页仍通过原来的 Shutdown 消息收尾；真实终端回归覆盖了该路径。
+- PowerShell 启动时只枚举已加载的 function / cmdlet；完整命令名继续在后台收集，GUI
+  回归确认未加载模块中的 `Get-CimInstance` 仍可用于补全。后台 generator 的两个 pool
+  按需创建，最少 runspace 从 10 / 5 改为 1 / 1，保留 20 / 10 的并发上限。
+- 验证 pool 生命周期时发现并修正了既有批处理、任务跟踪和协议问题：整个 job 数组作为
+  单个参数传入、保存实际 PowerShell 实例、补齐后台作用域的 OSC 终止符，以及错误 / 取消
+  帧的字段顺序。PowerShell 5.1 和实际安装的 7.6.9 都通过批量输出、失败、取消、复用和
+  清理检查。
+
+剩余耗时仍集中在 shell 与渲染初始化，未宣称已解决所有启动等待：
+
+- 优化后，PowerShell 从 PTY 创建完到 bootstrap 计时开始约 **838 ms**；bootstrap
+  中位数约 **595 ms**，其中用户 rcfiles 计时约 **131 ms**。这些阶段没有被跳过。
+- 另用独立脚本副本做两次分段诊断（6 个 PowerShell）：首次 Precmd 初始化约 212 ms，
+  更细分的 PSReadLine 配置约 141 ms；首次 post-bootstrap Precmd 比 Bootstrapped
+  晚约 140 ms。诊断样本不计入正常包的性能对照。
+- GPU 设备初始化约 **136 ms**，三类绘制 pipeline 合计约 **52 ms**；设置和字体等
+  初始化合计约 **94 ms**。这些数字含不同的嵌套 / 并行阶段，不能简单相加得到总时间。
+- 绕过 WindowsApps 的 PowerShell 别名，以及更换 WSL shell 探测命令，没有显示稳定收益，
+  因而未据此修改生产启动路径。
+
+回归与检查：
+
+- 真实显示下 terminal smoke（含立即关闭待启动标签、补全、命令和持久化）、中文设置与
+  目录搜索、命名标签恢复、WSL 中文目录搜索和跳转、退出确认与查看运行进程均通过。
+- 原中文目录测试先复现了鼠标停在“上级目录”时 Enter 错选父目录的问题；改为真实鼠标
+  进入事件更新选择状态，输入查询后保留键盘选择。回归实际悬停父目录后输入中文并验证 cwd。
+- WSL 首次测试失败揭示原 `WSLENV=HOME/p` 在本机没有隔离 HOME。现在通过显式转译的
+  测试 HOME 和启动器 BASH_ENV 设置，断言实际 session HOME；私有 `.hushlogin` 避免
+  系统 MOTD 脚本对含空格测试路径产生额外文件。修正后的 WSL 回归连续两次通过。
+- `warp_core` 的 data profile 路径校验测试 2 项通过。完整 Rust 格式检查通过；Lite binary
+  Clippy 使用 `-D clippy::correctness -D clippy::disallowed_types` 通过，仍报告 2100 条
+  unused / dead-code 等警告，不计作完整 workspace 的严格 `-D warnings` 通过。
+- 本地来源检查通过（34 个本地 package、零 Git 依赖），Lite 运行依赖检查通过
+  （639 个 package/version，无禁止依赖）。本轮仅验证本地 Windows x64；没有
+  `oz-dev` / `cargo-nextest`，未声明 macOS / 原生 Linux 验证结果。
+
+新包位于 **`dist/Warp Lite Fast Startup/warp-lite.exe`**，`--version` 返回
+`Warp Lite 0.1.0`、exit code 0。EXE 为 53,234,176 字节（50.77 MiB），包含原 PNG/JPG 的
+整包为 59,078,118 字节（56.34 MiB）。构建与交付 EXE、交付与源码 PowerShell 脚本均校验
+一致；原两张背景图哈希保持一致。EXE SHA256：
+`424769D94AB9BFA73A1F8E44C8D3A91FC233D2DC48FEFEE69CBE281842A0BA25`。
+
+复现与原始证据（以下 `target/` 路径为测量时的位置，清理后的归档位置见下一节）：
+
+- `script/measure-lite-startup.ps1`、`script/prepare-lite-startup-probe.py`、
+  `script/test-pwsh-bootstrap.py` / `.ps1`；使用说明见 `docs/development.md`。
+- 正常包：`target/lite-release-startup-comparison.json`、
+  `target/lite-release-startup-summary.json`、`target/lite-release-startup-stage-summary.json`。
+- 提示符对照：`target/lite-release-prompt-comparison.json`、
+  `target/lite-release-prompt-summary.json`；副本在 `target/lite-release-prompt-packages/`。
+- PowerShell 分段：`target/lite-release-pwsh-stage-summary.json`、
+  `target/lite-release-pwsh-detail-summary.json`；包校验：
+  `target/lite-release-startup-package.json`。
+- GUI 结果与截图在 `target/lite-release-async-gui-results.json`、
+  `target/lite-release-startup-artifacts/`；最终 WSL 日志为
+  `target/lite-release-wsl-final-test.log`。诊断失败日志保留，未混作成功证据。
+
+该轮测量结束时尚未提交或推送源码，未覆盖现有用户会话。
+
+## 2026-10-31：清理冗余启动代码与本地构建数据
+
+- 删除 Windows 已不再调用的同步 PTY 包装入口、Unix 分支内重复的条件编译，以及目录
+  列表重复的选择状态赋值和简单转发方法；保留跨平台 PTY 生命周期及现有测试覆盖。
+- 删除两个已完成依赖迁移的一次性 import 改写脚本，并移除对应的精确忽略规则。
+- 清理旧发布缓存、增量缓存、重复测试包、截图和临时诊断工具；当前 Lite 构建缓存、
+  最新交付包、源码、字体、ConPTY、数据库 migrations 和许可证保留。没有删除用户的
+  AppData 配置或数据库。
+- 两阶段共删除 236 个清理目标，按文件逻辑大小合计 **180.332 GiB**；其中首批
+  98.908 GiB，严格检查结束后删除 `target-localize` 的 81.424 GiB。此数值是本机开发
+  缓存和实验产物的清理量，不是安装包或运行内存的减少量；清理明细保留在本机归档中。
+- 正式版性能对照的数值样本、汇总和 EXE 哈希提交至
+  [Windows 启动测量数据](benchmarks/startup-windows-2026-10-31.json)。原始日志、最终截图、
+  基线包及本机会话种子归档在 `.note/startup-cleanup-2026-10-31/`，不纳入 Git。
+  提示符测量副本可用已提交的脚本重新生成，避免长期保留重复包。
+- `script/format`、`script/format --check`、inline Rust test 检查，以及 `script/presubmit`
+  中 workspace、独立 GUI、completer 三组严格 Clippy（`-D warnings`）均通过。最初的
+  workspace 检查因 PATH 缺少 `patch` 失败，加入 Git 的工具目录后重新完整执行通过。
+- data profile 单元测试 2 项、PowerShell 5.1 / 7.6.9 的 generator 协议与生命周期测试、
+  Python / PowerShell 脚本语法检查、Git diff 检查均通过。本地来源检查仍为 34 个
+  package、零 Git 依赖；Lite 运行依赖仍为 639 个 package/version，无禁止依赖。
+- workspace 的 JS command-signatures 生成触发既有缓存回退提示，因此本次 Rust 检查
+  不构成 JS 产物重建验证。PSScriptAnalyzer 未安装，未运行完整 presubmit；没有重做
+  上一节已通过的整套 GUI 回归，也未新增 macOS / 原生 Linux 的验证声明。
+- 检查日志保存在本机归档的 `checks/` 目录；本次仅提交源码、测试、文档与脱敏性能数据。
+  同期出现的 `AGENTS.md` 和 `script/package-lite.ps1` 修改保留在工作区，未纳入本次提交。

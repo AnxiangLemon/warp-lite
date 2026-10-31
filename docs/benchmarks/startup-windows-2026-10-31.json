@@ -1,0 +1,263 @@
+{
+  "platform": "Windows x64",
+  "build_profile": "lite",
+  "features": [
+    "warp_lite"
+  ],
+  "baseline_source_commit": "68f2d752",
+  "baseline_notes": "Baseline includes the same local startup diagnostics and release data profile isolation; it retains the original PTY startup and PowerShell bootstrap.",
+  "sessions": {
+    "powershell": 3,
+    "wsl_bash": 2
+  },
+  "warmup_pairs": 1,
+  "measured_pairs_per_experiment": 5,
+  "conditions": "Identical session snapshot, settings, background and runtime DLLs; alternating order; no concurrent builds; no WSL shutdown or cache clearing.",
+  "before_exe_sha256": "A328EA5EE63DF7BBFF15A4EAB5CE1186935F6CAAA5EDC35450ED8426FEC609A9",
+  "after_exe_sha256": "424769D94AB9BFA73A1F8E44C8D3A91FC233D2DC48FEFEE69CBE281842A0BA25",
+  "normal_package_samples": [
+    {
+      "round": 1,
+      "variant": "after",
+      "first_frame_ms": 520.828,
+      "process_to_first_frame_observed_ms": 597.41,
+      "first_shell_ready_ms": 1169.607,
+      "all_shells_ready_ms": 1936.632,
+      "process_to_all_shells_observed_ms": 2019.759
+    },
+    {
+      "round": 1,
+      "variant": "before",
+      "first_frame_ms": 638.249,
+      "process_to_first_frame_observed_ms": 706.365,
+      "first_shell_ready_ms": 1190.113,
+      "all_shells_ready_ms": 2128.467,
+      "process_to_all_shells_observed_ms": 2197.766
+    },
+    {
+      "round": 2,
+      "variant": "before",
+      "first_frame_ms": 702.841,
+      "process_to_first_frame_observed_ms": 750.808,
+      "first_shell_ready_ms": 1216.749,
+      "all_shells_ready_ms": 2083.115,
+      "process_to_all_shells_observed_ms": 2158.723
+    },
+    {
+      "round": 2,
+      "variant": "after",
+      "first_frame_ms": 513.429,
+      "process_to_first_frame_observed_ms": 564.458,
+      "first_shell_ready_ms": 1255.443,
+      "all_shells_ready_ms": 2069.394,
+      "process_to_all_shells_observed_ms": 2124.384
+    },
+    {
+      "round": 3,
+      "variant": "after",
+      "first_frame_ms": 510.706,
+      "process_to_first_frame_observed_ms": 563.643,
+      "first_shell_ready_ms": 1207.178,
+      "all_shells_ready_ms": 1968.725,
+      "process_to_all_shells_observed_ms": 2039.022
+    },
+    {
+      "round": 3,
+      "variant": "before",
+      "first_frame_ms": 708.018,
+      "process_to_first_frame_observed_ms": 787.349,
+      "first_shell_ready_ms": 1351.588,
+      "all_shells_ready_ms": 2115.15,
+      "process_to_all_shells_observed_ms": 2173.273
+    },
+    {
+      "round": 4,
+      "variant": "before",
+      "first_frame_ms": 679.762,
+      "process_to_first_frame_observed_ms": 736.162,
+      "first_shell_ready_ms": 1258.314,
+      "all_shells_ready_ms": 2132.575,
+      "process_to_all_shells_observed_ms": 2188.24
+    },
+    {
+      "round": 4,
+      "variant": "after",
+      "first_frame_ms": 543.343,
+      "process_to_first_frame_observed_ms": 626.106,
+      "first_shell_ready_ms": 1242.411,
+      "all_shells_ready_ms": 2112.293,
+      "process_to_all_shells_observed_ms": 2165.348
+    },
+    {
+      "round": 5,
+      "variant": "after",
+      "first_frame_ms": 495.837,
+      "process_to_first_frame_observed_ms": 576.235,
+      "first_shell_ready_ms": 1164.756,
+      "all_shells_ready_ms": 1950.826,
+      "process_to_all_shells_observed_ms": 2032.588
+    },
+    {
+      "round": 5,
+      "variant": "before",
+      "first_frame_ms": 705.483,
+      "process_to_first_frame_observed_ms": 760.258,
+      "first_shell_ready_ms": 1336.87,
+      "all_shells_ready_ms": 2247.325,
+      "process_to_all_shells_observed_ms": 2322.974
+    }
+  ],
+  "prompt_probe_samples": [
+    {
+      "round": 1,
+      "variant": "after",
+      "process_to_all_powershell_prompts_ms": 2057.742
+    },
+    {
+      "round": 1,
+      "variant": "before",
+      "process_to_all_powershell_prompts_ms": 2236.389
+    },
+    {
+      "round": 2,
+      "variant": "before",
+      "process_to_all_powershell_prompts_ms": 2272.728
+    },
+    {
+      "round": 2,
+      "variant": "after",
+      "process_to_all_powershell_prompts_ms": 2073.092
+    },
+    {
+      "round": 3,
+      "variant": "after",
+      "process_to_all_powershell_prompts_ms": 2044.776
+    },
+    {
+      "round": 3,
+      "variant": "before",
+      "process_to_all_powershell_prompts_ms": 2230.953
+    },
+    {
+      "round": 4,
+      "variant": "before",
+      "process_to_all_powershell_prompts_ms": 2355.938
+    },
+    {
+      "round": 4,
+      "variant": "after",
+      "process_to_all_powershell_prompts_ms": 2164.484
+    },
+    {
+      "round": 5,
+      "variant": "after",
+      "process_to_all_powershell_prompts_ms": 2241.869
+    },
+    {
+      "round": 5,
+      "variant": "before",
+      "process_to_all_powershell_prompts_ms": 2290.368
+    }
+  ],
+  "normal_summary": {
+    "before": {
+      "first_frame_ms": {
+        "median": 702.841,
+        "min": 638.249,
+        "max": 708.018
+      },
+      "first_shell_ready_ms": {
+        "median": 1258.314,
+        "min": 1190.113,
+        "max": 1351.588
+      },
+      "all_shells_ready_ms": {
+        "median": 2128.467,
+        "min": 2083.115,
+        "max": 2247.325
+      },
+      "process_to_first_frame_observed_ms": {
+        "median": 750.808,
+        "min": 706.365,
+        "max": 787.349
+      },
+      "process_to_all_shells_observed_ms": {
+        "median": 2188.24,
+        "min": 2158.723,
+        "max": 2322.974
+      }
+    },
+    "after": {
+      "first_frame_ms": {
+        "median": 513.429,
+        "min": 495.837,
+        "max": 543.343
+      },
+      "first_shell_ready_ms": {
+        "median": 1207.178,
+        "min": 1164.756,
+        "max": 1255.443
+      },
+      "all_shells_ready_ms": {
+        "median": 1968.725,
+        "min": 1936.632,
+        "max": 2112.293
+      },
+      "process_to_first_frame_observed_ms": {
+        "median": 576.235,
+        "min": 563.643,
+        "max": 626.106
+      },
+      "process_to_all_shells_observed_ms": {
+        "median": 2039.022,
+        "min": 2019.759,
+        "max": 2165.348
+      }
+    },
+    "reduction_percent": {
+      "first_frame_ms": 26.95,
+      "first_shell_ready_ms": 4.06,
+      "all_shells_ready_ms": 7.51,
+      "process_to_first_frame_observed_ms": 23.25,
+      "process_to_all_shells_observed_ms": 6.82
+    }
+  },
+  "prompt_summary": {
+    "before": {
+      "first_frame_ms": {
+        "median": 694.222,
+        "min": 661.328,
+        "max": 711.533
+      },
+      "all_shells_ready_ms": {
+        "median": 2072.611,
+        "min": 2039.9,
+        "max": 2153.158
+      },
+      "process_to_all_powershell_prompts_ms": {
+        "median": 2272.728,
+        "min": 2230.953,
+        "max": 2355.938
+      }
+    },
+    "after": {
+      "first_frame_ms": {
+        "median": 526.053,
+        "min": 521.406,
+        "max": 556.425
+      },
+      "all_shells_ready_ms": {
+        "median": 1970.307,
+        "min": 1925.868,
+        "max": 2060.706
+      },
+      "process_to_all_powershell_prompts_ms": {
+        "median": 2073.092,
+        "min": 2044.776,
+        "max": 2241.869
+      }
+    },
+    "prompt_reduction_percent": 8.78
+  },
+  "measurement_notes": "first_frame_ms and shell_ready use application-entry timing. External observations include launcher/log-polling overhead. PowerShell prompt probes use process-launch timing at the first post-bootstrap Precmd; they do not measure a command round trip. Probe copies are separate from the shipping package."
+}

@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Result, anyhow};
+use instant::Instant;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use pathfinder_geometry::vector::Vector2F;
@@ -118,6 +119,7 @@ impl Resources {
         downrank_non_nvidia_vulkan_adapters: bool,
         deferred: bool,
     ) -> Result<Self> {
+        let started = Instant::now();
         let windowing_system = window_handle.display_handle()?.as_raw().try_into().ok();
 
         let instance = if deferred {
@@ -126,6 +128,7 @@ impl Resources {
             super::get_full_wgpu_instance()
         };
         let surface = instance.create_surface(window_handle)?;
+        log::debug!(target: "warpui::startup", "gpu_surface duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 
         let backends = if deferred {
             wgpu::Backends::DX12
@@ -149,6 +152,7 @@ impl Resources {
             .await
             .ok_or_else(|| anyhow!("No usable wgpu adapter was found"))?;
             let adapter_info = adapter.get_info();
+            log::debug!(target: "warpui::startup", "gpu_device duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 
             log::info!(
                 "Using {:?} {:?} ({}) for rendering new window.",

@@ -1,7 +1,9 @@
 use anyhow::Result;
 #[cfg(unix)]
 use warp_errors::report_error;
-use warpui::{AppContext, Entity, SingletonEntity};
+#[cfg(unix)]
+use warpui::AppContext;
+use warpui::{Entity, SingletonEntity};
 #[cfg(unix)]
 use {
     crate::terminal::local_tty::server::TerminalServer, anyhow::bail, std::cmp::Reverse,
@@ -11,7 +13,9 @@ use {
 #[cfg(target_os = "windows")]
 use super::PseudoConsoleChild;
 use super::{PtyOptions, PtySpawnResult};
+#[cfg(unix)]
 use crate::send_telemetry_from_app_ctx;
+#[cfg(unix)]
 use crate::server::telemetry::{PtySpawnMode, TelemetryEvent};
 use crate::terminal::local_tty::{self};
 /// A handle that can be used to interact with a pty process.
@@ -167,21 +171,15 @@ impl PtySpawner {
 
     /// Spawns a pty, returning information about the pty and a handle that can
     /// be used to interact with the pty process.
+    #[cfg(unix)]
     pub(super) fn spawn_pty(
         &self,
         options: PtyOptions,
         is_crash_reporting_enabled: bool,
-        #[cfg(windows)] event_loop_tx: super::mio_channel::Sender<
-            crate::terminal::writeable_pty::Message,
-        >,
         ctx: &mut AppContext,
     ) -> Result<(PtySpawnResult, Box<dyn PtyHandle>)> {
-        #[cfg(not(unix))]
-        let is_fallback = false;
-        #[cfg(unix)]
         let mut is_fallback = false;
 
-        #[cfg(unix)]
         if let Some(server) = &self.server {
             let result = Self::spawn_pty_via_server(server, options.clone());
             if let Err(err) = result {
@@ -223,15 +221,10 @@ impl PtySpawner {
         };
         send_telemetry_from_app_ctx!(TelemetryEvent::PtySpawned { mode }, ctx);
 
-        Self::spawn_pty_directly(
-            options,
-            #[cfg(windows)]
-            event_loop_tx,
-            is_crash_reporting_enabled,
-        )
+        Self::spawn_pty_directly(options, is_crash_reporting_enabled)
     }
 
-    fn spawn_pty_directly(
+    pub(super) fn spawn_pty_directly(
         options: PtyOptions,
         #[cfg(windows)] event_loop_tx: super::mio_channel::Sender<
             crate::terminal::writeable_pty::Message,

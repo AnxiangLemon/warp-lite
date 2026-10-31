@@ -55,9 +55,9 @@ use warp::settings_view::{SettingsSection, SettingsView};
 use warp::terminal::available_shells::AvailableShells;
 use warp::themes::theme::ThemeKind;
 use warp::themes::theme_chooser::ThemeChooserMode;
-use warp::workspace::WorkspaceAction;
 use warp::workspace::header_toolbar_item::HeaderToolbarItemKind;
 use warp::workspace::tab_settings::{TabSettings, VerticalTabsDisplayGranularity};
+use warp::workspace::{ActiveSession, WorkspaceAction};
 use warpui_core::assets::asset_cache::{AssetCache, AssetSource, AssetState};
 use warpui_core::elements::DEFAULT_UI_LINE_HEIGHT_RATIO;
 use warpui_core::image_cache::ImageType;
@@ -255,6 +255,10 @@ pub fn test_lite_chinese_settings() -> Builder {
                     );
                 },
             ),
+        )
+        .with_step(
+            new_step_with_default_assertions("Hover the parent directory before typing")
+                .with_hover_over_saved_position("MenuPromptChip-Footer"),
         )
         .with_step(
             new_step_with_default_assertions("Filter the directory menu with real text input")
@@ -796,6 +800,32 @@ pub fn test_lite_terminal_smoke() -> Builder {
             prepare_directory(utils);
         })
         .with_step(wait_until_bootstrapped_single_pane_for_tab(0))
+        .with_step(
+            new_step_with_default_assertions("Background discovery preserves PowerShell cmdlet completion")
+                .add_named_assertion("Cmdlets from unloaded modules become available", |app, window_id| {
+                    ActiveSession::handle(app).read(app, |active, _| {
+                        let Some(session) = active.session(window_id) else {
+                            return AssertionOutcome::failure("No active PowerShell session".to_owned());
+                        };
+                        async_assert!(session.builtin_names().any(|name| name == "Get-CimInstance"), "Background command discovery must include Get-CimInstance")
+                    })
+                }),
+        )
+        .with_step(
+            new_step_with_default_assertions("Close a new tab while shell startup is pending")
+                .with_action(|app, window_id, _| {
+                    let workspace = workspace_view(app, window_id);
+                    workspace.update(app, |workspace, ctx| {
+                        workspace.add_terminal_tab(true, ctx);
+                    });
+                    app.dispatch_typed_action(
+                        window_id,
+                        &[workspace.id()],
+                        &WorkspaceAction::CloseActiveTab,
+                    );
+                })
+                .add_named_assertion("The original terminal remains available", assert_tab_count(1)),
+        )
         .with_step(assert_logged_out())
         .with_step(
             new_step_with_default_assertions("Create a second local terminal tab")
@@ -1250,8 +1280,14 @@ pub fn test_lite_wsl_directory_search() -> Builder {
     lite_builder().with_real_display()
         .with_setup(|utils| {
             prepare_directory(utils);
-            // WSL must use the generated test rcfiles, not the user's Linux shell configuration.
-            utils.set_env("WSLENV", Some("HOME/p"));
+            // WSL resets HOME even when WSLENV forwards it. Set it inside the noninteractive
+            // launcher before the interactive shell loads the generated test rcfiles.
+            let environment_script = utils.test_dir().join("wsl-test-env.sh");
+            std::fs::write(utils.test_dir().join(".hushlogin"), "").unwrap();
+            std::fs::write(&environment_script, "export HOME=\"$WARP_TEST_WSL_HOME\"\n").unwrap();
+            utils.set_env("WARP_TEST_WSL_HOME", Some(utils.test_dir()));
+            utils.set_env("BASH_ENV", Some(environment_script));
+            utils.set_env("WSLENV", Some("WARP_TEST_WSL_HOME/p:BASH_ENV/p"));
         })
         .with_step(wait_until_bootstrapped_single_pane_for_tab(0))
         .with_step(new_step_with_default_assertions("Wait for the installed WSL distro")
@@ -1264,7 +1300,15 @@ pub fn test_lite_wsl_directory_search() -> Builder {
                 let workspace = workspace_view(app, window_id);
                 app.dispatch_typed_action(window_id, &[workspace.id()], &WorkspaceAction::AddTabWithShell { shell, source: AddTabWithShellSource::ShellSelectorMenu });
             }))
-        .with_step(wait_until_bootstrapped_single_pane_for_tab(1))
+        .with_step(wait_until_bootstrapped_single_pane_for_tab(1)
+            .add_named_assertion("WSL uses the isolated test home", |app, window_id| {
+                ActiveSession::handle(app).read(app, |active, _| {
+                    let Some(session) = active.session(window_id) else {
+                        return AssertionOutcome::failure("No active WSL session".to_owned());
+                    };
+                    async_assert!(session.home_dir().is_some_and(|home| home.ends_with("/test_lite_wsl_directory_search")), "Unexpected WSL home: {:?}", session.home_dir())
+                })
+            }))
         .with_step(execute_command_for_single_terminal_in_tab(1,
             r#"fixture=$(mktemp -d "$HOME/warp-lite-search.XXXXXX"); mkdir "$fixture/搜索测试 目录"; touch "$fixture/readme.txt"; cd "$fixture""#.to_owned(), ExpectedExitStatus::Success, ()))
         .with_step(new_step_with_default_assertions("The WSL directory menu resolves its own home")

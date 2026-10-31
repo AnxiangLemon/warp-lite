@@ -74,8 +74,6 @@ __pycache__/
 /target-*/
 /dist/
 /lite_check*.txt
-/script/fix_lite_document_imports.py
-/script/fix_lite_drive_imports.py
 
 # Local environment settings (keep templates versioned)
 .env

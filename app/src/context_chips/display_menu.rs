@@ -234,6 +234,7 @@ pub enum DisplayChipMenuAction {
     SelectUp,
     SelectDown,
     SelectEnter,
+    FocusFixedFooterOption,
     SelectFixedFooterOption,
     CopyEnvironmentSidecarField { key: String, value: String },
     Close,
@@ -537,6 +538,7 @@ impl DisplayChipMenu {
     }
 
     fn select(&mut self, index: usize, ctx: &mut ViewContext<Self>) {
+        self.is_footer_selected = false;
         if self.selected_index != index {
             self.selected_index = index;
             self.env_sidecar_scroll_state.scroll_to(Pixels::zero());
@@ -548,17 +550,8 @@ impl DisplayChipMenu {
         if index >= self.filtered_items.len() {
             return;
         }
-        self.is_footer_selected = false;
         self.select(index, ctx);
         self.list_state.scroll_to(self.selected_index);
-    }
-
-    fn is_footer_selected(&self) -> bool {
-        self.is_footer_selected
-            || self
-                .fixed_footer
-                .as_ref()
-                .is_some_and(|f| f.mouse_state.lock().is_ok_and(|state| state.is_hovered()))
     }
 
     fn select_prev(&mut self, ctx: &mut ViewContext<Self>) {
@@ -568,7 +561,7 @@ impl DisplayChipMenu {
         let has_footer = self.fixed_footer.is_some();
 
         if self.selected_index == 0 {
-            if has_footer && !self.is_footer_selected() {
+            if has_footer && !self.is_footer_selected {
                 self.is_footer_selected = true;
             } else {
                 self.is_footer_selected = false;
@@ -591,14 +584,14 @@ impl DisplayChipMenu {
         let has_footer = self.fixed_footer.is_some();
 
         self.selected_index += 1;
-        if self.is_footer_selected() {
+        if self.is_footer_selected {
             self.is_footer_selected = false;
             self.selected_index = 0;
             self.env_sidecar_scroll_state.scroll_to(Pixels::zero());
         } else if self.selected_index >= self.filtered_items.len() {
             self.selected_index = 0;
             self.env_sidecar_scroll_state.scroll_to(Pixels::zero());
-            if has_footer && !self.is_footer_selected() {
+            if has_footer && !self.is_footer_selected {
                 self.is_footer_selected = true;
             }
         } else {
@@ -609,7 +602,7 @@ impl DisplayChipMenu {
     }
 
     fn select_enter(&mut self, ctx: &mut ViewContext<Self>) {
-        if self.is_footer_selected() {
+        if self.is_footer_selected {
             self.select_fixed_footer_option(ctx);
             return;
         }
@@ -636,7 +629,7 @@ impl DisplayChipMenu {
 
     fn should_show_environment_sidecar(&self) -> bool {
         self.chip_menu_type == ChipMenuType::Environments
-            && !self.is_footer_selected()
+            && !self.is_footer_selected
             && self.selected_index < self.filtered_items.len()
     }
 
@@ -965,90 +958,108 @@ impl DisplayChipMenu {
         let item_horizontal_padding = self.menu_item_horizontal_padding();
         let item_vertical_padding = self.menu_item_vertical_padding();
 
-        let is_footer_selected = self.is_footer_selected();
+        let is_footer_selected = self.is_footer_selected;
         ConstrainedBox::new(
-            Hoverable::new(footer_option.mouse_state.clone(), move |mouse_state| {
-                let is_active = mouse_state.is_hovered() || is_footer_selected;
+            SavePosition::new(
+                EventHandler::new(
+                    Hoverable::new(footer_option.mouse_state.clone(), move |_| {
+                        let is_active = is_footer_selected;
 
-                let background_color = if is_active {
-                    match chip_menu_type {
-                        ChipMenuType::Environments => Some(internal_colors::fg_overlay_4(theme)),
-                        ChipMenuType::Directories
-                        | ChipMenuType::Branches
-                        | ChipMenuType::CodeReview => Some(theme.accent()),
-                    }
-                } else {
-                    None
-                };
+                        let background_color = if is_active {
+                            match chip_menu_type {
+                                ChipMenuType::Environments => {
+                                    Some(internal_colors::fg_overlay_4(theme))
+                                }
+                                ChipMenuType::Directories
+                                | ChipMenuType::Branches
+                                | ChipMenuType::CodeReview => Some(theme.accent()),
+                            }
+                        } else {
+                            None
+                        };
 
-                let text_color = if is_active {
-                    match chip_menu_type {
-                        ChipMenuType::Environments => {
-                            theme.main_text_color(theme.surface_2()).into_solid()
+                        let text_color = if is_active {
+                            match chip_menu_type {
+                                ChipMenuType::Environments => {
+                                    theme.main_text_color(theme.surface_2()).into_solid()
+                                }
+                                ChipMenuType::Directories
+                                | ChipMenuType::Branches
+                                | ChipMenuType::CodeReview => {
+                                    theme.main_text_color(theme.accent()).into_solid()
+                                }
+                            }
+                        } else {
+                            theme.sub_text_color(theme.surface_2()).into_solid()
+                        };
+
+                        let mut updated_text =
+                            Flex::row().with_cross_axis_alignment(CrossAxisAlignment::Center);
+
+                        // Add icon if it exists
+                        if let Some(icon) = footer_option.action_item.icon(app) {
+                            updated_text.add_child(
+                                Container::new(
+                                    ConstrainedBox::new(
+                                        icon.to_warpui_icon(Fill::Solid(text_color)).finish(),
+                                    )
+                                    .with_height(icon_size)
+                                    .with_width(icon_size)
+                                    .finish(),
+                                )
+                                .with_margin_right(8.)
+                                .finish(),
+                            );
+                        } else {
+                            // Add spacing equivalent to icon + margin for alignment
+                            updated_text.add_child(
+                                ConstrainedBox::new(Empty::new().finish())
+                                    .with_width(icon_size + 8.)
+                                    .finish(),
+                            );
                         }
-                        ChipMenuType::Directories
-                        | ChipMenuType::Branches
-                        | ChipMenuType::CodeReview => {
-                            theme.main_text_color(theme.accent()).into_solid()
-                        }
-                    }
-                } else {
-                    theme.sub_text_color(theme.surface_2()).into_solid()
-                };
 
-                // Update icon and text colors based on hover state
-                let mut updated_text =
-                    Flex::row().with_cross_axis_alignment(CrossAxisAlignment::Center);
-
-                // Add icon if it exists
-                if let Some(icon) = footer_option.action_item.icon(app) {
-                    updated_text.add_child(
-                        Container::new(
-                            ConstrainedBox::new(
-                                icon.to_warpui_icon(Fill::Solid(text_color)).finish(),
+                        // Add the text element
+                        updated_text.add_child(
+                            Text::new_inline(
+                                footer_option.action_item.name(),
+                                appearance.ui_font_family(),
+                                font_size,
                             )
-                            .with_height(icon_size)
-                            .with_width(icon_size)
+                            .autosize_text(MIN_FONT_SIZE)
+                            .with_color(text_color)
                             .finish(),
-                        )
-                        .with_margin_right(8.)
-                        .finish(),
-                    );
-                } else {
-                    // Add spacing equivalent to icon + margin for alignment
-                    updated_text.add_child(
-                        ConstrainedBox::new(Empty::new().finish())
-                            .with_width(icon_size + 8.)
-                            .finish(),
-                    );
-                }
+                        );
 
-                // Add the text element
-                updated_text.add_child(
-                    Text::new_inline(
-                        footer_option.action_item.name(),
-                        appearance.ui_font_family(),
-                        font_size,
-                    )
-                    .autosize_text(MIN_FONT_SIZE)
-                    .with_color(text_color)
+                        let mut container = Container::new(updated_text.finish())
+                            .with_horizontal_padding(item_horizontal_padding)
+                            .with_vertical_padding(item_vertical_padding)
+                            .with_border(Border::top(1.0));
+
+                        if let Some(bg_color) = background_color {
+                            container = container.with_background(bg_color);
+                        }
+
+                        container.finish()
+                    })
+                    .on_click(|ctx, _, _| {
+                        ctx.dispatch_typed_action(DisplayChipMenuAction::SelectFixedFooterOption);
+                    })
                     .finish(),
-                );
-
-                let mut container = Container::new(updated_text.finish())
-                    .with_horizontal_padding(item_horizontal_padding)
-                    .with_vertical_padding(item_vertical_padding)
-                    .with_border(Border::top(1.0));
-
-                if let Some(bg_color) = background_color {
-                    container = container.with_background(bg_color);
-                }
-
-                container.finish()
-            })
-            .on_click(|ctx, _, _| {
-                ctx.dispatch_typed_action(DisplayChipMenuAction::SelectFixedFooterOption);
-            })
+                )
+                .on_mouse_in(
+                    |ctx, _, _| {
+                        ctx.dispatch_typed_action(DisplayChipMenuAction::FocusFixedFooterOption);
+                        DispatchEventResult::StopPropagation
+                    },
+                    Some(MouseInBehavior {
+                        fire_on_synthetic_events: false,
+                        fire_when_covered: false,
+                    }),
+                )
+                .finish(),
+                "MenuPromptChip-Footer",
+            )
             .finish(),
         )
         .with_width(self.menu_width())
@@ -1115,7 +1126,7 @@ impl DisplayChipMenu {
         let selected_index = self.selected_index;
         let filtered_items_length = self.filtered_items.len();
         let filtered_items = self.filtered_items.clone();
-        let is_footer_hovered = self.is_footer_selected();
+        let is_footer_hovered = self.is_footer_selected;
         let menu_width = self.menu_width();
         let item_horizontal_padding = self.menu_item_horizontal_padding();
         let item_vertical_padding = self.menu_item_vertical_padding();
@@ -1485,6 +1496,10 @@ impl TypedActionView for DisplayChipMenu {
             DisplayChipMenuAction::SelectUp => self.select_prev(ctx),
             DisplayChipMenuAction::SelectDown => self.select_next(ctx),
             DisplayChipMenuAction::SelectEnter => self.select_enter(ctx),
+            DisplayChipMenuAction::FocusFixedFooterOption => {
+                self.is_footer_selected = self.fixed_footer.is_some();
+                ctx.notify();
+            }
             DisplayChipMenuAction::SelectFixedFooterOption => self.select_fixed_footer_option(ctx),
             DisplayChipMenuAction::CopyEnvironmentSidecarField { key, value } => {
                 ctx.clipboard()

@@ -872,6 +872,7 @@ skip_login = ["warp_server_client/skip_login"]
 # UI features that matter for a local terminal (groups, default-shell selector,
 # clean minimal UI) and leaves everything else off.
 warp_lite = [
+    "warp_core/data_profiles",
     "dep:signature-assets",
     "rust-embed/debug-embed",
     "warp_assets/lite",
