@@ -21,7 +21,7 @@ use super::{assert_test_namespace, lite_builder, prepare_directory, test_state_d
 use crate::Builder;
 
 const BACKGROUND_DIRECTORY: &str = "WARP_LITE_TEST_BACKGROUND_DIR";
-const PNG_A: &[u8] = &[
+pub(super) const PNG_A: &[u8] = &[
     137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 16, 0, 0, 0, 16, 8, 6,
     0, 0, 0, 31, 243, 255, 97, 0, 0, 0, 44, 73, 68, 65, 84, 120, 156, 99, 16, 89, 245, 236, 63, 50,
     94, 165, 113, 2, 5, 19, 146, 103, 24, 6, 6, 144, 170, 1, 93, 126, 56, 24, 48, 240, 177, 48,
@@ -59,7 +59,7 @@ fn fixture_path() -> PathBuf {
         .join("background.png")
 }
 
-fn prepare_background(utils: &mut TestSetupUtils, contents: Option<&[u8]>) {
+pub(super) fn prepare_background(utils: &mut TestSetupUtils, contents: Option<&[u8]>) {
     prepare_directory(utils);
     let directory = test_state_dir().join("fixed-background-fixtures");
     assert_test_namespace(&directory);
@@ -74,7 +74,7 @@ fn prepare_background(utils: &mut TestSetupUtils, contents: Option<&[u8]>) {
     }
 }
 
-fn assert_background_image(app: &App) -> AssertionOutcome {
+pub(super) fn assert_background_image(app: &App) -> AssertionOutcome {
     app.read(|ctx| {
         let Some(image) = Appearance::as_ref(ctx).theme().background_image() else {
             return AssertionOutcome::failure("The valid startup background is missing".to_owned());

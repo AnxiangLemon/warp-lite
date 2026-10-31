@@ -1,3 +1,5 @@
+mod raster_cache;
+
 use std::borrow::Cow;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -9,6 +11,7 @@ use wgpu::{
     TextureUsages,
 };
 
+use self::raster_cache::{RasterCache, RasterKey};
 use self::shaders::{ColorModifier, ImageInstanceData};
 use super::WGPUContext;
 use super::util::create_buffer_init;
@@ -23,12 +26,21 @@ pub(super) struct Pipeline {
     texture_cache: TextureCache<TextureInfo>,
     texture_bind_group_layout: BindGroupLayout,
     sampler: Sampler,
+    raster_cache: Option<RasterCache>,
 }
 
 #[derive(Default)]
 pub(super) struct PerFrameState {
     image_data: Vec<shaders::ImageInstanceData>,
     buffer: Option<wgpu::Buffer>,
+    raster_candidate: Option<RasterCandidate>,
+    surface_prefilled: bool,
+}
+
+struct RasterCandidate {
+    key: RasterKey,
+    instance_index: usize,
+    texture_id: TextureCacheIndex,
 }
 
 pub(super) struct LayerState {
@@ -41,6 +53,7 @@ impl Pipeline {
         uniform_bind_group_layout: &BindGroupLayout,
         device: &Device,
         color_target: ColorTargetState,
+        software: bool,
     ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Image Shader"),
@@ -98,7 +111,7 @@ impl Pipeline {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: Some("fs_main"),
-                targets: &[Some(color_target)],
+                targets: &[Some(color_target.clone())],
                 compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState::default(),
@@ -116,7 +129,13 @@ impl Pipeline {
             ..Default::default()
         });
 
+        #[cfg(feature = "integration_tests")]
+        let software =
+            software && std::env::var_os("WARP_TEST_DISABLE_BACKGROUND_RASTER_CACHE").is_none();
+        let raster_cache =
+            software.then(|| RasterCache::new(device, &pipeline_layout, color_target));
         Self {
+            raster_cache,
             render_pipeline,
             texture_cache: TextureCache::new(),
             texture_bind_group_layout,
@@ -163,6 +182,25 @@ impl Pipeline {
                         TextureInfo::new(asset, &self.texture_bind_group_layout, &self.sampler, ctx)
                     });
             layer_state.image_textures.push(texture_id);
+            if image.cache_raster
+                && self.raster_cache.is_some()
+                && per_frame_state.raster_candidate.is_none()
+            {
+                let surface = ctx.resources.surface_config.borrow();
+                if let Some(key) = RasterKey::new(
+                    image,
+                    layer.clip_bounds,
+                    scale_factor,
+                    surface.width,
+                    surface.height,
+                ) {
+                    per_frame_state.raster_candidate = Some(RasterCandidate {
+                        key,
+                        instance_index: per_frame_state.image_data.len() - 1,
+                        texture_id,
+                    });
+                }
+            }
         }
 
         for icon in &layer.icons {
@@ -199,6 +237,57 @@ impl Pipeline {
         .ok();
     }
 
+    pub(super) fn prepare_raster_cache(
+        &mut self,
+        resources: &resources::Resources,
+        encoder: &mut wgpu::CommandEncoder,
+        per_frame: &PerFrameState,
+    ) {
+        let Some(cache) = &mut self.raster_cache else {
+            return;
+        };
+        let Some(candidate) = &per_frame.raster_candidate else {
+            cache.clear();
+            return;
+        };
+        let Some(buffer) = &per_frame.buffer else {
+            cache.clear();
+            return;
+        };
+        let source = self
+            .texture_cache
+            .get(candidate.texture_id)
+            .expect("raster source remains cached during frame");
+        cache.prepare(
+            resources,
+            encoder,
+            &candidate.key,
+            &self.render_pipeline,
+            buffer,
+            candidate.instance_index,
+            &source.bind_group,
+            &self.texture_bind_group_layout,
+            &self.sampler,
+        );
+    }
+
+    pub(super) fn prefill_surface(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        surface: &wgpu::Texture,
+        per_frame: &mut PerFrameState,
+    ) -> bool {
+        if let Some(candidate) = &per_frame.raster_candidate
+            && candidate.instance_index == 0
+            && let Some(cache) = &self.raster_cache
+            && cache.copy_to_surface(encoder, surface)
+        {
+            per_frame.surface_prefilled = true;
+            return true;
+        }
+        false
+    }
+
     pub(super) fn draw<'a>(
         &'a self,
         render_pass: &mut RenderPass<'a>,
@@ -209,17 +298,26 @@ impl Pipeline {
             return;
         };
 
-        render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(1, buffer.slice(..));
 
         for (index, texture_id) in layer_state.image_textures.iter().enumerate() {
+            let start_offset = layer_state.start_offset + index;
+            if per_frame_state
+                .raster_candidate
+                .as_ref()
+                .is_some_and(|candidate| candidate.instance_index == start_offset)
+                && let Some(cache) = &self.raster_cache
+                && (per_frame_state.surface_prefilled || cache.draw(render_pass))
+            {
+                continue;
+            }
+            render_pass.set_pipeline(&self.render_pipeline);
             let TextureInfo { bind_group, .. } = self
                 .texture_cache
                 .get(*texture_id)
                 .expect("texture should not leave cache between generating layer data and drawing");
             render_pass.set_bind_group(1, bind_group, &[]);
 
-            let start_offset = layer_state.start_offset + index;
             render_pass.draw_indexed(
                 0..resources::quad::INDICES.len() as u32,
                 0,

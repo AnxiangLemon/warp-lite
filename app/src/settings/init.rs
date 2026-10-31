@@ -199,6 +199,8 @@ pub fn init(
     let gpu_settings = GPUSettings::as_ref(ctx);
     let prefer_low_power_gpu = *gpu_settings.prefer_low_power_gpu.value();
     let backend_preference = *gpu_settings.preferred_backend.value();
+    let rendering_device = *gpu_settings.rendering_device.value();
+    let frame_rate_limit = *gpu_settings.frame_rate_limit.value();
 
     // Update the rendering config.
     ctx.update_rendering_config(|config| {
@@ -209,6 +211,8 @@ pub fn init(
             GPUPowerPreference::default()
         };
         config.backend_preference = backend_preference;
+        config.rendering_device = rendering_device;
+        config.frame_rate_limit = frame_rate_limit;
     });
 
     ctx.subscribe_to_model(&FontSettings::handle(ctx), |font_settings, event, ctx| {

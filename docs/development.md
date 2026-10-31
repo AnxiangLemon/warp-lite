@@ -44,7 +44,41 @@ Windows Lite 使用 `wgpu::MemoryHints::MemoryUsage`，让图形内存池从较�
 
 Windows Lite 默认先初始化 DirectX；只有初始化失败、显卡属于已知不稳定型号、用户指定
 其他后端或显式查询完整后端列表时，才创建包含其余后端的实例。`WGPU_BACKEND` 环境变量
-仍优先生效，Vulkan / OpenGL 回退能力保留。Lite 未显示的图形后端设置不触发后台枚举。
+仍优先生效，Vulkan / OpenGL 回退能力保留。所有 Windows 环境使用同一个 Warp Lite 构建，
+不区分服务器版与桌面版。“设置 → 终端 → 图形渲染”包含三个独立选项：
+
+- 渲染设备：自动（GPU 优先，没有可用 GPU 时回退到 CPU）或 CPU 软件渲染。
+- 图形后端：默认、DirectX 12、Vulkan、OpenGL；不可用的首选接口自动回退。
+  DirectX 12 支持 Windows 内置的软件渲染设备；Vulkan / OpenGL 需要兼容的驱动，
+  选择接口本身不代表使用了 GPU，也不保证更省 CPU。设备、后端修改后新建窗口或重启生效。
+- 帧率上限：自动、15、30、60 FPS 或不限，修改立即生效。自动模式在 CPU 设备上最高
+  30 FPS，并按实际绘制耗时留出恢复时间；硬件设备不增加应用层限帧。显式上限不额外
+  自适应降频；不限仍受绘制耗时和显示同步约束。所有选项都按需绘制，不产生固定刷新定时器。
+
+对应 TOML 设置为 `system.rendering_device`（`automatic` / `software`）、
+`system.frame_rate_limit`（`automatic` / `fps_15` / `fps_30` / `fps_60` / `unlimited`）和
+`system.preferred_graphics_backend`（如 `dx_12`）；以设置 UI 写出的值为准。
+设置页显示实际设备类型和后端，不为填充下拉列表初始化其他图形驱动。
+
+限帧在布局、surface 重配置与绘制之前合并刷新请求，保留最后一次重绘；最小化或隐藏的
+窗口不绘制。软件渲染的交换链使用 VSync 并限制排队帧数；硬件设备保留原有提交模式。
+CPU 软件渲染会缓存背景在当前窗口尺寸下的绘制结果，重复刷新时复用像素；最底层背景在
+surface 支持时直接复制，否则用逐像素读取合成。更换图片、调整尺寸、缩放、透明度、圆角
+或裁剪区域会重建缓存；每个窗口只保留一份，上限 64 MiB，超限使用原绘制路径。硬件设备
+保持原路径。缓存不改变背景图片清晰度，也不新增固定刷新定时器；FPS 仍由上述设置控制。
+可在有 GPU 的开发机上用以下环境变量复现软件渲染路径：
+
+```powershell
+$env:WARP_FORCE_SOFTWARE_RENDERING = '1'
+$env:WGPU_BACKEND = 'dx12'
+```
+
+启动日志应显示 `Using Dx12 Cpu (Microsoft Basic Render Driver)`。验证完成后清除这两个
+环境变量再启动，以恢复自动选择。性能对照须使用相同构建、窗口尺寸、缩放、内容与交互；
+开发机的软件渲染结果不能替代 Windows Server / RDP 上的实测。
+集成测试构建可设置 `WARP_TEST_DISABLE_BACKGROUND_RASTER_CACHE=1` 关闭背景栅格缓存，
+与同一个二进制默认开启时对照；正式构建忽略该变量。背景测试包含连续缩放与固定尺寸重绘，
+输出帧数、墙钟时间和进程累计 CPU 毫秒数；累计 CPU 时间不是任务管理器 CPU 百分比。
 
 字体列表在首次展开选择器时异步枚举；普通设置页面不扫描全部系统字体。SVG 的字体数据库
 在解析实际文本节点时才初始化，纯路径图标不加载字体；包含文本的 SVG 保留系统字体及
@@ -141,6 +175,8 @@ $env:WARP_INTEGRATION_TEST_ARTIFACTS_DIR = Join-Path $PWD 'target/lite-test-arti
 .\target\debug\integration.exe test_lite_terminal_smoke
 .\target\debug\integration.exe test_lite_terminal_management
 .\target\debug\integration.exe test_lite_chinese_settings
+.\target\debug\integration.exe test_lite_software_rendering
+.\target\debug\integration.exe test_lite_software_rendering_background
 .\target\debug\integration.exe test_lite_restore_named_tabs
 .\target\debug\integration.exe test_lite_close_confirmation
 .\target\debug\integration.exe test_lite_jpeg_background

@@ -30019,6 +30019,7 @@ impl View for Workspace {
                     Shrinkable::new(
                         1.,
                         Image::new(img.source(), CacheOption::Original)
+                            .cache_raster()
                             .cover()
                             .with_opacity(opacity_ratio)
                             .with_corner_radius(window_corner_radius)

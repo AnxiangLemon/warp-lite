@@ -92,6 +92,8 @@ pub fn main() -> Result<()> {
             "test_lite_terminal_smoke"
                 | "test_lite_terminal_management"
                 | "test_lite_chinese_settings"
+                | "test_lite_software_rendering"
+                | "test_lite_software_rendering_background"
                 | "test_lite_wsl_directory_search"
                 | "test_lite_close_confirmation"
                 | "test_lite_fixed_background"
@@ -172,6 +174,14 @@ fn register_tests() -> HashMap<&'static str, BoxedBuilderFn> {
             (
                 "test_lite_chinese_settings",
                 Box::new(test_lite_chinese_settings) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_software_rendering",
+                Box::new(test_lite_software_rendering) as BoxedBuilderFn,
+            ),
+            (
+                "test_lite_software_rendering_background",
+                Box::new(test_lite_software_rendering_background) as BoxedBuilderFn,
             ),
             (
                 "test_lite_wsl_directory_search",

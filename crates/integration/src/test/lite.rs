@@ -4,6 +4,9 @@ mod backgrounds;
 #[cfg(feature = "warp_lite")]
 #[path = "lite_close_confirmation.rs"]
 mod close_confirmation;
+#[cfg(feature = "warp_lite")]
+#[path = "lite_rendering.rs"]
+mod rendering;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -18,6 +21,8 @@ use diesel::connection::SimpleConnection as _;
 use diesel::sql_types::{Binary, Nullable, Text};
 use diesel::sqlite::SqliteConnection;
 use diesel::{Connection as _, QueryableByName, RunQueryDsl as _, sql_query};
+#[cfg(feature = "warp_lite")]
+pub use rendering::{test_lite_software_rendering, test_lite_software_rendering_background};
 use settings::Setting as _;
 use warp::appearance::Appearance;
 use warp::integration_testing::assertions::{
@@ -457,6 +462,10 @@ pub fn test_lite_chinese_settings() -> Builder {
     for (query, expected) in [
         ("字号", vec![SettingsSection::Appearance]),
         ("智能", vec![SettingsSection::Features]),
+        ("图形 后端", vec![SettingsSection::Features]),
+        ("渲染 设备", vec![SettingsSection::Features]),
+        ("FPS", vec![SettingsSection::Features]),
+        ("Vulkan", vec![SettingsSection::Features]),
         ("没有这项设置", vec![]),
         (
             "",
@@ -468,26 +477,26 @@ pub fn test_lite_chinese_settings() -> Builder {
             ],
         ),
     ] {
-        builder = builder.with_step(
-            new_step_with_default_assertions(&format!("Filter settings with {query:?}"))
-                .with_action(move |app, window_id, _| {
+        let mut step = new_step_with_default_assertions(&format!("Filter settings with {query:?}"))
+            .with_action(move |app, window_id, _| {
+                let settings = app.views_of_type::<SettingsView>(window_id).unwrap()[0].clone();
+                settings.update(app, |view, ctx| view.set_search_query(query, ctx));
+            })
+            .add_named_assertion(
+                "Chinese search filters settings and clearing restores all pages",
+                move |app, window_id| {
                     let settings = app.views_of_type::<SettingsView>(window_id).unwrap()[0].clone();
-                    settings.update(app, |view, ctx| view.set_search_query(query, ctx));
-                })
-                .add_named_assertion(
-                    "Chinese search filters settings and clearing restores all pages",
-                    move |app, window_id| {
-                        let settings =
-                            app.views_of_type::<SettingsView>(window_id).unwrap()[0].clone();
-                        settings.read(app, |view, ctx| {
-                            async_assert_eq!(
-                                view.visible_sections_for_integration_test(ctx),
-                                expected
-                            )
-                        })
-                    },
-                ),
-        );
+                    settings.read(app, |view, ctx| {
+                        async_assert_eq!(view.visible_sections_for_integration_test(ctx), expected)
+                    })
+                },
+            );
+        if query == "Vulkan"
+            && std::env::var_os("WARPUI_USE_REAL_DISPLAY_IN_INTEGRATION_TESTS").is_some()
+        {
+            step = step.with_take_screenshot("lite-settings-rendering.png");
+        }
+        builder = builder.with_step(step);
     }
     builder = builder
         .with_step(

@@ -36,7 +36,7 @@ use crate::fonts::{
 use crate::keymap::Keystroke;
 use crate::modals::{AlertDialog, ModalId};
 use crate::notification::{NotificationSendError, RequestPermissionsOutcome, UserNotification};
-use crate::rendering::{GPUPowerPreference, OnGPUDeviceSelected};
+use crate::rendering::{GPUPowerPreference, OnGPUDeviceSelected, RenderingDevice};
 use crate::text_layout::{ClipConfig, Line, StyleAndFont, TextAlignment, TextFrame};
 use crate::windowing::WindowCallbacks;
 use crate::{
@@ -97,6 +97,7 @@ pub struct WindowOptions {
     pub background_blur_texture: bool,
     pub gpu_power_preference: GPUPowerPreference,
     pub backend_preference: Option<GraphicsBackend>,
+    pub rendering_device: RenderingDevice,
     pub on_gpu_device_info_reported: Box<OnGPUDeviceSelected>,
     /// This is an identifier to distinguish different windows among one application. It is a no-op
     /// on all platforms except X11 Linux.
@@ -119,6 +120,7 @@ impl std::fmt::Debug for WindowOptions {
             .field("background_blur_texture", &self.background_blur_texture)
             .field("gpu_power_preference", &self.gpu_power_preference)
             .field("backend_preference", &self.backend_preference)
+            .field("rendering_device", &self.rendering_device)
             .field("window_instance", &self.window_instance)
             .finish()
     }
@@ -457,6 +459,9 @@ pub trait Window: 'static + WindowContext + std::any::Any {
     fn supports_transparency(&self) -> bool;
     fn graphics_backend(&self) -> GraphicsBackend;
     fn supported_backends(&self) -> Vec<GraphicsBackend>;
+    fn uses_software_rendering(&self) -> bool {
+        false
+    }
 
     fn as_ctx(&self) -> &dyn WindowContext;
     fn callbacks(&self) -> &WindowCallbacks;

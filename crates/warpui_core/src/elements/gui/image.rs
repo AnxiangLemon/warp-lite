@@ -48,6 +48,7 @@ pub struct Image {
     layout_using_paint_bounds: bool,
     animated_image_behavior: AnimatedImageBehavior,
     cache_option: CacheOption,
+    cache_raster: bool,
     started_at: Option<Instant>,
     corner_radius: CornerRadius,
     top_aligned: bool,
@@ -88,6 +89,7 @@ impl Image {
             fit_type: FitType::Contain,
             animated_image_behavior: AnimatedImageBehavior::default(),
             cache_option,
+            cache_raster: false,
             started_at: None,
             corner_radius: CornerRadius::default(),
             top_aligned: false,
@@ -100,6 +102,12 @@ impl Image {
             #[cfg(debug_assertions)]
             constructor_location: Some(std::panic::Location::caller()),
         }
+    }
+
+    /// Reuses the rasterized image on software devices until its pixels or geometry change.
+    pub fn cache_raster(mut self) -> Self {
+        self.cache_raster = true;
+        self
     }
 
     pub fn with_corner_radius(mut self, radius: CornerRadius) -> Self {
@@ -315,8 +323,13 @@ impl Image {
         ctx.scene
             .set_location_for_panic_logging(self.constructor_location);
 
-        ctx.scene
-            .draw_image(rect, image, self.opacity, self.corner_radius);
+        ctx.scene.draw_image(
+            rect,
+            image,
+            self.opacity,
+            self.corner_radius,
+            self.cache_raster,
+        );
     }
 
     fn paint_animated_image(

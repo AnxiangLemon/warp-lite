@@ -88,6 +88,10 @@ pub enum CustomEvent {
     DragAndDropFilesDebounced {
         window_id: winit::window::WindowId,
     },
+    #[cfg(windows)]
+    DeferredRedraw {
+        window_id: winit::window::WindowId,
+    },
     /// Input received from the soft keyboard on mobile WASM.
     #[cfg(target_family = "wasm")]
     SoftKeyboardInput(crate::platform::wasm::SoftKeyboardInput),

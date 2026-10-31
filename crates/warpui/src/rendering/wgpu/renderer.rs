@@ -55,8 +55,12 @@ impl Renderer {
         );
         log::debug!(target: "warpui::startup", "glyph_pipeline duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 
-        let image_pipeline =
-            image::Pipeline::new(resources.uniform_bind_group_layout(), device, color_target);
+        let image_pipeline = image::Pipeline::new(
+            resources.uniform_bind_group_layout(),
+            device,
+            color_target,
+            resources.adapter.get_info().device_type == wgpu::DeviceType::Cpu,
+        );
         log::debug!(target: "warpui::startup", "image_pipeline duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 
         Self {

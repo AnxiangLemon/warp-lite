@@ -128,10 +128,6 @@ try {
             Source = $ExecutablePath
             RelativePath = 'warp-lite.exe'
         }
-        [pscustomobject]@{
-            Source = Join-Path $repoRoot 'app\channels\lite\icon\no-padding\icon.ico'
-            RelativePath = 'icon.ico'
-        }
     )
     $runtimeDlls = @('conpty.dll', 'vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll')
     if (!$SystemShaderCompiler) {
@@ -193,46 +189,13 @@ try {
             throw "Package input and output must be different files: $destination"
         }
     }
-    $packageInfoPath = Assert-LitePackageDestination (Join-Path $packageRoot 'PACKAGE-INFO.json')
-    $backgroundReadmePath = Assert-LitePackageDestination (Join-Path $packageRoot 'backgrounds\使用说明.txt')
-
     foreach ($file in $files) {
         $destination = Assert-LitePackageDestination (Join-Path $packageRoot $file.RelativePath)
         [void][System.IO.Directory]::CreateDirectory((Split-Path -Parent $destination))
         Copy-Item -LiteralPath $file.Source -Destination $destination -Force
     }
 
-    [void][System.IO.Directory]::CreateDirectory((Split-Path -Parent $backgroundReadmePath))
-    $backgroundReadme = @'
-将 PNG / JPG / JPEG 图片命名为 background.png / background.jpg / background.jpeg 放在此目录，重启程序后生效。
-按上述顺序使用第一张有效图片；文件内容决定解码格式。窗口先显示纯色主题，背景图在后台加载完成后显示。
-没有图片或图片损坏时使用纯色主题。
-仅支持大小不超过 8 MiB、边长不超过 4096 像素的静态 PNG / JPEG。纹理最长边缩放至 2048 像素。
-'@
-    [System.IO.File]::WriteAllText($backgroundReadmePath, $backgroundReadme, [System.Text.UTF8Encoding]::new($false))
-
     $binaryPath = Join-Path $packageRoot 'warp-lite.exe'
-    $packageInfo = [ordered]@{
-        application = 'Warp Lite'
-        profile = $profile
-        architecture = $architecture
-        shader_compiler = if ($SystemShaderCompiler) { 'system_fxc' } else { 'dynamic_dxc' }
-        background_directory = 'backgrounds'
-        fixed_background_files = @('backgrounds/background.png', 'backgrounds/background.jpg', 'backgrounds/background.jpeg')
-        background_load_policy = 'async_startup_only_with_solid_fallback'
-        background_limits = @{ file_bytes = 8388608; max_dimension = 4096; rendered_max_dimension = 2048 }
-        external_background_files = @()
-        features = @('warp_lite')
-        build_invoked = !$SkipBuild
-        source_directory = $repoRoot
-        target_directory = $metadata.target_directory
-        packaged_at_utc = [DateTime]::UtcNow.ToString('o')
-        executable_sha256 = (Get-FileHash -LiteralPath $binaryPath -Algorithm SHA256).Hash
-        third_party_licenses_included = [bool]$thirdPartyLicenses
-        third_party_license_generator = 'script/windows/prepare_bundled_resources.ps1'
-        files = @($files | ForEach-Object { $_.RelativePath }) + @('backgrounds\使用说明.txt')
-    }
-    $packageInfo | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $packageInfoPath -Encoding utf8
 
     if (!$thirdPartyLicenses) {
         Write-Warning 'THIRD_PARTY_LICENSES.txt was not found. Included individual license files are not a complete Cargo dependency attribution list. The upstream generator is script/windows/prepare_bundled_resources.ps1; generate the list and package again before distribution.'
@@ -242,7 +205,7 @@ try {
         Executable = $binaryPath
         Profile = $profile
         Architecture = $architecture
-        ShaderCompiler = $packageInfo.shader_compiler
+        ShaderCompiler = if ($SystemShaderCompiler) { 'system_fxc' } else { 'dynamic_dxc' }
         ThirdPartyLicensesIncluded = [bool]$thirdPartyLicenses
     }
 } finally {

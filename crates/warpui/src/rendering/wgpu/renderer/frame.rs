@@ -82,7 +82,7 @@ impl<'a> Frame<'a> {
     /// responsible for finishing the [`wgpu::CommandEncoder`] and actually presenting the current
     /// drawable on the screen.
     pub(super) fn draw(
-        self,
+        mut self,
         resources: &Resources,
         encoder: &mut CommandEncoder,
         surface_texture: &SurfaceTexture,
@@ -91,6 +91,32 @@ impl<'a> Frame<'a> {
             surface_texture.texture.width() as f32,
             surface_texture.texture.height() as f32,
         );
+
+        self.image_pipeline
+            .prepare_raster_cache(resources, encoder, &self.per_frame_state.image);
+
+        // A premultiplied raster can replace blending only when it is the first draw over clear pixels.
+        let first_layer = self.layer_state.iter().find(|state| {
+            let layer = state.layer;
+            !layer.rects.is_empty()
+                || !layer.images.is_empty()
+                || !layer.icons.is_empty()
+                || !layer.glyphs.is_empty()
+        });
+        let can_prefill = first_layer.is_some_and(|state| {
+            state.layer.rects.is_empty()
+                && state
+                    .layer
+                    .images
+                    .first()
+                    .is_some_and(|image| image.cache_raster)
+        });
+        let prefilled = can_prefill
+            && self.image_pipeline.prefill_surface(
+                encoder,
+                &surface_texture.texture,
+                &mut self.per_frame_state.image,
+            );
 
         let view = surface_texture
             .texture
@@ -105,7 +131,11 @@ impl<'a> Frame<'a> {
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    load: if prefilled {
+                        wgpu::LoadOp::Load
+                    } else {
+                        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+                    },
                     store: wgpu::StoreOp::Store,
                 },
             })],

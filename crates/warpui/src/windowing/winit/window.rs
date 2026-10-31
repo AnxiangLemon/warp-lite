@@ -44,7 +44,7 @@ use crate::rendering::wgpu::{
     Renderer, Resources, adapter_has_rendering_offset_bug, from_wgpu_backend, renderer,
     to_wgpu_backend,
 };
-use crate::rendering::{GPUPowerPreference, GlyphConfig, OnGPUDeviceSelected};
+use crate::rendering::{GPUPowerPreference, GlyphConfig, OnGPUDeviceSelected, RenderingDevice};
 use crate::windowing::WindowCallbacks;
 use crate::{DisplayId, DisplayIdx, OptionalPlatformWindow, Scene, WindowId, fonts, geometry};
 
@@ -687,6 +687,7 @@ struct Inner {
     #[cfg_attr(not(any(target_os = "linux", target_os = "freebsd")), allow(dead_code))]
     gpu_power_preference: GPUPowerPreference,
     backend_preference: Option<wgpu::Backend>,
+    rendering_device: RenderingDevice,
     rendering_resources: Option<RenderingResources>,
     /// Callback that reports when a GPU device is selected. We need to store this on the window
     /// because we may attempt to recreate resources (which in turns reselects a GPU device) to
@@ -769,6 +770,7 @@ impl Window {
             window.clone(),
             gpu_power_preference,
             backend_preference,
+            window_options.rendering_device,
             &window_options.on_gpu_device_info_reported,
             initial_surface_size,
             downrank_non_nvidia_vulkan_adapters,
@@ -785,6 +787,7 @@ impl Window {
             is_cloaked: true,
             gpu_power_preference,
             backend_preference,
+            rendering_device: window_options.rendering_device,
             rendering_resources: Some(RenderingResources {
                 resources,
                 renderer,
@@ -939,6 +942,7 @@ impl Window {
             inner.window.clone(),
             inner.gpu_power_preference,
             inner.backend_preference,
+            inner.rendering_device,
             &inner.on_gpu_device_selected,
             inner.surface_size,
             downrank_non_nvidia_vulkan_adapters,
@@ -964,6 +968,13 @@ impl Window {
 
     pub fn has_scene(&self) -> bool {
         self.scene.borrow().is_some()
+    }
+
+    #[cfg(windows)]
+    pub fn is_hidden_or_minimized(&self) -> bool {
+        self.inner.borrow().as_ref().is_none_or(|inner| {
+            inner.window.is_minimized() == Some(true) || inner.window.is_visible() == Some(false)
+        })
     }
 
     pub fn handle_resize(&self) {
@@ -1655,6 +1666,16 @@ impl crate::platform::Window for Window {
                     .collect_vec()
             })
             .unwrap_or_default()
+    }
+
+    fn uses_software_rendering(&self) -> bool {
+        self.inner
+            .borrow()
+            .as_ref()
+            .and_then(|inner| inner.rendering_resources.as_ref())
+            .is_some_and(|resources| {
+                resources.resources.adapter.get_info().device_type == wgpu::DeviceType::Cpu
+            })
     }
 
     fn uses_native_window_decorations(&self) -> bool {

@@ -2503,6 +2503,7 @@ impl AppContext {
             background_blur_texture,
             gpu_power_preference: self.rendering_config.gpu_power_preference,
             backend_preference: self.rendering_config.backend_preference,
+            rendering_device: self.rendering_config.rendering_device,
             on_gpu_device_info_reported: on_gpu_driver_reported.unwrap_or(Box::new(|_| {})),
             window_instance,
         };

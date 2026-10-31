@@ -60,6 +60,27 @@ pub enum GPUPowerPreference {
     HighPerformance,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema_gen", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "settings_value", derive(settings_value::SettingsValue))]
+pub enum RenderingDevice {
+    #[default]
+    Automatic,
+    Software,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema_gen", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "settings_value", derive(settings_value::SettingsValue))]
+pub enum FrameRateLimit {
+    #[default]
+    Automatic,
+    Fps15,
+    Fps30,
+    Fps60,
+    Unlimited,
+}
+
 /// Options for configuring rendering at the application level. These options
 /// will apply for the entirety of a frame, but may change between frames.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -73,6 +94,8 @@ pub struct Config {
     pub gpu_power_preference: GPUPowerPreference,
 
     pub backend_preference: Option<GraphicsBackend>,
+    pub rendering_device: RenderingDevice,
+    pub frame_rate_limit: FrameRateLimit,
 }
 
 #[derive(Clone, Debug, Default)]

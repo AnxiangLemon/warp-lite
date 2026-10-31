@@ -1873,6 +1873,7 @@ fn render_image(
                 image.clone(),
                 1.,
                 CornerRadius::default(),
+                false,
             );
         }
         Image::Animated(_) => {

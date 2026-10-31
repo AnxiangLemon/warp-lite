@@ -9,6 +9,8 @@ services, automation, or private infrastructure as part of routine development.
 - Windows: `./script/run-lite.ps1 -Release`, `-BuildOnly` builds without starting the app.
 - Direct: `cargo build -p warp --bin warp-lite --profile lite --no-default-features --features warp_lite --locked`.
 - Package: `./script/package-lite.ps1 -SystemShaderCompiler`.
+- Keep `dist` customer-ready: include only the executable, required runtime files and license notices.
+  Do not generate build reports, instructions, sample backgrounds or standalone icons there.
 - Bootstrap installs local development tools only; Git LFS and upstream skills are not required.
 - Plain `cargo run` still selects legacy default features; always specify the Lite configuration.
 

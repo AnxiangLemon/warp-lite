@@ -107,6 +107,7 @@ pub struct Rect {
 
 #[derive(Clone)]
 pub struct Image {
+    pub cache_raster: bool,
     pub bounds: RectF,
     pub asset: Arc<StaticImage>,
     pub opacity: f32,
@@ -592,6 +593,7 @@ impl Scene {
         asset: Arc<StaticImage>,
         opacity: f32,
         corner_radius: CornerRadius,
+        cache_raster: bool,
     ) {
         #[cfg(debug_assertions)]
         let location = self.panic_location.take();
@@ -601,6 +603,7 @@ impl Scene {
         Self::validate_rect(&rect, location);
 
         layer.images.push(Image {
+            cache_raster,
             bounds: rect,
             asset,
             opacity,

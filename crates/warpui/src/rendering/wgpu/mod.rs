@@ -15,6 +15,10 @@ use crate::{rendering::GPUPowerPreference, windowing};
 
 static WGPU_INSTANCE: LazyLock<Mutex<Option<Arc<wgpu::Instance>>>> = LazyLock::new(Mutex::default);
 
+fn force_software_rendering() -> bool {
+    cfg!(windows) && std::env::var("WARP_FORCE_SOFTWARE_RENDERING").is_ok_and(|value| value == "1")
+}
+
 struct DeferredInstance {
     display_handle: Arc<dyn WgpuHasDisplayHandle>,
     instance: Option<Arc<wgpu::Instance>>,

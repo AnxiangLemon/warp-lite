@@ -1,4 +1,6 @@
 mod key_events;
+#[cfg(windows)]
+mod software_rendering;
 
 #[cfg(test)]
 mod drag_drop_tests;
@@ -23,6 +25,8 @@ use winit::keyboard::{self, KeyCode};
 use winit::window::WindowId as WinitWindowId;
 
 use self::key_events::convert_keyboard_input_event;
+#[cfg(windows)]
+use self::software_rendering::{FramePacer, FrameRequest};
 use super::CustomEvent;
 use super::app::ClipboardEvent;
 use super::window::DEFAULT_TITLEBAR_HEIGHT;
@@ -162,6 +166,8 @@ struct WindowState {
     scroll_velocity: Option<ScrollVelocity>,
     /// Abort handle for momentum scrolling timer. Present only during the momentum phase.
     momentum_scroll_abort: Option<AbortHandle>,
+    #[cfg(windows)]
+    frame_pacer: FramePacer,
     /// For touch events, stores whether soft keyboard was requested during LeftMouseDown.
     /// This is needed because touch keyboard updates are deferred to LeftMouseUp, but the
     /// UI element only requests the keyboard during LeftMouseDown.
@@ -184,6 +190,8 @@ impl WindowState {
             last_touch_purpose: None,
             scroll_velocity: None,
             momentum_scroll_abort: None,
+            #[cfg(windows)]
+            frame_pacer: FramePacer::default(),
             #[cfg(target_family = "wasm")]
             pending_soft_keyboard_request: false,
         }
@@ -843,6 +851,13 @@ impl EventLoop {
                 window_id,
                 event: WindowEvent::RedrawRequested,
             } => self.redraw_window(window_id, window_target),
+            #[cfg(windows)]
+            Event::UserEvent(CustomEvent::DeferredRedraw { window_id }) => {
+                if let Some(state) = self.state.windows.get_mut(&window_id) {
+                    state.frame_pacer.timer_elapsed();
+                    self.redraw_window(window_id, window_target);
+                }
+            }
             Event::WindowEvent {
                 window_id: winit_window_id,
                 event: WindowEvent::CloseRequested,
@@ -962,13 +977,13 @@ impl EventLoop {
 
     fn redraw_window(
         &mut self,
-        window_id: winit::window::WindowId,
+        winit_window_id: winit::window::WindowId,
         window_target: &ActiveEventLoop,
     ) {
         let Some(window_id) = self
             .state
             .windows
-            .get(&window_id)
+            .get(&winit_window_id)
             .map(|state| state.window_id)
         else {
             log::warn!("Redraw requested for a window for which we have no state");
@@ -983,6 +998,45 @@ impl EventLoop {
         };
 
         let window = downcast_window(window.as_ref());
+
+        #[cfg(windows)]
+        let frame_started = {
+            if window.is_hidden_or_minimized() {
+                return;
+            }
+            {
+                let now = Instant::now();
+                let state = self
+                    .state
+                    .windows
+                    .get_mut(&winit_window_id)
+                    .expect("redraw window state exists");
+                let limit = self
+                    .ui_app
+                    .read(|ctx| ctx.rendering_config().frame_rate_limit);
+                state
+                    .frame_pacer
+                    .configure(limit, platform::Window::uses_software_rendering(window));
+                match state.frame_pacer.request(now) {
+                    FrameRequest::Draw => Some(now),
+                    FrameRequest::Pending => return,
+                    FrameRequest::Schedule(delay) => {
+                        let proxy = self.proxy.clone();
+                        self.ui_app.read(|ctx| {
+                            ctx.background_executor()
+                                .spawn(async move {
+                                    Timer::after(delay).await;
+                                    let _ = proxy.send_event(CustomEvent::DeferredRedraw {
+                                        window_id: winit_window_id,
+                                    });
+                                })
+                                .detach();
+                        });
+                        return;
+                    }
+                }
+            }
+        };
 
         #[cfg(any(target_os = "linux", target_os = "freebsd"))]
         if crate::windowing::winit::linux::take_encountered_bad_match_from_dri3_fence_from_fd() {
@@ -1039,6 +1093,12 @@ impl EventLoop {
                     _ => {}
                 }
             }
+        }
+        #[cfg(windows)]
+        if let Some(started) = frame_started
+            && let Some(state) = self.state.windows.get_mut(&winit_window_id)
+        {
+            state.frame_pacer.frame_finished(started, Instant::now());
         }
     }
 

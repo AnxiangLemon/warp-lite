@@ -21,7 +21,7 @@ use wgpu::{
 };
 
 use crate::r#async::block_on;
-use crate::rendering::{GPUPowerPreference, OnGPUDeviceSelected};
+use crate::rendering::{GPUPowerPreference, OnGPUDeviceSelected, RenderingDevice};
 use crate::windowing;
 
 /// A mostly-arbitrary value to use as the height/width of a surface when
@@ -78,6 +78,7 @@ impl Resources {
         window_handle: impl Into<wgpu::SurfaceTarget<'static>> + wgpu::rwh::HasDisplayHandle + Clone,
         gpu_power_preference: GPUPowerPreference,
         backend_preference: Option<wgpu::Backend>,
+        rendering_device: RenderingDevice,
         on_gpu_device_selected: &OnGPUDeviceSelected,
         initial_surface_size: Vector2F,
         downrank_non_nvidia_vulkan_adapters: bool,
@@ -88,6 +89,7 @@ impl Resources {
             window_handle.clone(),
             gpu_power_preference,
             backend_preference,
+            rendering_device,
             on_gpu_device_selected,
             initial_surface_size,
             downrank_non_nvidia_vulkan_adapters,
@@ -101,6 +103,7 @@ impl Resources {
                 window_handle,
                 gpu_power_preference,
                 backend_preference,
+                rendering_device,
                 on_gpu_device_selected,
                 initial_surface_size,
                 downrank_non_nvidia_vulkan_adapters,
@@ -110,15 +113,19 @@ impl Resources {
         result
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn new_with_backends(
         window_handle: impl Into<wgpu::SurfaceTarget<'static>> + wgpu::rwh::HasDisplayHandle,
         gpu_power_preference: GPUPowerPreference,
         backend_preference: Option<wgpu::Backend>,
+        rendering_device: RenderingDevice,
         on_gpu_device_selected: &OnGPUDeviceSelected,
         initial_surface_size: Vector2F,
         downrank_non_nvidia_vulkan_adapters: bool,
         deferred: bool,
     ) -> Result<Self> {
+        let software_only =
+            rendering_device == RenderingDevice::Software || super::force_software_rendering();
         let started = Instant::now();
         let windowing_system = window_handle.display_handle()?.as_raw().try_into().ok();
 
@@ -147,7 +154,8 @@ impl Resources {
                 initial_surface_size,
                 windowing_system,
                 downrank_non_nvidia_vulkan_adapters,
-                deferred && backend_preference.is_none(),
+                deferred && backend_preference.is_none() && !software_only,
+                software_only,
             )
             .await
             .ok_or_else(|| anyhow!("No usable wgpu adapter was found"))?;
@@ -333,6 +341,7 @@ async fn select_adapter(
     windowing_system: Option<windowing::System>,
     downrank_non_nvidia_vulkan_adapters: bool,
     prefer_reliable_hardware: bool,
+    software_only: bool,
 ) -> Option<(
     Adapter,
     Device,
@@ -378,13 +387,14 @@ async fn select_adapter(
     let adapters = sorted_adapters
         // Filter out any unsupported adapters and log information about each one.
         .filter(|adapter| {
-            (!prefer_reliable_hardware
-                || (adapter.get_info().device_type != DeviceType::Cpu
-                    && adapter_stability_sort_func(
-                        adapter,
-                        windowing_system,
-                        downrank_non_nvidia_vulkan_adapters,
-                    ) == AdapterSupport::Supported))
+            (!software_only || adapter.get_info().device_type == DeviceType::Cpu)
+                && (!prefer_reliable_hardware
+                    || (adapter.get_info().device_type != DeviceType::Cpu
+                        && adapter_stability_sort_func(
+                            adapter,
+                            windowing_system,
+                            downrank_non_nvidia_vulkan_adapters,
+                        ) == AdapterSupport::Supported))
                 && is_supported_adapter(adapter, surface)
         })
         // While we don't strictly need to collect the iterator into a vector,
@@ -986,6 +996,11 @@ fn create_surface_config(
     config.format = config.format.remove_srgb_suffix();
 
     let caps = surface.get_capabilities(adapter);
+    if adapter.get_info().device_type == DeviceType::Cpu
+        && caps.usages.contains(wgpu::TextureUsages::COPY_DST)
+    {
+        config.usage |= wgpu::TextureUsages::COPY_DST;
+    }
     // COPY_SRC is only needed to support integration test frame capture via
     // request_frame_capture. It is not required for normal rendering.
     #[cfg(feature = "integration_tests")]
@@ -993,10 +1008,14 @@ fn create_surface_config(
         config.usage |= wgpu::TextureUsages::COPY_SRC;
     }
 
-    // Use a non-vsync presentation mode for reduced input delay.  This could
-    // cause visual tearing on present, but we're ok with paying that cost to
-    // improve responsiveness.
-    config.present_mode = PresentMode::AutoNoVsync;
+    // Software rendering must not queue CPU work faster than it can be displayed. Hardware keeps
+    // non-vsync presentation for lower input latency.
+    if cfg!(windows) && adapter.get_info().device_type == DeviceType::Cpu {
+        config.present_mode = PresentMode::AutoVsync;
+        config.desired_maximum_frame_latency = 1;
+    } else {
+        config.present_mode = PresentMode::AutoNoVsync;
+    }
 
     // Explicitly request a non-opaque alpha compositing mode, if available.
     // Without this, transparent surfaces don't work on native Wayland.
