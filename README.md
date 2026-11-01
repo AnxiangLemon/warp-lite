@@ -2,7 +2,20 @@
 
 基于 [Warp](https://github.com/warpdotdev/warp) 源码独立维护的本地终端版本，保留真实的终端模型、ConPTY、GPU 渲染、标签分组与分屏，关闭内置 AI、账户登录、计费、云同步和遥测服务。
 
-当前已在 **Windows x64 / MSVC / Rust 1.92.0** 上完成源码构建与真实 GUI 测试。优化构建的 EXE 约 **50.79 MiB**，具体大小以实际构建为准。macOS、Linux 和 Windows ARM64 尚未完成本轮运行验证。
+当前已在 **Windows x64 / MSVC / Rust 1.92.0** 上完成源码构建与真实 GUI 测试。`0.1.0` 的优化构建 EXE 约 **50.87 MiB**，Windows x64 下载包约 **21.46 MiB**。macOS、Linux 和 Windows ARM64 尚未完成本轮运行验证。
+
+## 下载与使用
+
+普通用户直接到 [GitHub Releases](https://github.com/AnxiangLemon/warp-lite/releases/latest) 下载，无需安装 Rust 或自行编译。
+
+1. 打开 [0.1.0 发布页](https://github.com/AnxiangLemon/warp-lite/releases/tag/0.1.0)，下载 **`warp-lite-0.1.0-windows-x64.zip`**。GitHub 自动提供的 `Source code` 是源码包。
+2. 将 ZIP **完整解压**到本地目录，打开其中的 `Warp Lite` 文件夹。
+3. 双击 `warp-lite.exe` 启动；需要使用 Git Bash、WSL 或 PowerShell 7 时，先在本机安装对应 shell。
+
+本次预编译包面向 **Windows x64**，已在 Windows 11 上验证。不提供 macOS、Linux 或 ARM64 预编译包。
+包内只保留程序、必要运行库、shell 集成脚本和许可证；不附带背景图、独立图标、开发工具、构建缓存或调试符号。请保持解压后的目录结构，不能只取出 EXE 运行。
+
+更新时关闭 Warp Lite，再从 Releases 下载新版本并完整解压。Lite 不自动更新，背景图等自行添加的文件请自行保留。配置和会话数据由应用写入用户数据目录，不代表所有数据都保存在 EXE 旁。
 
 ## 功能
 
@@ -11,11 +24,34 @@
 - 保存和恢复标签名、目录、分组、分屏及历史输出。
 - 本地字体、主题、默认 shell、键盘快捷键和中文设置搜索。
 - 独立 Lite 图标与信息页，字体列表和额外图形后端按需加载。
+- 可选择 GPU 优先或 CPU 软件渲染，支持图形后端选择和帧率上限。
 - 可选外置 PNG / JPEG 背景，在后台加载；未配置时使用主题背景色。
 
 Lite 不配置自动更新、遥测、crash reporting 或静态 MCP 服务，网络 transport 与云凭据运行路径不启用。在终端中自行运行的 CLI 工具仍由该工具决定网络行为。
 
-## 构建与运行
+## 自定义背景与图形设置
+
+背景图是可选配置，发布包不附带图片。未配置时使用主题背景色。
+
+1. 在 `warp-lite.exe` 所在目录新建 `backgrounds` 文件夹。
+2. 放入自己的静态 PNG / JPEG，命名为 `background.png`、`background.jpg` 或 `background.jpeg`。
+3. 重启 Warp Lite。
+
+例如：
+
+```text
+Warp Lite/
+├── warp-lite.exe
+├── backgrounds/
+│   └── background.jpg
+└── …其他随包运行文件
+```
+
+按上述文件名顺序使用第一张有效图片，文件格式按内容识别。单张文件不超过 **8 MiB**、边长不超过 **4096 像素**，解码后的纹理限制到 **2048 像素**。图片在后台加载，窗口先显示主题底色，再显示背景；替换图片后需要重启。
+
+在“设置 → 外观 → 图形渲染”中可选择渲染设备（自动 / CPU 软件渲染）、图形后端（默认 / DirectX 12 / Vulkan / OpenGL）和帧率上限。设备、后端修改后新建窗口或重启生效，帧率设置立即生效。默认优先使用 GPU；没有可用 GPU 时回退到 CPU，实际可用后端取决于驱动。使用 CPU 软件渲染时可按需选择 15 / 30 FPS。
+
+## 从源码构建与运行
 
 需要 Git、Rust（仓库固定为 `1.92.0`）、MSVC C++ Build Tools、Windows SDK，以及 CMake、Protobuf 和 LLVM / libclang。当前源码和运行资源均随仓库保存，无需 Git LFS；只需当前版本时可浅克隆：
 
@@ -65,9 +101,9 @@ Git Bash 对应命令为 `./script/run-lite --release`，仅构建时增加 `--b
 
 打包脚本收集 EXE、ConPTY / OpenConsole、VC runtime、shell 集成脚本和许可证。没有指定 `-SystemShaderCompiler` 时，还会收集 DXC runtime。不要只复制 EXE 作为分发包。
 
-外置背景放在程序旁的 `backgrounds` 目录，依次查找 `background.png`、`background.jpg`、`background.jpeg`，使用第一张有效图片，重启后生效。支持静态 PNG / JPEG，按文件内容识别格式；文件不超过 8 MiB、边长不超过 4096 像素，解码后纹理限制到 2048 像素。窗口先显示主题底色，后台完成图片加载后自动显示背景，不阻塞首屏。
+`0.1.0` 发布包使用 Windows 系统 shader compiler，不额外附带 DXC DLL。完整第三方依赖许可清单位于包内 `resources/THIRD_PARTY_LICENSES.txt`，单项许可证位于 `licenses/`，项目许可证位于包根目录。
 
-本仓库只提交源码和必要资源。构建缓存、`dist/`、日志及本地配置均已忽略。正式分发前还需生成完整第三方依赖许可清单；脚本会报告清单是否齐全。
+本仓库只提交源码和必要资源。构建缓存、`dist/`、日志及本地配置均已忽略。正式发布的二进制 ZIP 通过 GitHub Releases 分发；自行打包时应确认脚本报告 `ThirdPartyLicensesIncluded = True`。
 
 ## 验证与依赖精简
 
