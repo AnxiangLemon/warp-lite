@@ -35,22 +35,23 @@ struct RectVertexShaderInput {
     @location(13) dashed_border_data: vec3<f32>,
 };
 
+// Per-instance values are constant across each quad; WARP must not interpolate them per pixel.
 struct RectVertexShaderOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) background_start: vec2<f32>,
-    @location(1) background_start_color: vec4<f32>,
-    @location(2) background_end: vec2<f32>,
-    @location(3) background_end_color: vec4<f32>,
-    @location(4) border_width: vec4<f32>,
-    @location(5) border_start: vec2<f32>,
-    @location(6) border_start_color: vec4<f32>,
-    @location(7) border_end: vec2<f32>,
-    @location(8) border_end_color: vec4<f32>,
-    @location(9) rect_corner: vec2<f32>,
-    @location(10) rect_center: vec2<f32>,
-    @location(11) corner_radius: vec4<f32>,
-    @location(12) drop_shadow_data: vec2<f32>,
-    @location(13) dashed_border_data: vec3<f32>,
+    @location(0) @interpolate(flat) background_start: vec2<f32>,
+    @location(1) @interpolate(flat) background_start_color: vec4<f32>,
+    @location(2) @interpolate(flat) background_end: vec2<f32>,
+    @location(3) @interpolate(flat) background_end_color: vec4<f32>,
+    @location(4) @interpolate(flat) border_width: vec4<f32>,
+    @location(5) @interpolate(flat) border_start: vec2<f32>,
+    @location(6) @interpolate(flat) border_start_color: vec4<f32>,
+    @location(7) @interpolate(flat) border_end: vec2<f32>,
+    @location(8) @interpolate(flat) border_end_color: vec4<f32>,
+    @location(9) @interpolate(flat) rect_corner: vec2<f32>,
+    @location(10) @interpolate(flat) rect_center: vec2<f32>,
+    @location(11) @interpolate(flat) corner_radius: vec4<f32>,
+    @location(12) @interpolate(flat) drop_shadow_data: vec2<f32>,
+    @location(13) @interpolate(flat) dashed_border_data: vec3<f32>,
 };
 
 @vertex
@@ -85,6 +86,11 @@ fn vs_main(
 
 @fragment
 fn rect_fs_main(in: RectVertexShaderOutput) -> @location(0) vec4<f32> {
+    // Large plain fills must not pay for border distances, dashes and shadow integration on WARP.
+    if in.drop_shadow_data.x == 0.0 && all(in.border_width == vec4(0.0)) && all(in.corner_radius == vec4(0.0)) {
+        return derive_color(in.position.xy, in.background_start, in.background_end,
+            in.background_start_color, in.background_end_color);
+    }
     var background_color: vec4<f32> = derive_color(
         in.position.xy,
         in.background_start,
@@ -217,6 +223,9 @@ fn derive_color(
     start_color: vec4<f32>,
     end_color: vec4<f32>
 ) -> vec4<f32> {
+    if all(start_color == end_color) {
+        return start_color;
+    }
     var adjusted_end: vec2<f32> = end - start;
     var h: f32 = dot(position - start, adjusted_end) / dot(adjusted_end, adjusted_end);
     return mix(start_color, end_color, h);

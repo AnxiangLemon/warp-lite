@@ -1,0 +1,696 @@
+{
+  "date": "2026-11-01",
+  "machine": {
+    "base_commit": "fdfea90114a9f4c0b83c4d29129e3b18b7a12249",
+    "gpu": [
+      {
+        "Name": "OrayIddDriver Device",
+        "DriverVersion": "17.50.19.949"
+      },
+      {
+        "Name": "IddDesk Device",
+        "DriverVersion": "15.27.40.592"
+      },
+      {
+        "Name": "Intel(R) Arc(TM) 140T GPU (16GB)",
+        "DriverVersion": "32.0.101.6554"
+      },
+      {
+        "Name": "Honor Virtual Display Device",
+        "DriverVersion": "1.0.23.3"
+      }
+    ],
+    "os": {
+      "Caption": "Microsoft Windows 11 家庭版 中文版",
+      "Version": "10.0.26200",
+      "BuildNumber": "26200"
+    },
+    "cpu": {
+      "Name": "Intel(R) Core(TM) Ultra 9 285H",
+      "NumberOfLogicalProcessors": 16
+    }
+  },
+  "build": "lite optimized with Thin LTO; test-only warp codegen-units=8; distribution uses its normal codegen-units=1",
+  "shipping_binary_sha256": "86e31f481e65956df1a71c7cfa407adf5fd7a66f4ba690bbd7d0741960c3a89f",
+  "method": "4 tabs x 2 PowerShell panes, 3 cycles, 22s concurrent output plus 5000 lines per pane per cycle; 250ms tab switching and 1s resizing for 20s; wait through 60s undo-close retention; 4096x4096 PNG decoded to 2048x2048.",
+  "cpu_note": "GUI CPU normalized to 16 logical processors; peaks sampled at approximately 0.5s. Process tree includes PowerShell and console hosts; rapidly exiting children can be missed.",
+  "memory_note": "Private committed bytes, not physical working set. GUI peaks combine 0.25s internal and 0.5s external samples.",
+  "scope": "Local Windows 11; finite bounded workload; not a Windows Server/RDP test or proof of indefinite leak/OOM freedom.",
+  "functional_tests": [
+    {
+      "test": "test_lite_chinese_settings",
+      "exit_code": 0
+    },
+    {
+      "test": "test_lite_fixed_background",
+      "exit_code": 0
+    },
+    {
+      "exit_code": 0,
+      "test": "test_lite_jpeg_background"
+    },
+    {
+      "exit_code": 0,
+      "test": "test_lite_missing_background"
+    },
+    {
+      "exit_code": 0,
+      "test": "test_lite_corrupt_background"
+    },
+    {
+      "exit_code": 0,
+      "test": "test_lite_oversized_background"
+    }
+  ],
+  "checks": {
+    "appearance_unit_tests_passed": 2,
+    "background_unit_tests_passed": 10,
+    "format": "passed",
+    "format_check": "passed",
+    "prescribed_strict_clippy_commands": "all three passed",
+    "local_sources": "34 local packages; zero Git dependencies",
+    "lite_dependencies": "639 runtime packages; no unexpected dependencies"
+  },
+  "physical_memory_bytes": 33820106752,
+  "package": {
+    "zip": "dist/Warp Lite.zip",
+    "bytes": 23206740,
+    "sha256": "f30872887119fc479f64708b1c26b10c808cd22e9683efec9410a83a28a56739",
+    "exe_sha256": "86e31f481e65956df1a71c7cfa407adf5fd7a66f4ba690bbd7d0741960c3a89f",
+    "entries": [
+      "Warp Lite/conpty.dll",
+      "Warp Lite/LICENSE-AGPL",
+      "Warp Lite/LICENSE-MIT",
+      "Warp Lite/msvcp140.dll",
+      "Warp Lite/pwsh.ps1",
+      "Warp Lite/vcruntime140_1.dll",
+      "Warp Lite/vcruntime140.dll",
+      "Warp Lite/warp-lite.exe",
+      "Warp Lite/licenses/ALACRITTY.txt",
+      "Warp Lite/licenses/BASH-PREEXEC.md",
+      "Warp Lite/licenses/DIRECTX-SHADER-COMPILER.txt",
+      "Warp Lite/licenses/GITHUB-DESKTOP.txt",
+      "Warp Lite/licenses/HACK-FONT.md",
+      "Warp Lite/licenses/ROBOTO-FONT.txt",
+      "Warp Lite/licenses/RUDDER-SDK-RUST.txt",
+      "Warp Lite/licenses/WINDOWS-TERMINAL.txt",
+      "Warp Lite/resources/THIRD_PARTY_LICENSES.txt",
+      "Warp Lite/x64/OpenConsole.exe"
+    ],
+    "integrity": "passed"
+  },
+  "scenarios": [
+    {
+      "scenario": "gpu-background",
+      "test_binary_sha256": "60e52fbe42de9db3420f65c652ac2a4dec7b228b047740817b5c43a67d712a80",
+      "software": false,
+      "frame_rate_limit": "Automatic",
+      "seconds": 255.73,
+      "interactive_gui_cpu_percent": 1.86,
+      "baseline_gui_cpu_percent": 0.32,
+      "interactive_frames_per_second": 57.68,
+      "gui_cpu_sample_peak_percent": 9.58,
+      "tree_cpu_sample_peak_percent": 81.91,
+      "gui_private_peak_MiB": 402.6,
+      "tree_private_peak_MiB": 2573.1,
+      "gui_private_after_expiry_MiB": 244.8,
+      "tree_private_after_expiry_MiB": 325.9,
+      "processes_after_expiry": 4,
+      "children_alive_15s_after_exit": 0,
+      "baseline_gui_private_MiB": 198.3,
+      "cycle_end_gui_private_MiB": [
+        233.6,
+        248.5,
+        258.6
+      ],
+      "metrics": [
+        {
+          "cpu_ms": 516,
+          "elapsed_seconds": 10.0772297,
+          "frames": 25,
+          "longest_tick_ms": 274,
+          "peak_private_bytes": 292249600,
+          "peak_rss_bytes": 230428672,
+          "phase": "baseline",
+          "private_bytes": 207896576,
+          "rss_bytes": 213819392
+        },
+        {
+          "cpu_ms": 4281,
+          "elapsed_seconds": 20.2531,
+          "frames": 1198,
+          "longest_tick_ms": 282,
+          "peak_private_bytes": 335028224,
+          "peak_rss_bytes": 241475584,
+          "phase": "cycle-0-interactive",
+          "private_bytes": 228302848,
+          "rss_bytes": 234704896
+        },
+        {
+          "cpu_ms": 329,
+          "elapsed_seconds": 5.05336,
+          "frames": 13,
+          "longest_tick_ms": 270,
+          "peak_private_bytes": 384212992,
+          "peak_rss_bytes": 252719104,
+          "phase": "cycle-0-eight-idle",
+          "private_bytes": 248721408,
+          "rss_bytes": 252129280
+        },
+        {
+          "cpu_ms": 703,
+          "elapsed_seconds": 10.0959253,
+          "frames": 20,
+          "longest_tick_ms": 268,
+          "peak_private_bytes": 244998144,
+          "peak_rss_bytes": 248184832,
+          "phase": "cycle-0-after-close",
+          "private_bytes": 244998144,
+          "rss_bytes": 248184832
+        },
+        {
+          "cpu_ms": 9172,
+          "elapsed_seconds": 20.2543699,
+          "frames": 1313,
+          "longest_tick_ms": 281,
+          "peak_private_bytes": 328908800,
+          "peak_rss_bytes": 267804672,
+          "phase": "cycle-1-interactive",
+          "private_bytes": 264790016,
+          "rss_bytes": 267804672
+        },
+        {
+          "cpu_ms": 328,
+          "elapsed_seconds": 5.0405301,
+          "frames": 13,
+          "longest_tick_ms": 268,
+          "peak_private_bytes": 417796096,
+          "peak_rss_bytes": 282955776,
+          "phase": "cycle-1-eight-idle",
+          "private_bytes": 282501120,
+          "rss_bytes": 282595328
+        },
+        {
+          "cpu_ms": 469,
+          "elapsed_seconds": 10.0891137,
+          "frames": 21,
+          "longest_tick_ms": 272,
+          "peak_private_bytes": 282132480,
+          "peak_rss_bytes": 282378240,
+          "phase": "cycle-1-after-close",
+          "private_bytes": 260595712,
+          "rss_bytes": 262533120
+        },
+        {
+          "cpu_ms": 4562,
+          "elapsed_seconds": 20.0159098,
+          "frames": 980,
+          "longest_tick_ms": 285,
+          "peak_private_bytes": 343183360,
+          "peak_rss_bytes": 279736320,
+          "phase": "cycle-2-interactive",
+          "private_bytes": 277372928,
+          "rss_bytes": 279736320
+        },
+        {
+          "cpu_ms": 203,
+          "elapsed_seconds": 5.0514466,
+          "frames": 11,
+          "longest_tick_ms": 271,
+          "peak_private_bytes": 422182912,
+          "peak_rss_bytes": 287473664,
+          "phase": "cycle-2-eight-idle",
+          "private_bytes": 286752768,
+          "rss_bytes": 286957568
+        },
+        {
+          "cpu_ms": 640,
+          "elapsed_seconds": 10.1272621,
+          "frames": 21,
+          "longest_tick_ms": 315,
+          "peak_private_bytes": 413478912,
+          "peak_rss_bytes": 296955904,
+          "phase": "cycle-2-after-close",
+          "private_bytes": 271163392,
+          "rss_bytes": 276185088
+        },
+        {
+          "cpu_ms": 3047,
+          "elapsed_seconds": 65.2162292,
+          "frames": 130,
+          "longest_tick_ms": 270,
+          "peak_private_bytes": 271261696,
+          "peak_rss_bytes": 276434944,
+          "phase": "after-undo-expiry",
+          "private_bytes": 256675840,
+          "rss_bytes": 259596288
+        }
+      ]
+    },
+    {
+      "scenario": "cpu-solid",
+      "test_binary_sha256": "60e52fbe42de9db3420f65c652ac2a4dec7b228b047740817b5c43a67d712a80",
+      "software": true,
+      "frame_rate_limit": "Fps15",
+      "seconds": 276.48,
+      "interactive_gui_cpu_percent": 44.28,
+      "baseline_gui_cpu_percent": 5.06,
+      "interactive_frames_per_second": 9.58,
+      "gui_cpu_sample_peak_percent": 59.22,
+      "tree_cpu_sample_peak_percent": 83.91,
+      "gui_private_peak_MiB": 268.9,
+      "tree_private_peak_MiB": 2271.2,
+      "gui_private_after_expiry_MiB": 124.0,
+      "tree_private_after_expiry_MiB": 207.7,
+      "processes_after_expiry": 4,
+      "children_alive_15s_after_exit": 0,
+      "baseline_gui_private_MiB": 75.3,
+      "cycle_end_gui_private_MiB": [
+        109.5,
+        125.7,
+        149.2
+      ],
+      "metrics": [
+        {
+          "cpu_ms": 8187,
+          "elapsed_seconds": 10.1098311,
+          "frames": 23,
+          "longest_tick_ms": 271,
+          "peak_private_bytes": 147111936,
+          "peak_rss_bytes": 141885440,
+          "phase": "baseline",
+          "private_bytes": 78921728,
+          "rss_bytes": 141688832
+        },
+        {
+          "cpu_ms": 141718,
+          "elapsed_seconds": 20.0373604,
+          "frames": 194,
+          "longest_tick_ms": 361,
+          "peak_private_bytes": 216428544,
+          "peak_rss_bytes": 165269504,
+          "phase": "cycle-0-interactive",
+          "private_bytes": 104513536,
+          "rss_bytes": 159879168
+        },
+        {
+          "cpu_ms": 9046,
+          "elapsed_seconds": 5.078891,
+          "frames": 10,
+          "longest_tick_ms": 276,
+          "peak_private_bytes": 228077568,
+          "peak_rss_bytes": 177090560,
+          "phase": "cycle-0-eight-idle",
+          "private_bytes": 121274368,
+          "rss_bytes": 176037888
+        },
+        {
+          "cpu_ms": 11437,
+          "elapsed_seconds": 10.1067787,
+          "frames": 20,
+          "longest_tick_ms": 278,
+          "peak_private_bytes": 118251520,
+          "peak_rss_bytes": 174845952,
+          "phase": "cycle-0-after-close",
+          "private_bytes": 114810880,
+          "rss_bytes": 173658112
+        },
+        {
+          "cpu_ms": 145125,
+          "elapsed_seconds": 20.1646458,
+          "frames": 197,
+          "longest_tick_ms": 365,
+          "peak_private_bytes": 215011328,
+          "peak_rss_bytes": 197570560,
+          "phase": "cycle-1-interactive",
+          "private_bytes": 140689408,
+          "rss_bytes": 193597440
+        },
+        {
+          "cpu_ms": 9141,
+          "elapsed_seconds": 5.0516273,
+          "frames": 11,
+          "longest_tick_ms": 268,
+          "peak_private_bytes": 192192512,
+          "peak_rss_bytes": 207429632,
+          "phase": "cycle-1-eight-idle",
+          "private_bytes": 140505088,
+          "rss_bytes": 192483328
+        },
+        {
+          "cpu_ms": 11703,
+          "elapsed_seconds": 10.1320613,
+          "frames": 20,
+          "longest_tick_ms": 291,
+          "peak_private_bytes": 138575872,
+          "peak_rss_bytes": 193847296,
+          "phase": "cycle-1-after-close",
+          "private_bytes": 131784704,
+          "rss_bytes": 189202432
+        },
+        {
+          "cpu_ms": 141485,
+          "elapsed_seconds": 20.2600426,
+          "frames": 188,
+          "longest_tick_ms": 358,
+          "peak_private_bytes": 256192512,
+          "peak_rss_bytes": 211202048,
+          "phase": "cycle-2-interactive",
+          "private_bytes": 156852224,
+          "rss_bytes": 209477632
+        },
+        {
+          "cpu_ms": 8859,
+          "elapsed_seconds": 5.0558741,
+          "frames": 11,
+          "longest_tick_ms": 271,
+          "peak_private_bytes": 200900608,
+          "peak_rss_bytes": 217702400,
+          "phase": "cycle-2-eight-idle",
+          "private_bytes": 149417984,
+          "rss_bytes": 204218368
+        },
+        {
+          "cpu_ms": 12531,
+          "elapsed_seconds": 10.1116774,
+          "frames": 21,
+          "longest_tick_ms": 273,
+          "peak_private_bytes": 281952256,
+          "peak_rss_bytes": 209330176,
+          "phase": "cycle-2-after-close",
+          "private_bytes": 156463104,
+          "rss_bytes": 203530240
+        },
+        {
+          "cpu_ms": 73687,
+          "elapsed_seconds": 65.0892915,
+          "frames": 130,
+          "longest_tick_ms": 278,
+          "peak_private_bytes": 156463104,
+          "peak_rss_bytes": 203530240,
+          "phase": "after-undo-expiry",
+          "private_bytes": 130052096,
+          "rss_bytes": 182444032
+        }
+      ]
+    },
+    {
+      "scenario": "cpu-background",
+      "test_binary_sha256": "60e52fbe42de9db3420f65c652ac2a4dec7b228b047740817b5c43a67d712a80",
+      "software": true,
+      "frame_rate_limit": "Fps15",
+      "seconds": 275.67,
+      "interactive_gui_cpu_percent": 46.67,
+      "baseline_gui_cpu_percent": 5.37,
+      "interactive_frames_per_second": 9.01,
+      "gui_cpu_sample_peak_percent": 55.91,
+      "tree_cpu_sample_peak_percent": 84.32,
+      "gui_private_peak_MiB": 383.0,
+      "tree_private_peak_MiB": 2359.1,
+      "gui_private_after_expiry_MiB": 216.0,
+      "tree_private_after_expiry_MiB": 299.9,
+      "processes_after_expiry": 4,
+      "children_alive_15s_after_exit": 0,
+      "baseline_gui_private_MiB": 171.5,
+      "cycle_end_gui_private_MiB": [
+        216.0,
+        229.3,
+        233.4
+      ],
+      "metrics": [
+        {
+          "cpu_ms": 8688,
+          "elapsed_seconds": 10.109295,
+          "frames": 23,
+          "longest_tick_ms": 279,
+          "peak_private_bytes": 250994688,
+          "peak_rss_bytes": 209055744,
+          "phase": "baseline",
+          "private_bytes": 179871744,
+          "rss_bytes": 209047552
+        },
+        {
+          "cpu_ms": 148500,
+          "elapsed_seconds": 20.1635207,
+          "frames": 183,
+          "longest_tick_ms": 377,
+          "peak_private_bytes": 383447040,
+          "peak_rss_bytes": 248463360,
+          "phase": "cycle-0-interactive",
+          "private_bytes": 214241280,
+          "rss_bytes": 235892736
+        },
+        {
+          "cpu_ms": 7687,
+          "elapsed_seconds": 5.0398954,
+          "frames": 9,
+          "longest_tick_ms": 269,
+          "peak_private_bytes": 303575040,
+          "peak_rss_bytes": 265449472,
+          "phase": "cycle-0-eight-idle",
+          "private_bytes": 234438656,
+          "rss_bytes": 264413184
+        },
+        {
+          "cpu_ms": 10891,
+          "elapsed_seconds": 10.1252784,
+          "frames": 21,
+          "longest_tick_ms": 278,
+          "peak_private_bytes": 229261312,
+          "peak_rss_bytes": 264200192,
+          "phase": "cycle-0-after-close",
+          "private_bytes": 226504704,
+          "rss_bytes": 262336512
+        },
+        {
+          "cpu_ms": 150360,
+          "elapsed_seconds": 20.1785283,
+          "frames": 182,
+          "longest_tick_ms": 366,
+          "peak_private_bytes": 350642176,
+          "peak_rss_bytes": 281616384,
+          "phase": "cycle-1-interactive",
+          "private_bytes": 249925632,
+          "rss_bytes": 267304960
+        },
+        {
+          "cpu_ms": 8359,
+          "elapsed_seconds": 5.0655045,
+          "frames": 11,
+          "longest_tick_ms": 269,
+          "peak_private_bytes": 302366720,
+          "peak_rss_bytes": 295378944,
+          "phase": "cycle-1-eight-idle",
+          "private_bytes": 249581568,
+          "rss_bytes": 279822336
+        },
+        {
+          "cpu_ms": 10875,
+          "elapsed_seconds": 10.1349154,
+          "frames": 21,
+          "longest_tick_ms": 289,
+          "peak_private_bytes": 252502016,
+          "peak_rss_bytes": 281784320,
+          "phase": "cycle-1-after-close",
+          "private_bytes": 240431104,
+          "rss_bytes": 274341888
+        },
+        {
+          "cpu_ms": 152812,
+          "elapsed_seconds": 20.1480093,
+          "frames": 180,
+          "longest_tick_ms": 363,
+          "peak_private_bytes": 345448448,
+          "peak_rss_bytes": 290832384,
+          "phase": "cycle-2-interactive",
+          "private_bytes": 258883584,
+          "rss_bytes": 276996096
+        },
+        {
+          "cpu_ms": 7890,
+          "elapsed_seconds": 5.0639537,
+          "frames": 10,
+          "longest_tick_ms": 275,
+          "peak_private_bytes": 399712256,
+          "peak_rss_bytes": 296484864,
+          "phase": "cycle-2-eight-idle",
+          "private_bytes": 251662336,
+          "rss_bytes": 284090368
+        },
+        {
+          "cpu_ms": 11203,
+          "elapsed_seconds": 10.1480207,
+          "frames": 21,
+          "longest_tick_ms": 290,
+          "peak_private_bytes": 381394944,
+          "peak_rss_bytes": 292274176,
+          "phase": "cycle-2-after-close",
+          "private_bytes": 244719616,
+          "rss_bytes": 281870336
+        },
+        {
+          "cpu_ms": 71484,
+          "elapsed_seconds": 65.2033286,
+          "frames": 130,
+          "longest_tick_ms": 314,
+          "peak_private_bytes": 255406080,
+          "peak_rss_bytes": 283238400,
+          "phase": "after-undo-expiry",
+          "private_bytes": 226484224,
+          "rss_bytes": 263135232
+        }
+      ]
+    },
+    {
+      "scenario": "cpu-adaptive-background",
+      "test_binary_sha256": "4297e33a48b540bf1df3163fe432339c06acb8b77b9f8f49c2bfc6a6b6e671d7",
+      "software": true,
+      "frame_rate_limit": "Automatic",
+      "seconds": 278.3,
+      "interactive_gui_cpu_percent": 48.06,
+      "baseline_gui_cpu_percent": 6.0,
+      "interactive_frames_per_second": 8.58,
+      "gui_cpu_sample_peak_percent": 60.33,
+      "tree_cpu_sample_peak_percent": 83.52,
+      "gui_private_peak_MiB": 387.2,
+      "tree_private_peak_MiB": 2173.4,
+      "gui_private_after_expiry_MiB": 219.1,
+      "tree_private_after_expiry_MiB": 302.8,
+      "processes_after_expiry": 4,
+      "children_alive_15s_after_exit": 0,
+      "baseline_gui_private_MiB": 171.3,
+      "cycle_end_gui_private_MiB": [
+        217.1,
+        232.5,
+        234.7
+      ],
+      "metrics": [
+        {
+          "cpu_ms": 9687,
+          "elapsed_seconds": 10.0939197,
+          "frames": 25,
+          "longest_tick_ms": 271,
+          "peak_private_bytes": 250122240,
+          "peak_rss_bytes": 209895424,
+          "phase": "baseline",
+          "private_bytes": 179597312,
+          "rss_bytes": 209420288
+        },
+        {
+          "cpu_ms": 155063,
+          "elapsed_seconds": 20.1771567,
+          "frames": 174,
+          "longest_tick_ms": 380,
+          "peak_private_bytes": 317169664,
+          "peak_rss_bytes": 248492032,
+          "phase": "cycle-0-interactive",
+          "private_bytes": 212869120,
+          "rss_bytes": 236261376
+        },
+        {
+          "cpu_ms": 9578,
+          "elapsed_seconds": 5.0578486,
+          "frames": 11,
+          "longest_tick_ms": 275,
+          "peak_private_bytes": 268034048,
+          "peak_rss_bytes": 267374592,
+          "phase": "cycle-0-eight-idle",
+          "private_bytes": 230105088,
+          "rss_bytes": 265465856
+        },
+        {
+          "cpu_ms": 11547,
+          "elapsed_seconds": 10.13081,
+          "frames": 20,
+          "longest_tick_ms": 292,
+          "peak_private_bytes": 230236160,
+          "peak_rss_bytes": 264638464,
+          "phase": "cycle-0-after-close",
+          "private_bytes": 227627008,
+          "rss_bytes": 263434240
+        },
+        {
+          "cpu_ms": 155109,
+          "elapsed_seconds": 20.1436872,
+          "frames": 172,
+          "longest_tick_ms": 394,
+          "peak_private_bytes": 350355456,
+          "peak_rss_bytes": 281092096,
+          "phase": "cycle-1-interactive",
+          "private_bytes": 249442304,
+          "rss_bytes": 281092096
+        },
+        {
+          "cpu_ms": 10750,
+          "elapsed_seconds": 5.0581324,
+          "frames": 12,
+          "longest_tick_ms": 269,
+          "peak_private_bytes": 299843584,
+          "peak_rss_bytes": 295346176,
+          "phase": "cycle-1-eight-idle",
+          "private_bytes": 248160256,
+          "rss_bytes": 281137152
+        },
+        {
+          "cpu_ms": 11234,
+          "elapsed_seconds": 10.1057049,
+          "frames": 20,
+          "longest_tick_ms": 291,
+          "peak_private_bytes": 251228160,
+          "peak_rss_bytes": 283037696,
+          "phase": "cycle-1-after-close",
+          "private_bytes": 243814400,
+          "rss_bytes": 278650880
+        },
+        {
+          "cpu_ms": 156140,
+          "elapsed_seconds": 20.320221,
+          "frames": 174,
+          "longest_tick_ms": 364,
+          "peak_private_bytes": 344764416,
+          "peak_rss_bytes": 293474304,
+          "phase": "cycle-2-interactive",
+          "private_bytes": 262402048,
+          "rss_bytes": 282103808
+        },
+        {
+          "cpu_ms": 10797,
+          "elapsed_seconds": 5.0513221,
+          "frames": 14,
+          "longest_tick_ms": 271,
+          "peak_private_bytes": 405409792,
+          "peak_rss_bytes": 301060096,
+          "phase": "cycle-2-eight-idle",
+          "private_bytes": 257007616,
+          "rss_bytes": 290791424
+        },
+        {
+          "cpu_ms": 11734,
+          "elapsed_seconds": 10.1060065,
+          "frames": 21,
+          "longest_tick_ms": 276,
+          "peak_private_bytes": 377663488,
+          "peak_rss_bytes": 290197504,
+          "phase": "cycle-2-after-close",
+          "private_bytes": 246087680,
+          "rss_bytes": 283316224
+        },
+        {
+          "cpu_ms": 73969,
+          "elapsed_seconds": 65.0945274,
+          "frames": 130,
+          "longest_tick_ms": 289,
+          "peak_private_bytes": 253132800,
+          "peak_rss_bytes": 284057600,
+          "phase": "after-undo-expiry",
+          "private_bytes": 229695488,
+          "rss_bytes": 267784192
+        }
+      ]
+    }
+  ],
+  "fault_isolation": {
+    "shell": "A force-terminated shell becomes read-only; seven peers execute commands and return to their prompts.",
+    "gui": "Force termination of an isolated GUI with two windows caused all three original shells to exit; a separate instance still executed a command. Startup recovery recreated a GUI but did not preserve original tasks."
+  }
+}

@@ -87,13 +87,23 @@ impl<'a> Frame<'a> {
         encoder: &mut CommandEncoder,
         surface_texture: &SurfaceTexture,
     ) {
+        #[cfg(feature = "integration_tests")]
+        let skip_draw = std::env::var("WARP_TEST_SKIP_DRAW").ok();
+        #[cfg(not(feature = "integration_tests"))]
+        let skip_draw: Option<String> = None;
+
         let surface_size = Vector2F::new(
             surface_texture.texture.width() as f32,
             surface_texture.texture.height() as f32,
         );
 
-        self.image_pipeline
-            .prepare_raster_cache(resources, encoder, &self.per_frame_state.image);
+        if skip_draw.as_deref() != Some("images") {
+            self.image_pipeline.prepare_raster_cache(
+                resources,
+                encoder,
+                &self.per_frame_state.image,
+            );
+        }
 
         // A premultiplied raster can replace blending only when it is the first draw over clear pixels.
         let first_layer = self.layer_state.iter().find(|state| {
@@ -111,7 +121,8 @@ impl<'a> Frame<'a> {
                     .first()
                     .is_some_and(|image| image.cache_raster)
         });
-        let prefilled = can_prefill
+        let prefilled = skip_draw.as_deref() != Some("images")
+            && can_prefill
             && self.image_pipeline.prefill_surface(
                 encoder,
                 &surface_texture.texture,
@@ -161,7 +172,9 @@ impl<'a> Frame<'a> {
                 Self::set_scissor_rect(&mut render_pass, device_bounds);
             }
 
-            if let Some(rect_layer_state) = &layer_state.rect_layer_state {
+            if let Some(rect_layer_state) = &layer_state.rect_layer_state
+                && skip_draw.as_deref() != Some("rects")
+            {
                 self.rect_pipeline.draw(
                     &mut render_pass,
                     rect_layer_state,
@@ -169,7 +182,9 @@ impl<'a> Frame<'a> {
                 );
             }
 
-            if let Some(image_layer_state) = &layer_state.image_layer_state {
+            if let Some(image_layer_state) = &layer_state.image_layer_state
+                && skip_draw.as_deref() != Some("images")
+            {
                 self.image_pipeline.draw(
                     &mut render_pass,
                     image_layer_state,
@@ -177,7 +192,9 @@ impl<'a> Frame<'a> {
                 );
             }
 
-            if let Some(glyph_layer_state) = &layer_state.glyph_layer_state {
+            if let Some(glyph_layer_state) = &layer_state.glyph_layer_state
+                && skip_draw.as_deref() != Some("glyphs")
+            {
                 self.glyph_pipeline.draw(
                     &mut render_pass,
                     glyph_layer_state,

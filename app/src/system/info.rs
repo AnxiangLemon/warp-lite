@@ -229,11 +229,11 @@ impl SystemInfo {
     }
 
     #[cfg_attr(not(windows), allow(dead_code))]
-    pub fn refresh_all_processes(&mut self) {
+    pub fn refresh_process_names(&mut self) {
         self.system.refresh_processes_specifics(
             ProcessesToUpdate::All,
             true, /* remove_dead_processes */
-            Self::refresh_kind(),
+            sysinfo::ProcessRefreshKind::nothing(),
         );
     }
 

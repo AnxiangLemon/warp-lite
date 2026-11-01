@@ -14,6 +14,12 @@ integration_tests! {
     #[cfg(target_os = "windows")]
     test_lite_software_rendering_background,
     #[cfg(target_os = "windows")]
+    test_lite_software_shader_pixels,
+    #[cfg(target_os = "windows")]
+    test_lite_multiterminal_stability,
+    #[cfg(target_os = "windows")]
+    test_lite_multiterminal_background_stability,
+    #[cfg(target_os = "windows")]
     #[ignore = "Requires an installed WSL distribution"]
     test_lite_wsl_directory_search,
     #[cfg(target_os = "windows")]

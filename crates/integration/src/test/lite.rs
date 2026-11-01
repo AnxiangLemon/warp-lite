@@ -7,6 +7,14 @@ mod close_confirmation;
 #[cfg(feature = "warp_lite")]
 #[path = "lite_rendering.rs"]
 mod rendering;
+#[cfg(feature = "warp_lite")]
+#[path = "lite_shader_pixels.rs"]
+mod shader_pixels;
+#[cfg(feature = "warp_lite")]
+pub use shader_pixels::test_lite_software_shader_pixels;
+#[cfg(feature = "warp_lite")]
+#[path = "lite_stability.rs"]
+mod stability;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -24,6 +32,10 @@ use diesel::{Connection as _, QueryableByName, RunQueryDsl as _, sql_query};
 #[cfg(feature = "warp_lite")]
 pub use rendering::{test_lite_software_rendering, test_lite_software_rendering_background};
 use settings::Setting as _;
+#[cfg(feature = "warp_lite")]
+pub use stability::{
+    test_lite_multiterminal_background_stability, test_lite_multiterminal_stability,
+};
 use warp::appearance::Appearance;
 use warp::integration_testing::assertions::{
     assert_lite_runtime_services_are_absent, assert_logged_out,
@@ -462,10 +474,11 @@ pub fn test_lite_chinese_settings() -> Builder {
     for (query, expected) in [
         ("字号", vec![SettingsSection::Appearance]),
         ("智能", vec![SettingsSection::Features]),
-        ("图形 后端", vec![SettingsSection::Features]),
-        ("渲染 设备", vec![SettingsSection::Features]),
-        ("FPS", vec![SettingsSection::Features]),
-        ("Vulkan", vec![SettingsSection::Features]),
+        ("图形 后端", vec![SettingsSection::Appearance]),
+        ("渲染 设备", vec![SettingsSection::Appearance]),
+        ("FPS", vec![SettingsSection::Appearance]),
+        ("background", vec![SettingsSection::Appearance]),
+        ("Vulkan", vec![SettingsSection::Appearance]),
         ("没有这项设置", vec![]),
         (
             "",

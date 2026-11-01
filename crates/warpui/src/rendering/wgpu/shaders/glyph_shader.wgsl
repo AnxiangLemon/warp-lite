@@ -44,13 +44,14 @@ struct GlyphVertexShaderInput {
     @location(6) is_emoji: i32,
 }
 
+// Per-instance values are constant across each quad; WARP must not interpolate them per pixel.
 struct GlyphVertexShaderOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) rect_center: vec2<f32>,
-    @location(1) rect_corner: vec2<f32>,
+    @location(0) @interpolate(flat) rect_center: vec2<f32>,
+    @location(1) @interpolate(flat) rect_corner: vec2<f32>,
     @location(2) texture_coordinate: vec2<f32>,
     @location(3) fade_alpha: f32,
-    @location(4) color: vec4<f32>,
+    @location(4) @interpolate(flat) color: vec4<f32>,
     @location(5) @interpolate(flat) is_emoji: i32,
 }
 
@@ -107,7 +108,12 @@ fn vs_main(
 @fragment
 fn fs_main(in: GlyphVertexShaderOutput) -> @location(0) vec4<f32> {
     // Sample the texture to obtain a color.
-    var tex_color: vec4<f32> = textureSample(glyphAtlasTexture, glyphAtlasSampler, in.texture_coordinate);
+    var tex_color: vec4<f32>;
+    if software_sampling {
+        tex_color = bilinear_load(glyphAtlasTexture, in.texture_coordinate);
+    } else {
+        tex_color = textureSample(glyphAtlasTexture, glyphAtlasSampler, in.texture_coordinate);
+    }
     // Use the input color for non-emoji, and the sampled color for emoji.
     var color: vec4<f32> = mix(in.color, tex_color, f32(in.is_emoji));
 

@@ -321,7 +321,7 @@ fn real_theme_clicks(mut builder: Builder) -> Builder {
             )
             .with_take_screenshot("lite-theme-real-click.png"),
         );
-    for query in ["background", "壁纸"] {
+    for query in ["background image", "壁纸"] {
         builder = builder.with_step(
             new_step_with_default_assertions(
                 "Removed background settings no longer appear in search",

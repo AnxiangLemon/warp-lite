@@ -45,7 +45,7 @@ Windows Lite 使用 `wgpu::MemoryHints::MemoryUsage`，让图形内存池从较�
 Windows Lite 默认先初始化 DirectX；只有初始化失败、显卡属于已知不稳定型号、用户指定
 其他后端或显式查询完整后端列表时，才创建包含其余后端的实例。`WGPU_BACKEND` 环境变量
 仍优先生效，Vulkan / OpenGL 回退能力保留。所有 Windows 环境使用同一个 Warp Lite 构建，
-不区分服务器版与桌面版。“设置 → 终端 → 图形渲染”包含三个独立选项：
+不区分服务器版与桌面版。“设置 → 外观 → 图形渲染”包含三个独立选项：
 
 - 渲染设备：自动（GPU 优先，没有可用 GPU 时回退到 CPU）或 CPU 软件渲染。
 - 图形后端：默认、DirectX 12、Vulkan、OpenGL；不可用的首选接口自动回退。
@@ -195,6 +195,70 @@ OpenGL 可用 `WGPU_BACKEND=gl` 单独验证。当前原生 OpenGL surface 不�
 截图集成测试通过。
 
 跨进程恢复使用 `test_lite_restore_saved_tabs`。先从 smoke test 输出的 evidence JSON 获取数据库与项目目录，将 SQLite 一致性备份路径设置为 `WARP_LITE_RESTORE_DATABASE`、项目目录设置为 `WARP_LITE_RESTORE_DIRECTORY`，再执行该测试；设置 `WARP_LITE_EXPECT_RESTORED_GROUPS=1` 还会检查分组和侧栏恢复。SQLite 使用 WAL，不能仅复制仍有 WAL 数据的主数据库文件；应使用 SQLite backup API，或在确认进程退出并 checkpoint 后复制。
+
+## 多终端资源与故障隔离验证
+
+资源数据应使用优化构建；测试期间不要同时编译或运行另一组 GUI 测试。下面的测试构建只为
+`warp` crate 增加代码生成并行度，仍使用 `lite` 优化与 Thin LTO；分发构建保持原配置。
+
+```powershell
+cargo build -p integration --bin integration --profile lite --no-default-features --features warp_lite --locked --target-dir target-lite --config 'profile.lite.package.warp.codegen-units=8'
+.\target-lite\lite\integration.exe test_lite_multiterminal_stability
+.\target-lite\lite\integration.exe test_lite_multiterminal_background_stability
+```
+
+每轮创建 4 个标签页、8 个 PowerShell 终端，并发输出 22 秒后各追加 5,000 行，期间切换标签与
+调整窗口大小，再关闭 7 个终端并观察资源回落，共重复 3 轮；另等待 65 秒，覆盖默认 60 秒的
+撤销关闭保留期。最后验证任务返回非零退出码、
+强制终止一个 Shell 后其余 7 个 Shell 继续执行，以及原始终端仍可执行新命令。输出中的
+`STABILITY_METRICS` 包含 GUI CPU 时间、帧数、工作集、Windows 私有提交和事件循环采样间隔；
+CPU 时间除以实际秒数和逻辑核数，才对应任务管理器中的整机占比。测试设有 2 GiB GUI 内存
+保护，不通过耗尽本机内存来验证 OOM。
+
+默认使用 DX12 CPU 软件渲染、最高 15 FPS。设置 `WARP_TEST_STABILITY_AUTOMATIC=1` 可重复
+验证自动设备选择与自动帧率；`WARP_TEST_STABILITY_ADAPTIVE=1` 则保持 CPU 渲染，只改用
+自适应帧率。设置 `WARP_TEST_STABILITY_BACKGROUND` 为图片的绝对路径，可测试实际
+尺寸的背景图。测试会将图片复制到独立数据目录，不修改原文件。短时资源稳定不能证明无限
+运行不泄漏；关闭后保留的命令历史、撤销关闭记录及分配器缓存也需与泄漏区分。
+
+Windows 上的标签页、分屏与窗口共享 GUI 进程。强制终止单个 Shell 会使对应分屏只读并保留输出；GUI
+主进程崩溃或内存耗尽会影响同一实例的所有会话；ConPTY 关闭后 Shell 也可能延迟退出。
+启动阶段的 crash recovery 可以重启界面，但不保留原 Shell 或正在运行的任务，也不等于
+运行期间的会话进程隔离。
+
+本机 Windows 11 的 CPU、GPU、背景图和自适应帧率对照结果见
+[`stability-windows-2026-11-01.json`](benchmarks/stability-windows-2026-11-01.json)。
+
+## CPU 软件渲染采样验证
+
+CPU 适配器使用显式 texel load 实现与单 mip 线性采样等价的双线性过滤，图片、图标和字形
+共用 `software_sampling.wgsl`。硬件适配器继续使用原生采样器。矩形的常量实例数据使用 flat
+插值；纯色、无边框、无圆角矩形使用精简管线，并仅合并相邻批次以保留透明叠加顺序。
+
+```powershell
+.\target-lite\lite\integration.exe test_lite_software_shader_pixels
+$env:WARP_TEST_FORCE_NATIVE_SAMPLING = '1'
+.\target-lite\lite\integration.exe test_lite_software_shader_pixels
+Remove-Item Env:WARP_TEST_FORCE_NATIVE_SAMPLING
+$env:WARP_TEST_STABILITY_AUTOMATIC = '1'
+.\target-lite\lite\integration.exe test_lite_software_shader_pixels
+Remove-Item Env:WARP_TEST_STABILITY_AUTOMATIC
+```
+
+像素测试使用独立的参考窗口，检查渐变、透明叠加顺序、圆角、边框，以及带透明像素图片的
+双线性过滤和边缘 clamp；在软件、原生采样对照和硬件三种模式下读取实际渲染结果。
+CPU 和内存测量期间应停止编译及其他 GUI 测试，并将 GUI 与 Shell 子进程分开统计。
+本机对照数据保存在 [`cpu-software-windows-2026-11-01.json`](benchmarks/cpu-software-windows-2026-11-01.json)。
+
+`WARP_TEST_SKIP_DRAW=rects|glyphs|images`、`WARP_TEST_RECT_STATS` 和
+`WARP_TEST_RECT_SHADER` / `WARP_TEST_IMAGE_SHADER` / `WARP_TEST_GLYPH_SHADER` 仅供集成测试
+诊断使用；屏蔽绘制的运行不能作为画面正确性验证。替换的 shader 必须包含完整模块声明，
+包括 `software_sampling` override。实例面积统计未经裁剪，不能当作实际像素绘制量。
+
+排查参考官方 [#14694](https://github.com/warpdotdev/warp/issues/14694) 的软件渲染高 CPU 报告，
+以及 [46c0b51](https://github.com/warpdotdev/warp/commit/46c0b513643a1c9d41b302dbd7601d9f5526502e) 的全进程 CPU 扫描修复。本地也将
+PowerShell 历史兼容性检测改为进程名查询，并按应用进程缓存结果，避免每次创建会话都采样
+全系统进程的 CPU。
 
 ## 资源与提交
 

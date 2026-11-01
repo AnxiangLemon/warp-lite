@@ -105,3 +105,13 @@ fn create_buffer(device: &Device, desc: &BufferDescriptor<'_>) -> Result<Buffer,
         None => Ok(buffer),
     }
 }
+
+#[cfg(feature = "integration_tests")]
+pub(super) fn test_shader_source(
+    variable: &str,
+    fallback: std::borrow::Cow<'static, str>,
+) -> std::borrow::Cow<'static, str> {
+    std::env::var_os(variable).map_or(fallback, |path| {
+        std::borrow::Cow::Owned(std::fs::read_to_string(path).expect("read profiling shader"))
+    })
+}

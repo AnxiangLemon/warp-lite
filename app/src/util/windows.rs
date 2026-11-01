@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
+use std::sync::{LazyLock, OnceLock};
 use std::{env, path};
 
 use anyhow::{Result, anyhow};
@@ -201,11 +201,15 @@ fn microsoft_store_app_path() -> Option<PathBuf> {
 /// Determines if Kaspersky is currently running by checking if there is a
 /// process with the name "avp" running.
 pub fn is_kaspersky_running(ctx: &mut AppContext) -> bool {
-    SystemInfo::handle(ctx).update(ctx, |system_info, _| {
-        system_info.refresh_all_processes();
-        system_info
-            .processes_by_name(KASPERSKY_PROCESS_NAME)
-            .next()
-            .is_some()
+    // Each session only needs the compatibility decision, not a new full-system CPU sweep.
+    static RUNNING: OnceLock<bool> = OnceLock::new();
+    *RUNNING.get_or_init(|| {
+        SystemInfo::handle(ctx).update(ctx, |system_info, _| {
+            system_info.refresh_process_names();
+            system_info
+                .processes_by_name(KASPERSKY_PROCESS_NAME)
+                .next()
+                .is_some()
+        })
     })
 }

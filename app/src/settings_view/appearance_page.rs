@@ -1,3 +1,6 @@
+#[path = "appearance_rendering.rs"]
+mod rendering;
+
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -18,7 +21,7 @@ use warpui::elements::{
 use warpui::fonts::{FamilyId, FontInfo, Weight};
 use warpui::keymap::{ContextPredicate, FixedBinding};
 use warpui::platform::{Cursor, FilePickerConfiguration, GraphicsBackend, SystemTheme};
-use warpui::rendering::ThinStrokes;
+use warpui::rendering::{FrameRateLimit, RenderingDevice, ThinStrokes};
 use warpui::ui_components::button::ButtonVariant;
 use warpui::ui_components::components::{Coords, UiComponent, UiComponentStyles};
 use warpui::ui_components::radio_buttons::{
@@ -32,6 +35,7 @@ use warpui::{
     ViewContext, ViewHandle, WindowId, id,
 };
 
+use self::rendering::{FrameRateLimitWidget, GraphicsBackendWidget, RenderingDeviceWidget};
 use super::directory_color_add_picker::{DirectoryColorAddPicker, DirectoryColorAddPickerEvent};
 use super::settings_page::{
     AdditionalInfo, CONTENT_FONT_SIZE, Category, HEADER_PADDING, LocalOnlyIconState, MatchData,
@@ -510,6 +514,9 @@ pub enum AppearancePageAction {
     SetFontFamily(String),
     SetAIFontFamily(String),
     SetThinStrokes(ThinStrokes),
+    SetPreferredGraphicsBackend(Option<GraphicsBackend>),
+    SetRenderingDevice(RenderingDevice),
+    SetFrameRateLimit(FrameRateLimit),
     SetInputMode {
         new_mode: InputMode,
         from_binding: bool,
@@ -564,6 +571,10 @@ pub enum AppearancePageAction {
 
 pub struct AppearanceSettingsPageView {
     page: PageType<Self>,
+    graphics_backend_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
+    rendering_device_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
+    frame_rate_limit_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
+    graphics_backend_preference_changed: bool,
     window_id: WindowId,
     local_only_icon_tooltip_states: RefCell<HashMap<String, MouseStateHandle>>,
     font_size_editor: ViewHandle<EditorView>,
@@ -620,6 +631,25 @@ impl TypedActionView for AppearanceSettingsPageView {
             LineHeightEditorResetRatio => self.reset_line_height_ratio(ctx),
             SetNewWindowsCustomColumns => self.update_new_windows_num_columns(true, ctx),
             SetNewWindowsCustomRows => self.update_new_windows_num_rows(true, ctx),
+            SetRenderingDevice(device) => {
+                GPUSettings::handle(ctx).update(ctx, |settings, ctx| {
+                    report_if_error!(settings.rendering_device.set_value(*device, ctx));
+                });
+                ctx.update_rendering_config(|config| config.rendering_device = *device);
+            }
+            SetFrameRateLimit(limit) => {
+                GPUSettings::handle(ctx).update(ctx, |settings, ctx| {
+                    report_if_error!(settings.frame_rate_limit.set_value(*limit, ctx));
+                });
+                ctx.update_rendering_config(|config| config.frame_rate_limit = *limit);
+            }
+            SetPreferredGraphicsBackend(backend) => {
+                GPUSettings::handle(ctx).update(ctx, |settings, ctx| {
+                    report_if_error!(settings.preferred_backend.set_value(*backend, ctx));
+                });
+                ctx.update_rendering_config(|config| config.backend_preference = *backend);
+                self.graphics_backend_preference_changed = true;
+            }
             SetFontSize => self.set_font_size(ctx),
             SetFontWeight(value) => self.set_font_weight(*value, ctx),
             ToggleMatchNotebookToMonospaceFontSize => {
@@ -1365,8 +1395,16 @@ impl AppearanceSettingsPageView {
         #[cfg(not(feature = "agent_runtime"))]
         let header_toolbar_inline_editor = None;
 
+        ctx.subscribe_to_model(&GPUSettings::handle(ctx), |me, _, _, ctx| {
+            me.refresh_rendering_dropdowns(ctx);
+            ctx.notify();
+        });
         let mut view = AppearanceSettingsPageView {
             page: Self::build_page(ctx),
+            graphics_backend_dropdown: ctx.add_typed_action_view(Dropdown::new),
+            rendering_device_dropdown: ctx.add_typed_action_view(Dropdown::new),
+            frame_rate_limit_dropdown: ctx.add_typed_action_view(Dropdown::new),
+            graphics_backend_preference_changed: false,
             window_id: ctx.window_id(),
             local_only_icon_tooltip_states: Default::default(),
             ai_font_family_dropdown,
@@ -1412,6 +1450,7 @@ impl AppearanceSettingsPageView {
         if cfg!(feature = "warp_lite") {
             view.update_font_dropdown(ctx);
         }
+        view.refresh_rendering_dropdowns(ctx);
         view
     }
 
@@ -1634,37 +1673,45 @@ impl AppearanceSettingsPageView {
                 ShowVerticalTabPanelInRestoredWindowsWidget::default(),
             ));
         }
-        PageType::new_categorized(
-            vec![
-                Category::new("主题", vec![Box::new(ThemeSelectWidget::default())]),
-                Category::new("字体与字号", vec![Box::new(TerminalFontWidget::default())]),
-                Category::new("输入位置", vec![Box::new(InputModeWidget::default())]),
-                Category::new("标签页", tabs),
-                Category::new(
-                    "分屏",
-                    vec![
-                        Box::new(DimInactivePanesWidget::default()),
-                        Box::new(FocusFollowsMouseWidget::default()),
-                    ],
-                ),
-                Category::new(
-                    "命令块",
-                    vec![
-                        Box::new(CompactModeWidget::default()),
-                        Box::new(ShowBlockDividersWidget::default()),
-                        Box::new(JumpToBottomOfBlockWidget::default()),
-                    ],
-                ),
-                Category::new(
-                    "光标",
-                    vec![
-                        Box::new(CursorTypeWidget::default()),
-                        Box::new(BlinkingCursorWidget::default()),
-                    ],
-                ),
-            ],
-            Some("外观"),
-        )
+        let mut categories = vec![
+            Category::new("主题", vec![Box::new(ThemeSelectWidget::default())]),
+            Category::new("字体与字号", vec![Box::new(TerminalFontWidget::default())]),
+            Category::new("输入位置", vec![Box::new(InputModeWidget::default())]),
+            Category::new("标签页", tabs),
+            Category::new(
+                "分屏",
+                vec![
+                    Box::new(DimInactivePanesWidget::default()),
+                    Box::new(FocusFollowsMouseWidget::default()),
+                ],
+            ),
+            Category::new(
+                "命令块",
+                vec![
+                    Box::new(CompactModeWidget::default()),
+                    Box::new(ShowBlockDividersWidget::default()),
+                    Box::new(JumpToBottomOfBlockWidget::default()),
+                ],
+            ),
+            Category::new(
+                "光标",
+                vec![
+                    Box::new(CursorTypeWidget::default()),
+                    Box::new(BlinkingCursorWidget::default()),
+                ],
+            ),
+        ];
+        if cfg!(windows) {
+            categories.push(Category::new(
+                "图形渲染",
+                vec![
+                    Box::new(RenderingDeviceWidget),
+                    Box::new(GraphicsBackendWidget::default()),
+                    Box::new(FrameRateLimitWidget),
+                ],
+            ));
+        }
+        PageType::new_categorized(categories, Some("外观"))
     }
 
     fn set_alt_screen_padding_editor_text(&mut self, ctx: &mut ViewContext<Self>) {
@@ -5782,6 +5829,7 @@ impl SettingsPageMeta for AppearanceSettingsPageView {
     }
 
     fn on_page_selected(&mut self, _: bool, ctx: &mut ViewContext<Self>) {
+        self.refresh_rendering_dropdowns(ctx);
         ctx.notify();
     }
 

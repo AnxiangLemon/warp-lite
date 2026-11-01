@@ -33,6 +33,7 @@ impl Renderer {
         let started = Instant::now();
         let Resources { device, .. } = resources;
 
+        let software = resources.adapter.get_info().device_type == wgpu::DeviceType::Cpu;
         let format = resources.surface_config.borrow().format;
         let color_target = wgpu::ColorTargetState {
             format,
@@ -44,6 +45,7 @@ impl Renderer {
             resources.uniform_bind_group_layout(),
             device,
             color_target.clone(),
+            software,
         );
         log::debug!(target: "warpui::startup", "rect_pipeline duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 
@@ -52,6 +54,7 @@ impl Renderer {
             device,
             color_target.clone(),
             glyph_config,
+            software,
         );
         log::debug!(target: "warpui::startup", "glyph_pipeline duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 
@@ -59,7 +62,7 @@ impl Renderer {
             resources.uniform_bind_group_layout(),
             device,
             color_target,
-            resources.adapter.get_info().device_type == wgpu::DeviceType::Cpu,
+            software,
         );
         log::debug!(target: "warpui::startup", "image_pipeline duration_ms={:.3}", started.elapsed().as_secs_f64() * 1000.0);
 

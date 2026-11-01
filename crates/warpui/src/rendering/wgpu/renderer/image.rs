@@ -55,11 +55,16 @@ impl Pipeline {
         color_target: ColorTargetState,
         software: bool,
     ) -> Self {
+        let shader_source = Cow::Borrowed(concat!(
+            include_str!("../shaders/software_sampling.wgsl"),
+            include_str!("../shaders/image_shader.wgsl")
+        ));
+        #[cfg(feature = "integration_tests")]
+        let shader_source =
+            super::util::test_shader_source("WARP_TEST_IMAGE_SHADER", shader_source);
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Image Shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
-                "../shaders/image_shader.wgsl"
-            ))),
+            source: wgpu::ShaderSource::Wgsl(shader_source),
         });
 
         let texture_bind_group_layout =
@@ -96,6 +101,12 @@ impl Pipeline {
             immediate_size: 0,
         });
 
+        #[cfg(feature = "integration_tests")]
+        let software_sampling =
+            software && std::env::var_os("WARP_TEST_FORCE_NATIVE_SAMPLING").is_none();
+        #[cfg(not(feature = "integration_tests"))]
+        let software_sampling = software;
+
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Image render pipeline"),
             layout: Some(&pipeline_layout),
@@ -112,7 +123,10 @@ impl Pipeline {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(color_target.clone())],
-                compilation_options: Default::default(),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: &[("software_sampling", if software_sampling { 1. } else { 0. })],
+                    ..Default::default()
+                },
             }),
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,

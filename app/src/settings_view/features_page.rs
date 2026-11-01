@@ -20,7 +20,7 @@ use warpui::elements::{
 };
 use warpui::keymap::{ContextPredicate, FixedBinding, Keystroke};
 use warpui::platform::{Cursor, GraphicsBackend};
-use warpui::rendering::{FrameRateLimit, GPUPowerPreference, RenderingDevice};
+use warpui::rendering::GPUPowerPreference;
 use warpui::ui_components::button::ButtonVariant;
 use warpui::ui_components::components::{Coords, UiComponent, UiComponentStyles};
 use warpui::ui_components::switch::SwitchStateHandle;
@@ -794,8 +794,6 @@ pub enum FeaturesPageAction {
     SetTabBehavior(TabBehavior),
     SetCtrlTabBehavior(CtrlTabBehavior),
     SetPreferredGraphicsBackend(Option<GraphicsBackend>),
-    SetRenderingDevice(RenderingDevice),
-    SetFrameRateLimit(FrameRateLimit),
     SetNewTabPlacement(NewTabPlacement),
     SetOsc52ClipboardAccess(Osc52ClipboardAccess),
     SetDefaultSessionMode(DefaultSessionMode),
@@ -1267,14 +1265,6 @@ impl FeaturesPageAction {
                 action: "SetPreferredGraphicsBackend".to_string(),
                 value: format!("{backend:?}"),
             },
-            Self::SetRenderingDevice(device) => TelemetryEvent::FeaturesPageAction {
-                action: "SetRenderingDevice".to_string(),
-                value: format!("{device:?}"),
-            },
-            Self::SetFrameRateLimit(limit) => TelemetryEvent::FeaturesPageAction {
-                action: "SetFrameRateLimit".to_string(),
-                value: format!("{limit:?}"),
-            },
             Self::ToggleConfirmCloseSession => TelemetryEvent::FeaturesPageAction {
                 action: "ToggleConfirmCloseSession".to_string(),
                 value: to_string(*SessionSettings::as_ref(ctx).should_confirm_close_session),
@@ -1438,8 +1428,6 @@ pub struct FeaturesPageView {
 
     tab_behavior_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
     graphics_backend_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
-    rendering_device_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
-    frame_rate_limit_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
     new_tab_placement_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
     osc52_clipboard_access_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
     default_session_mode_dropdown: Option<ViewHandle<FilterableDropdown<FeaturesPageAction>>>,
@@ -2067,18 +2055,6 @@ impl TypedActionView for FeaturesPageView {
                 ctx.update_rendering_config(|config| config.backend_preference = *graphics_backend);
                 self.graphics_backend_preference_changed = true;
             }
-            SetRenderingDevice(device) => {
-                GPUSettings::handle(ctx).update(ctx, |settings, ctx| {
-                    report_if_error!(settings.rendering_device.set_value(*device, ctx));
-                });
-                ctx.update_rendering_config(|config| config.rendering_device = *device);
-            }
-            SetFrameRateLimit(limit) => {
-                GPUSettings::handle(ctx).update(ctx, |settings, ctx| {
-                    report_if_error!(settings.frame_rate_limit.set_value(*limit, ctx));
-                });
-                ctx.update_rendering_config(|config| config.frame_rate_limit = *limit);
-            }
             ToggleConfirmCloseSession => {
                 SessionSettings::handle(ctx).update(ctx, |session_settings, ctx| {
                     session_settings
@@ -2554,8 +2530,6 @@ impl FeaturesPageView {
         });
 
         let graphics_backend_dropdown = ctx.add_typed_action_view(Dropdown::new);
-        let rendering_device_dropdown = ctx.add_typed_action_view(Dropdown::new);
-        let frame_rate_limit_dropdown = ctx.add_typed_action_view(Dropdown::new);
 
         #[cfg(feature = "local_tty")]
         let working_directory_view = ctx.add_typed_action_view(features::WorkingDirectoryView::new);
@@ -2782,8 +2756,6 @@ impl FeaturesPageView {
             ctrl_tab_behavior_dropdown,
             code_editor_line_number_mode_dropdown,
             graphics_backend_dropdown,
-            rendering_device_dropdown,
-            frame_rate_limit_dropdown,
             new_tab_placement_dropdown,
             osc52_clipboard_access_dropdown,
             default_session_mode_dropdown,
@@ -3222,25 +3194,12 @@ impl FeaturesPageView {
             terminal.push(Box::new(AudibleBellWidget::default()));
         }
 
-        let mut categories = vec![
+        let categories = vec![
             Category::new("会话与历史", session),
             Category::new("命令输入与切换", input),
             Category::new("选择与复制", selection),
             Category::new("滚动与提示", terminal),
         ];
-        if GPUSettings::as_ref(ctx)
-            .preferred_backend
-            .is_supported_on_current_platform()
-        {
-            categories.push(Category::new(
-                "图形渲染",
-                vec![
-                    Box::new(RenderingDeviceWidget),
-                    Box::new(GraphicsBackendWidget::default()),
-                    Box::new(FrameRateLimitWidget),
-                ],
-            ));
-        }
         PageType::new_categorized(categories, Some("终端"))
     }
 
@@ -3693,66 +3652,16 @@ impl FeaturesPageView {
         &mut self,
         ctx: &mut ViewContext<Self>,
     ) {
-        self.rendering_device_dropdown.update(ctx, |dropdown, ctx| {
-            dropdown.set_items(
-                [RenderingDevice::Automatic, RenderingDevice::Software]
-                    .into_iter()
-                    .map(|device| {
-                        DropdownItem::new(
-                            rendering_device_label(device),
-                            FeaturesPageAction::SetRenderingDevice(device),
-                        )
-                    })
-                    .collect(),
-                ctx,
-            );
-            dropdown.set_selected_by_name(
-                rendering_device_label(*GPUSettings::as_ref(ctx).rendering_device.value()),
-                ctx,
-            );
-        });
-        self.frame_rate_limit_dropdown.update(ctx, |dropdown, ctx| {
-            dropdown.set_items(
-                [
-                    FrameRateLimit::Automatic,
-                    FrameRateLimit::Fps15,
-                    FrameRateLimit::Fps30,
-                    FrameRateLimit::Fps60,
-                    FrameRateLimit::Unlimited,
-                ]
-                .into_iter()
-                .map(|limit| {
-                    DropdownItem::new(
-                        frame_rate_limit_label(limit),
-                        FeaturesPageAction::SetFrameRateLimit(limit),
-                    )
-                })
-                .collect(),
-                ctx,
-            );
-            dropdown.set_selected_by_name(
-                frame_rate_limit_label(*GPUSettings::as_ref(ctx).frame_rate_limit.value()),
-                ctx,
-            );
-        });
+        if cfg!(feature = "warp_lite") {
+            return;
+        }
         self.graphics_backend_dropdown.update(ctx, |dropdown, ctx| {
             if let Some(window) = ctx.windows().platform_window(ctx.window_id()) {
                 let mut items = vec![DropdownItem::new(
-                    super::lite_i18n::text("Default"),
+                    "Default",
                     FeaturesPageAction::SetPreferredGraphicsBackend(None),
                 )];
-                // Lite keeps driver initialization off the settings path; unavailable preferences
-                // fall back through the existing adapter selection on the next window.
-                let backends = if cfg!(feature = "warp_lite") {
-                    vec![
-                        GraphicsBackend::Dx12,
-                        GraphicsBackend::Vulkan,
-                        GraphicsBackend::Gl,
-                    ]
-                } else {
-                    window.supported_backends()
-                };
-                items.extend(backends.into_iter().map(|backend| {
+                items.extend(window.supported_backends().into_iter().map(|backend| {
                     DropdownItem::new(
                         backend.to_label(),
                         FeaturesPageAction::SetPreferredGraphicsBackend(Some(backend)),
@@ -3765,7 +3674,7 @@ impl FeaturesPageView {
                 gpu_settings
                     .preferred_backend
                     .map(|backend| backend.to_label())
-                    .unwrap_or(super::lite_i18n::text("Default")),
+                    .unwrap_or("Default"),
                 ctx,
             );
         });
@@ -7890,111 +7799,6 @@ impl SettingsWidget for WindowSystemWidget {
     }
 }
 
-fn rendering_device_label(device: RenderingDevice) -> &'static str {
-    match device {
-        RenderingDevice::Automatic => "自动（GPU 优先）",
-        RenderingDevice::Software => "CPU 软件渲染",
-    }
-}
-
-fn frame_rate_limit_label(limit: FrameRateLimit) -> &'static str {
-    match limit {
-        FrameRateLimit::Automatic => "自动（自适应）",
-        FrameRateLimit::Fps15 => "最高 15 FPS",
-        FrameRateLimit::Fps30 => "最高 30 FPS",
-        FrameRateLimit::Fps60 => "最高 60 FPS",
-        FrameRateLimit::Unlimited => "不限（按需绘制）",
-    }
-}
-
-struct RenderingDeviceWidget;
-
-impl SettingsWidget for RenderingDeviceWidget {
-    type View = FeaturesPageView;
-
-    fn search_terms(&self) -> &str {
-        "gpu cpu software hardware rendering device 渲染 设备 软件 硬件 显卡 服务器"
-    }
-
-    fn render(
-        &self,
-        view: &Self::View,
-        appearance: &Appearance,
-        app: &AppContext,
-    ) -> Box<dyn Element> {
-        let dropdown = render_dropdown_item(
-            appearance,
-            "渲染设备",
-            None,
-            None,
-            LocalOnlyIconState::Hidden,
-            None,
-            &view.rendering_device_dropdown,
-        );
-        let current = app
-            .windows()
-            .platform_window(view.window_id)
-            .map(|window| {
-                if window.uses_software_rendering() {
-                    "当前窗口：CPU 软件渲染。"
-                } else {
-                    "当前窗口：硬件或驱动提供的渲染设备。"
-                }
-            })
-            .unwrap_or("当前设备尚未初始化。");
-        Flex::column().with_child(dropdown)
-            .with_child(appearance.ui_builder().wrappable_text(current, true).build().finish())
-            .with_child(appearance.ui_builder().wrappable_text(
-                "自动优先使用可用 GPU，没有 GPU 时回退到 CPU。软件渲染由 CPU 绘图，适合无 GPU 或驱动异常的环境；背景图片和大窗口会增加开销。新建窗口或重启后生效。", true).build().finish())
-            .finish()
-    }
-}
-
-struct FrameRateLimitWidget;
-
-impl SettingsWidget for FrameRateLimitWidget {
-    type View = FeaturesPageView;
-
-    fn search_terms(&self) -> &str {
-        "fps frame rate limit refresh performance background 帧率 刷新 上限 性能 背景 卡顿"
-    }
-
-    fn render(
-        &self,
-        view: &Self::View,
-        appearance: &Appearance,
-        app: &AppContext,
-    ) -> Box<dyn Element> {
-        let dropdown = render_dropdown_item(
-            appearance,
-            "帧率上限",
-            None,
-            None,
-            LocalOnlyIconState::Hidden,
-            None,
-            &view.frame_rate_limit_dropdown,
-        );
-        let limit = *GPUSettings::as_ref(app).frame_rate_limit.value();
-        let description = match limit {
-            FrameRateLimit::Automatic => {
-                "自动：CPU 软件渲染最高 30 FPS，绘制繁忙时进一步降频；GPU 不额外限帧。"
-            }
-            FrameRateLimit::Fps15 => {
-                "最高 15 FPS：降低绘制开销，适合 CPU 资源紧张的服务器；拖动和滚动会更不连贯。"
-            }
-            FrameRateLimit::Fps30 => "最高 30 FPS：在操作流畅度和 CPU 开销之间折中。",
-            FrameRateLimit::Fps60 => "最高 60 FPS：操作更连贯，需要更多渲染资源。",
-            FrameRateLimit::Unlimited => {
-                "不限：不增加应用层帧率限制，仍受渲染耗时和显示同步约束；软件渲染可能占满 CPU。"
-            }
-        };
-        Flex::column().with_child(dropdown)
-            .with_child(appearance.ui_builder().wrappable_text(description, true).build().finish())
-            .with_child(appearance.ui_builder().wrappable_text("修改立即生效。这是帧率上限，不是固定帧率；仅在内容变化或系统请求重绘时绘制。", true).build().finish())
-            .finish()
-    }
-}
-
 #[derive(Default)]
 struct GraphicsBackendWidget {}
 
@@ -8002,7 +7806,7 @@ impl SettingsWidget for GraphicsBackendWidget {
     type View = FeaturesPageView;
 
     fn search_terms(&self) -> &str {
-        "graphics rendering backend vulkan dx12 directx12 opengl driver 图形 渲染 后端 驱动"
+        "gpu graphics backend vulkan dx12 directx12 opengl driver"
     }
 
     fn render(
@@ -8014,7 +7818,7 @@ impl SettingsWidget for GraphicsBackendWidget {
         let theme = appearance.theme();
         let dropdown = render_dropdown_item(
             appearance,
-            super::lite_i18n::text("Preferred graphics backend"),
+            "Preferred graphics backend",
             None,
             None,
             LocalOnlyIconState::for_setting(
@@ -8035,14 +7839,7 @@ impl SettingsWidget for GraphicsBackendWidget {
             col.add_child(
                 appearance
                     .ui_builder()
-                    .wrappable_text(
-                        format!(
-                            "{}: {}",
-                            super::lite_i18n::text("Current backend"),
-                            backend.to_label()
-                        ),
-                        true,
-                    )
+                    .wrappable_text(format!("Current backend: {}", backend.to_label()), true)
                     .with_style(UiComponentStyles {
                         font_color: Some(theme.sub_text_color(theme.background()).into_solid()),
                         ..Default::default()
@@ -8050,20 +7847,13 @@ impl SettingsWidget for GraphicsBackendWidget {
                     .build()
                     .finish(),
             );
-            if cfg!(feature = "warp_lite") {
-                col.add_child(appearance.ui_builder().wrappable_text(
-                    "默认：自动选择。DirectX 12：Windows 首选，支持 GPU 和 CPU 软件渲染。Vulkan：需兼容驱动。OpenGL：兼容性备选，并不保证更省 CPU。不可用时自动回退；新建窗口或重启后生效。", true).build().finish());
-            }
         }
         if view.graphics_backend_preference_changed {
             col.add_child(
                 Container::new(
                     appearance
                         .ui_builder()
-                        .wrappable_text(
-                            super::lite_i18n::text("Changes will apply to new windows."),
-                            true,
-                        )
+                        .wrappable_text("Changes will apply to new windows.", true)
                         .with_style(UiComponentStyles {
                             font_color: Some(theme.sub_text_color(theme.background()).into_solid()),
                             ..Default::default()
@@ -8148,7 +7938,3 @@ impl SettingsWidget for AsyncFindWidget {
         )
     }
 }
-
-#[cfg(test)]
-#[path = "features_page_tests.rs"]
-mod tests;

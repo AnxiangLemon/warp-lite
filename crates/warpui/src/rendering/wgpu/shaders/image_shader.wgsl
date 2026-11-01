@@ -23,14 +23,15 @@ struct ImageVertexShaderInput {
     @location(4) corner_radius: vec4<f32>,
 }
 
+// Per-instance values are constant across each quad; WARP must not interpolate them per pixel.
 struct ImageVertexShaderOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) rect_center: vec2<f32>,
-    @location(1) rect_corner: vec2<f32>,
+    @location(0) @interpolate(flat) rect_center: vec2<f32>,
+    @location(1) @interpolate(flat) rect_corner: vec2<f32>,
     @location(2) texture_coordinate: vec2<f32>,
-    @location(4) color: vec4<f32>,
+    @location(4) @interpolate(flat) color: vec4<f32>,
     @location(5) @interpolate(flat) is_icon: u32,
-    @location(6) corner_radius: vec4<f32>,
+    @location(6) @interpolate(flat) corner_radius: vec4<f32>,
 }
 
 @vertex
@@ -68,7 +69,12 @@ fn distance_from_rect(pixel_pos: vec2<f32>, rect_center: vec2<f32>, rect_corner:
 @fragment
 fn fs_main(in: ImageVertexShaderOutput) -> @location(0) vec4<f32> {
     // Sample the texture to obtain a color.
-    var color_sample: vec4<f32> = textureSample(imageTexture, imageSampler, in.texture_coordinate);
+    var color_sample: vec4<f32>;
+    if software_sampling {
+        color_sample = bilinear_load(imageTexture, in.texture_coordinate);
+    } else {
+        color_sample = textureSample(imageTexture, imageSampler, in.texture_coordinate);
+    }
 
     var color: vec4<f32>;
     if in.is_icon == 0u {
@@ -85,6 +91,9 @@ fn fs_main(in: ImageVertexShaderOutput) -> @location(0) vec4<f32> {
         color = vec4(in.color.r, in.color.g, in.color.b, new_color.a);
     }
 
+    if all(in.corner_radius == vec4(0.0)) {
+        return color;
+    }
     var outer_corner_radius: f32;
 
     if in.position.y >= in.rect_center.y {

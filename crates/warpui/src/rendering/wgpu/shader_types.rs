@@ -2,7 +2,7 @@ use pathfinder_color::ColorU;
 use pathfinder_geometry::rect::RectF;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct ColorF {
     r: f32,
     g: f32,
@@ -48,7 +48,7 @@ impl From<crate::geometry::vector::Vector2F> for Vector2F {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct Vector4F {
     x: f32,
     y: f32,
@@ -147,6 +147,29 @@ pub(super) struct RectData {
 }
 
 impl RectData {
+    #[cfg(feature = "integration_tests")]
+    pub(super) fn profile_category(&self) -> (usize, f32) {
+        let category = if self.drop_shadow_sigma > 0. {
+            0
+        } else if self.background_color.start_color != self.background_color.end_color {
+            1
+        } else if self.corner_radius != vec4f(0., 0., 0., 0.) {
+            2
+        } else if self.border_width != vec4f(0., 0., 0., 0.) {
+            3
+        } else {
+            4
+        };
+        (category, self.bounds.z * self.bounds.w)
+    }
+
+    pub(super) fn is_plain_solid(&self) -> bool {
+        self.background_color.start_color == self.background_color.end_color
+            && self.border_width == vec4f(0., 0., 0., 0.)
+            && self.corner_radius == vec4f(0., 0., 0., 0.)
+            && self.drop_shadow_sigma == 0.
+    }
+
     const ATTRIBS: [wgpu::VertexAttribute; 13] = wgpu::vertex_attr_array![
         // Start at location 1 here because the vertex location occupies location 0.
         1 => Float32x4,     // Bounds
@@ -232,3 +255,7 @@ impl Uniforms {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "shader_types_tests.rs"]
+mod tests;
